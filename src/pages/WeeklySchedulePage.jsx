@@ -275,7 +275,7 @@ export default function WeeklySchedulePage() {
   const datePickerValue = isMobile ? dateToInputValue(mobileDay) : dateToInputValue(weekAnchor);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', height: '100vh', padding: isMobile ? '16px' : '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', padding: isMobile ? '16px' : '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
           {isMobile ? "Today's Schedule" : 'Weekly Schedule'}
@@ -450,7 +450,7 @@ export default function WeeklySchedulePage() {
       ) : loading ? (
         <p style={{ fontSize: 13, color: '#9ca3af' }}>Loading...</p>
       ) : (
-        <div style={{ background: 'white', borderRadius: 4, border: `1.5px solid ${BRAND.forest}`, overflow: 'auto', boxShadow: '0 8px 28px rgba(76,29,107,0.10)', flex: 1, minHeight: 0 }}>
+        <div style={{ background: 'white', borderRadius: 4, border: `1.5px solid ${BRAND.forest}`, overflow: 'clip', boxShadow: '0 8px 28px rgba(76,29,107,0.10)' }}>
           <div style={{ position: 'relative' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
             <colgroup>

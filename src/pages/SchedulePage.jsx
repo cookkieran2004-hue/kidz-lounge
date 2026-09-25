@@ -1207,7 +1207,7 @@ function ScheduleApp() {
     return () => clearInterval(t);
   }, []);
   const isToday = dateToInputValue(selectedDate) === dateToInputValue(now);
-  const [gridEl, setGridEl] = useState(null); // the grid's scrolling box
+  const [gridEl, setGridEl] = useState(null); // the grid's box (the page scrolls, not the grid)
   const [nowLineTop, setNowLineTop] = useState(null); // px from top of grid content, or null if hidden
   const autoScrolledGridRef = useRef(null);
 
@@ -1492,7 +1492,9 @@ function ScheduleApp() {
   }, [appointments, pinnedUnassignedKeys]);
 
   // Position the blue current-time line from the real row positions, and on
-  // first showing today's grid, scroll so the line sits about a third down.
+  // first showing today's grid, scroll the page so the line sits about a
+  // third of the way down the window. The grid has no scroll box of its own
+  // -- the page is the only thing that scrolls.
   useLayoutEffect(() => {
     if (!gridEl || !isToday) { setNowLineTop(null); return; }
     const [startH, startM] = TIME_SLOTS[0].split(':').map(Number);
@@ -1500,12 +1502,13 @@ function ScheduleApp() {
     const slotIndex = Math.floor(minsFromStart / 30);
     const row = slotIndex >= 0 && slotIndex < TIME_SLOTS.length ? gridEl.querySelector(`tr[data-slot="${TIME_SLOTS[slotIndex]}"]`) : null;
     if (!row) { setNowLineTop(null); return; } // before opening or after closing
-    const top = row.getBoundingClientRect().top - gridEl.getBoundingClientRect().top + gridEl.scrollTop
+    const top = row.getBoundingClientRect().top - gridEl.getBoundingClientRect().top
       + ((minsFromStart - slotIndex * 30) / 30) * row.offsetHeight;
     setNowLineTop(top);
     if (autoScrolledGridRef.current !== gridEl) {
       autoScrolledGridRef.current = gridEl;
-      gridEl.scrollTop = Math.max(0, top - gridEl.clientHeight / 3);
+      const lineInPage = gridEl.getBoundingClientRect().top + window.scrollY + top;
+      window.scrollTo({ top: Math.max(0, lineInPage - window.innerHeight / 3) });
     }
   }, [gridEl, isToday, now, appointments, providers, viewMode]);
 
@@ -1562,7 +1565,7 @@ function ScheduleApp() {
   }, [allConflicts, dismissedConflictKeys]);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', height: '100vh', padding: '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', padding: '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: 16, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
@@ -1744,7 +1747,7 @@ function ScheduleApp() {
       {error && <p style={{ color: '#dc2626', fontSize: 14 }}>Error: {error}</p>}
 
       {!loading && !error && viewMode !== 'unassigned' && (
-        <div ref={setGridEl} style={{ position: 'relative', background: 'white', borderRadius: 12, overflow: 'auto', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 1px 6px rgba(0,0,0,0.04)', border: '1px solid #eef0f3', flex: 1, minHeight: 0 }}>
+        <div ref={setGridEl} style={{ position: 'relative', background: 'white', borderRadius: 12, overflow: 'clip', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 1px 6px rgba(0,0,0,0.04)', border: '1px solid #eef0f3' }}>
           <div style={{ position: 'relative' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
             <colgroup>
@@ -1903,7 +1906,7 @@ function ScheduleApp() {
       )}
 
       {!loading && !error && viewMode === 'unassigned' && (
-        <div style={{ background: 'white', borderRadius: 12, overflow: 'auto', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 1px 6px rgba(0,0,0,0.04)', border: '1px solid #eef0f3', padding: 16, flex: 1, minHeight: 0 }}>
+        <div style={{ background: 'white', borderRadius: 12, overflow: 'clip', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 1px 6px rgba(0,0,0,0.04)', border: '1px solid #eef0f3', padding: 16 }}>
           <p style={{ fontSize: 12.5, color: '#6b7280', margin: '0 0 12px 0' }}>
             Appointments without a treatment area assigned yet.
           </p>
