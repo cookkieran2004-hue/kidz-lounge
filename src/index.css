@@ -1,0 +1,18 @@
+body {
+  margin: 0;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Username dropdown items (NavBar.jsx) */
+.kl-menu-item { background: transparent; }
+.kl-menu-item:hover, .kl-menu-item:focus-visible { background: #F5F3FF; outline: none; }
+
+/* Admin staff directory + profile (pages/admin) */
+.kl-staff-card:focus-visible, .kl-profile-nav:focus-visible { outline: 2px solid #6D28D9; outline-offset: 2px; }
+.kl-profile-nav:hover { background: #F5F3FF; }
+/* Visible only to screen readers */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
