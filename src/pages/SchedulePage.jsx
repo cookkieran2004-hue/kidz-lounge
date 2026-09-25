@@ -1118,7 +1118,7 @@ function ScheduleUnavailableOnMobile() {
   const navigate = useNavigate();
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 32, textAlign: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     }}>
       <p style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 6 }}>The daily grid isn't available on this screen size</p>
@@ -1562,7 +1562,7 @@ function ScheduleApp() {
   }, [allConflicts, dismissedConflictKeys]);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', height: '100vh', padding: '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', flex: 1, minHeight: 0, padding: '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ marginBottom: 16, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>

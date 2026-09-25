@@ -275,7 +275,7 @@ export default function WeeklySchedulePage() {
   const datePickerValue = isMobile ? dateToInputValue(mobileDay) : dateToInputValue(weekAnchor);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', height: '100vh', padding: isMobile ? '16px' : '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', flex: 1, minHeight: 0, padding: isMobile ? '16px' : '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
           {isMobile ? "Today's Schedule" : 'Weekly Schedule'}
