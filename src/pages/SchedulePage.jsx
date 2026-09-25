@@ -1177,8 +1177,9 @@ function ScheduleApp() {
   // live by the backend from ProviderUsualSchedule + OfficeHours every
   // time, never a stored calendar entry. Refetched whenever the visible
   // date or provider list changes.
-  const [contractedGapsByProvider, setContractedGapsByProvider] = useState({});
+  const [contractedGapsRaw, setContractedGapsRaw] = useState({});
   const [lookaheadConflicts, setLookaheadConflicts] = useState([]);
+  const [dayLoadedOnce, setDayLoadedOnce] = useState(false);
   const [showLookaheadDetails, setShowLookaheadDetails] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1291,6 +1292,7 @@ function ScheduleApp() {
       setConnectionStatus('error');
     }
     setLoading(false);
+    setDayLoadedOnce(true);
   }, []);
 
   const loadDayRef = useRef(null);
@@ -1329,20 +1331,25 @@ function ScheduleApp() {
     }
   };
 
+  // Fetched alongside the providers list rather than after it -- the batch
+  // already covers every provider, so there's nothing to wait for. The
+  // per-provider map is built from both once they've arrived.
   useEffect(() => {
-    if (providers.length === 0) return;
     const dateStr = dateToInputValue(selectedDate);
     let cancelled = false;
     fetchContractedGapsBatchWithRetry(dateStr, dateStr).then(byProvider => {
-      if (cancelled) return;
-      const map = {};
-      providers.forEach(p => {
-        map[p.Name] = byProvider[p.Name]?.[0]?.gaps || [];
-      });
-      setContractedGapsByProvider(map);
+      if (!cancelled) setContractedGapsRaw(byProvider);
     });
     return () => { cancelled = true; };
-  }, [providers, selectedDate]);
+  }, [selectedDate]);
+
+  const contractedGapsByProvider = useMemo(() => {
+    const map = {};
+    providers.forEach(p => {
+      map[p.Name] = contractedGapsRaw[p.Name]?.[0]?.gaps || [];
+    });
+    return map;
+  }, [providers, contractedGapsRaw]);
 
   // No push-based real-time on this backend (unlike Supabase) -- poll instead.
   useEffect(() => {
@@ -1385,11 +1392,15 @@ function ScheduleApp() {
     }
   }, []);
 
+  // Held back until the day grid has loaded the first time: the two-week
+  // lookahead is the heaviest set of requests on the page, and firing it
+  // at the same moment made the grid itself wait behind it.
   useEffect(() => {
+    if (!dayLoadedOnce) return;
     loadLookaheadConflicts();
     const interval = setInterval(loadLookaheadConflicts, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [loadLookaheadConflicts]);
+  }, [dayLoadedOnce, loadLookaheadConflicts]);
 
   const goToPreviousDay = () => {
     const d = new Date(selectedDate);
