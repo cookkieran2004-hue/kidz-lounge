@@ -5,7 +5,7 @@ import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
 import { MeetingAgendaEditor, MeetingAgendaPlaceholder } from '../MeetingAgenda';
-import { useStaffDirectory, staffName } from '../staffDirectory';
+import { useStaffNames } from '../staffDirectory';
 import { usePatientAlerts, alertsFor, AlertSymbol, PatientAlertsInline } from '../patientAlerts';
 
 export const TIME_SLOTS = [];
@@ -2903,7 +2903,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
   const [localComments, setLocalComments] = useState(existing?.comments || '');
   const [link, setLink] = useState({ loading: true, request: null, can_change: false, can_edit_agenda: false });
   const [meetingComments, setMeetingComments] = useState(null);
-  const directory = useStaffDirectory();
+  const nameFor = useStaffNames();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -3050,8 +3050,8 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
           {detailRow('Date', dateLabel)}
           {detailRow('Time', timeLabel)}
           {seriesId && detailRow('Repeats', 'Weekly')}
-          {isMeeting && attendees.length > 0 && detailRow('Organizer', staffName(directory, owner))}
-          {isMeeting && attendees.length > 0 && detailRow('With', attendees.map(a => staffName(directory, a)).join(', '))}
+          {isMeeting && attendees.length > 0 && detailRow('Organizer', nameFor(owner))}
+          {isMeeting && attendees.length > 0 && detailRow('With', attendees.map(nameFor).join(', '))}
           {notes && detailRow(existing.type === 'Other' ? 'Details' : 'Notes', <span style={{ whiteSpace: 'pre-wrap' }}>{notes}</span>)}
         </div>
 
@@ -3149,14 +3149,14 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
               {link.loading ? null
                 : canDeleteLegacy ? <button onClick={openDeleteConfirm} disabled={saving} style={modalBtnStyle(false, true)}>Delete</button>
                 : !link.request ? "This entry wasn't created through My time."
-                : !canEdit ? `Only ${staffName(directory, owner)} or an admin can change the date or time.`
+                : !canEdit ? `Only ${nameFor(owner)} or an admin can change the date or time.`
                 : null}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={onClose} style={modalBtnStyle()}>Close</button>
               {canEdit && (
                 <button onClick={() => navigate(editHref)} style={modalBtnStyle(true)}>
-                  {isOwner ? 'Edit in My time' : `Edit on ${staffName(directory, owner)}'s profile`}
+                  {isOwner ? 'Edit in My time' : `Edit on ${nameFor(owner)}'s profile`}
                 </button>
               )}
             </div>

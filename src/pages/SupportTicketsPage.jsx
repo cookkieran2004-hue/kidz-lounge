@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { SUPPORT_OWNER, notifySupportTicketsChanged } from '../supportCount';
+import { useStaffNames } from '../staffDirectory';
 
 // The support owner's (KJC135) ticket inbox: open tickets first, most
 // urgent first. Resolving one (with an optional note) also ticks off its
@@ -15,6 +16,7 @@ function when(iso) {
 
 export default function SupportTicketsPage() {
   const { user } = useAuth();
+  const nameFor = useStaffNames();
   const [status, setStatus] = useState('open');
   const [tickets, setTickets] = useState(null);
   const [error, setError] = useState(null);
@@ -60,14 +62,14 @@ export default function SupportTicketsPage() {
           <p style={{ whiteSpace: 'pre-wrap', margin: '8px 0', fontSize: 14 }}>{t.issue}</p>
           <div style={{ fontSize: 13, color: '#333' }}>
             From <b>{t.contact_name}</b> &middot; {t.contact_info}
-            {t.submitted_by ? <> &middot; signed in as {t.submitted_by}</> : <> &middot; not signed in</>}
+            {t.submitted_by ? <> &middot; signed in as {nameFor(t.submitted_by)}</> : <> &middot; not signed in</>}
             {t.page && <> &middot; page: {t.page}</>}
           </div>
           {t.status === 'resolved' && t.resolution_note && <p style={{ fontSize: 13, margin: '6px 0 0' }}><b>Note:</b> {t.resolution_note}</p>}
           {t.status === 'open' && (
             <p style={{ fontSize: 12, color: '#555', margin: '6px 0 0' }}>
               {t.submitted_by
-                ? `When resolved, ${t.submitted_by} sees a popup with your note.`
+                ? `When resolved, ${nameFor(t.submitted_by)} sees a popup with your note.`
                 : `Sent while signed out, so there's no popup. Contact them at ${t.contact_info}.`}
             </p>
           )}

@@ -3,7 +3,7 @@ import { api } from '../api';
 import { CalendarIcon, UserIcon, dateToInputValue } from './SchedulePage';
 import { useSearchParams } from 'react-router-dom';
 import { MeetingAgendaEditor } from '../MeetingAgenda';
-import { useStaffDirectory, staffName } from '../staffDirectory';
+import { useStaffDirectory, useStaffNames } from '../staffDirectory';
 import { useAuth } from '../AuthContext';
 import { Avatar } from '../Avatar';
 
@@ -144,6 +144,7 @@ function BalanceCards({ balances, isMobile }) {
 // chips; a search box filters the list. The organizer isn't offered.
 function AttendeePicker({ selected, onChange, exclude, isMobile, labelStyle }) {
   const directory = useStaffDirectory();
+  const nameFor = useStaffNames();
   const [query, setQuery] = useState('');
   const options = directory.filter(s => s.username !== exclude);
   const q = query.trim().toLowerCase();
@@ -156,8 +157,8 @@ function AttendeePicker({ selected, onChange, exclude, isMobile, labelStyle }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
           {selected.map(u => (
             <span key={u} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, padding: '3px 4px 3px 10px', borderRadius: 999, background: BRAND.tint, border: `1px solid ${BRAND.box}`, color: BRAND.brassText }}>
-              {staffName(directory, u)}
-              <button type="button" onClick={() => toggle(u)} aria-label={`Remove ${staffName(directory, u)}`} style={{ border: 'none', background: 'none', cursor: 'pointer', color: BRAND.brassText, fontSize: 14, lineHeight: 1, padding: '0 4px' }}>&times;</button>
+              {nameFor(u)}
+              <button type="button" onClick={() => toggle(u)} aria-label={`Remove ${nameFor(u)}`} style={{ border: 'none', background: 'none', cursor: 'pointer', color: BRAND.brassText, fontSize: 14, lineHeight: 1, padding: '0 4px' }}>&times;</button>
             </span>
           ))}
         </div>
@@ -193,6 +194,7 @@ function AttendeePicker({ selected, onChange, exclude, isMobile, labelStyle }) {
 // balance warning as adding). A recurring change takes effect from the
 // "Starting" date, which begins at today so past weeks stay as they were.
 function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor, changeOf, changeApplies }) {
+  const nameFor = useStaffNames();
   const isEditing = !!editingRequest;
   const isChange = !!changeOf;
   const adminMode = adminFor !== undefined || (isChange && !!changeApplies);
@@ -369,7 +371,7 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
       {negativeWarning && (
         <div role="alert" style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: '#92400E', margin: '0 0 4px' }}>
-            This will put {negativeWarning.username} below zero {negativeWarning.balance_type}
+            This will put {nameFor(negativeWarning.username)} below zero {negativeWarning.balance_type}
           </p>
           <p style={{ fontSize: 12.5, color: '#92400E', margin: '0 0 10px' }}>
             They have {fmtHours(negativeWarning.current_hours)} and this uses {fmtHours(negativeWarning.hours_requested)}, which leaves {fmtHours(negativeWarning.resulting_hours)}.
@@ -414,7 +416,7 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
 // to them is already waiting). A change request shows the entry it would
 // replace, so an approver sees before and after.
 function RequestList({ requests, isMobile, showUsername, onApprove, onDeny, onEdit, onDelete, onChange }) {
-  const directory = useStaffDirectory();
+  const nameFor = useStaffNames();
   if (requests.length === 0) {
     return <p style={{ fontSize: 13, color: BRAND.muted, textAlign: 'center', padding: 24 }}>Nothing here yet.</p>;
   }
@@ -423,7 +425,7 @@ function RequestList({ requests, isMobile, showUsername, onApprove, onDeny, onEd
       {requests.map(req => (
         <div key={req.id} style={{ padding: '12px 4px', borderBottom: `1px solid #f1f2f4`, display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: 8 }}>
           <div>
-            {showUsername && <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.forest, marginBottom: 2 }}>{req.username}</div>}
+            {showUsername && <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.forest, marginBottom: 2 }}>{nameFor(req.username)}</div>}
             {req.replaces_request_id && (
               <div style={{ fontSize: 11, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Change request</div>
             )}
@@ -437,10 +439,10 @@ function RequestList({ requests, isMobile, showUsername, onApprove, onDeny, onEd
               <div style={{ fontSize: 12, color: '#B45309', fontWeight: 600, marginTop: 2 }}>Change pending approval</div>
             )}
             {req.request_type === 'Meeting' && (req.attendees || []).length > 0 && (
-              <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>With {req.attendees.map(a => staffName(directory, a)).join(', ')}</div>
+              <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>With {req.attendees.map(nameFor).join(', ')}</div>
             )}
             {req.created_by && req.created_by !== req.username && (
-              <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>Added by {req.created_by}</div>
+              <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>Added by {nameFor(req.created_by)}</div>
             )}
             {req.notes && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>{req.notes}</div>}
             {req.status === 'denied' && req.review_note && <div style={{ fontSize: 12, color: '#991B1B', marginTop: 2 }}>Reason: {req.review_note}</div>}
@@ -524,7 +526,7 @@ function useEditFromAddress(requests) {
 function MeetingsImIn({ isMobile }) {
   const [meetings, setMeetings] = useState(null);
   const [openId, setOpenId] = useState(null);
-  const directory = useStaffDirectory();
+  const nameFor = useStaffNames();
   useEffect(() => {
     api.getMyMeetings().then(m => setMeetings(m || [])).catch(() => setMeetings([]));
   }, []);
@@ -538,8 +540,8 @@ function MeetingsImIn({ isMobile }) {
             <div>
               <div style={{ fontSize: 13.5, color: '#241A33' }}>{requestSummary(m)}</div>
               <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>
-                Organized by {staffName(directory, m.username)}
-                {(m.attendees || []).length > 1 && <> &middot; with {m.attendees.map(a => staffName(directory, a)).join(', ')}</>}
+                Organized by {nameFor(m.username)}
+                {(m.attendees || []).length > 1 && <> &middot; with {m.attendees.map(nameFor).join(', ')}</>}
               </div>
               {m.notes && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>{m.notes}</div>}
             </div>
@@ -630,6 +632,7 @@ function staffOptionLabel(s) {
 }
 
 export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, onAdded }) {
+  const nameFor = useStaffNames();
   // Arriving from the schedule's "Edit on <name>'s profile" link (?edit=...)
   // means an approved entry, so start on the Approved list.
   const [addressParams] = useSearchParams();
@@ -649,7 +652,7 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
   const startAdding = () => { setAddedNotice(null); setAddFor(forUsername || ''); setAdding(true); };
   const handleAdded = (username) => {
     setAdding(false);
-    setAddedNotice(`Time off added for ${username}. It's approved and on their schedule.`);
+    setAddedNotice(`Time off added for ${nameFor(username)}. It's approved and on their schedule.`);
     // It's approved, so it would be invisible under the default Pending filter.
     if (statusFilter === 'pending' || statusFilter === 'denied') setStatusFilter('approved');
     else load();
@@ -689,7 +692,7 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
           isMobile={isMobile}
           adminApplies
           initialDate={editDate}
-          onDone={() => { closeChange(); setAddedNotice(`Changes saved for ${changing.username}.`); load(); onAdded?.(); }}
+          onDone={() => { closeChange(); setAddedNotice(`Changes saved for ${nameFor(changing.username)}.`); load(); onAdded?.(); }}
           onCancel={() => { closeChange(); load(); }}
         />
       </div>
@@ -699,7 +702,7 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
   if (editingRequest) {
     return (
       <div style={{ padding: embedded ? 0 : (isMobile ? 16 : '24px 28px 40px') }}>
-        <p style={sectionHeaderStyle()}>Editing {editingRequest.username}'s request</p>
+        <p style={sectionHeaderStyle()}>Editing {nameFor(editingRequest.username)}'s request</p>
         <RequestForm
           isMobile={isMobile}
           editingRequest={editingRequest}

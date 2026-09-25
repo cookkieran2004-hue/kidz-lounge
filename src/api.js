@@ -121,6 +121,8 @@ export const api = {
   getSeriesMatches: (patientName, provider, time, after) =>
     request(`/appointments/series-matches?patient_name=${encodeURIComponent(patientName)}&provider=${encodeURIComponent(provider)}&time=${time}&after=${after}`),
   getStaffDirectory: () => request('/staff/directory'),
+  // Everyone, archived included -- only for turning usernames into names.
+  getAllStaffNames: () => request('/staff/directory?include_archived=true'),
   getFinMatches: (fin, after) => request(`/appointments/fin-matches?fin=${encodeURIComponent(fin)}&after=${after}`),
   createAppointment: (record) => request('/appointments', { method: 'POST', body: JSON.stringify(record) }),
   updateAppointment: (id, record) => request(`/appointments/${id}`, { method: 'PUT', body: JSON.stringify(record) }),

@@ -7,6 +7,7 @@ import { useAuth } from '../AuthContext';
 import { PatientModal } from './ManageDataPage';
 import { useIsMobile } from '../useIsMobile';
 import { PatientAlertsInline } from '../patientAlerts';
+import { useStaffNames } from '../staffDirectory';
 import { roomDisplayText, AppointmentModal, STATUS_OPTIONS, dateToInputValue } from './SchedulePage';
 
 const PATIENT_CHART_PHONE_BREAKPOINT = 768;
@@ -657,6 +658,7 @@ function UploadFileModal({ patient, onClose, onUploaded }) {
 }
 
 function DocumentsTab({ patient, isMobile }) {
+  const nameFor = useStaffNames();
   const [clinicalDocs, setClinicalDocs] = useState([]);
   const [fileDocs, setFileDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -807,7 +809,7 @@ function DocumentsTab({ patient, isMobile }) {
                   <div style={{ fontSize: 10.5, color: BRAND.muted, marginTop: 2 }}>
                     {formatDateMMDDYYYY(item.date?.slice(0, 10))}
                     {item.kind === 'clinical' && ` · ${providerDisplayName(item.raw.signer_first_name, item.raw.signer_last_name, null)}`}
-                    {item.kind === 'file' && ` · ${item.raw.uploaded_by}`}
+                    {item.kind === 'file' && ` · ${nameFor(item.raw.uploaded_by)}`}
                   </div>
                 </div>
               ))
@@ -861,7 +863,7 @@ function DocumentsTab({ patient, isMobile }) {
                 </button>
               </div>
               <p style={{ fontSize: 13, color: BRAND.muted, marginBottom: 24 }}>
-                Uploaded {formatUploadedAt(selected.raw.uploaded_at)} by {selected.raw.uploaded_by}
+                Uploaded {formatUploadedAt(selected.raw.uploaded_at)} by {nameFor(selected.raw.uploaded_by)}
                 {selected.raw.file_size ? ` · ${formatFileSize(selected.raw.file_size)}` : ''}
               </p>
               <button
