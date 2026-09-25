@@ -38,16 +38,25 @@ export function SyringeIcon({ size = 14, color = ALERT_INK, title }) {
 // The symbol on a small bright-yellow circle -- visible on light
 // backgrounds without boxing in the text next to it.
 export function AlertSymbol({ kind, size = 18, title }) {
-  const Icon = kind === 'immunizations' ? SyringeIcon : WarningIcon;
+  const isWarning = kind !== 'immunizations';
+  const Icon = isWarning ? WarningIcon : SyringeIcon;
+  // Icon size shares the inner box's parity so the leftover space splits
+  // evenly (no half-pixel offset).
+  const inner = size - 2;
+  let iconSize = Math.round(size * 0.62);
+  if ((inner - iconSize) % 2) iconSize += 1;
   return (
     <span
       title={title}
       style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box',
         width: size, height: size, borderRadius: '50%', background: ALERT_YELLOW, border: `1px solid ${ALERT_YELLOW_BORDER}`,
       }}
     >
-      <Icon size={Math.round(size * 0.62)} title={title} />
+      {/* The triangle's visual mass sits low in its viewBox; nudge it up. */}
+      <span style={{ display: 'flex', transform: isWarning ? `translateY(${-size * 0.04}px)` : undefined }}>
+        <Icon size={iconSize} title={title} />
+      </span>
     </span>
   );
 }
