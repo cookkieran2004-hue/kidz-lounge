@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import { TasksProvider } from './TasksContext';
 import { ChatProvider } from './ChatContext';
@@ -24,45 +24,32 @@ import SupportTicketsPage from './pages/SupportTicketsPage';
 import Footer from './Footer';
 import SupportNotifier from './SupportNotifier';
 
-// Pages whose grid scrolls inside itself. On these the shell is exactly one
-// window tall -- nav bar, page, footer -- so the grid gets whatever height is
-// left. The pages used to be a full 100vh on their own, which pushed the nav
-// bar and footer off screen and left a second, page-level scrollbar to reach
-// them.
-const FILL_VIEWPORT_PATHS = new Set(['/', '/weekly']);
-
 function AppShell() {
-  const { pathname } = useLocation();
-  const fillsViewport = FILL_VIEWPORT_PATHS.has(pathname);
   return (
     <PendingTimeOffProvider>
       <TasksProvider>
         <ChatProvider>
-          <div style={fillsViewport ? { height: '100dvh', display: 'flex', flexDirection: 'column' } : undefined}>
-            <NavBar />
-            <TaskDrawer />
-            <ChatWidget />
-            <div style={fillsViewport ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'auto' } : undefined}>
-              <Routes>
-                <Route path="/" element={<RequireAuth><SchedulePage /></RequireAuth>} />
-                <Route path="/weekly" element={<RequireAuth><WeeklySchedulePage /></RequireAuth>} />
-                <Route path="/patients" element={<RequireAuth><PatientsPage /></RequireAuth>} />
-                <Route path="/patients/:name" element={<RequireAuth><PatientChartPage /></RequireAuth>} />
-                {/* Pages under the username menu */}
-                <Route path="/profile" element={<RequireAuth><MyProfilePage /></RequireAuth>} />
-                <Route path="/time" element={<RequireAuth><MyTimePage /></RequireAuth>} />
-                <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
-                <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
-                <Route path="/admin/staff/:username" element={<RequireAdmin><StaffProfilePage /></RequireAdmin>} />
-                {/* Help & Support: open to everyone, signed in or not */}
-                <Route path="/support" element={<SupportPage />} />
-                <Route path="/support/tickets" element={<RequireAuth><SupportTicketsPage /></RequireAuth>} />
-                {/* Old address for the single "My Page" -- keeps bookmarks working */}
-                <Route path="/me" element={<Navigate to="/profile" replace />} />
-              </Routes>
-            </div>
-            <Footer />
-          </div>
+          <NavBar />
+          <TaskDrawer />
+          <ChatWidget />
+          <Routes>
+            <Route path="/" element={<RequireAuth><SchedulePage /></RequireAuth>} />
+            <Route path="/weekly" element={<RequireAuth><WeeklySchedulePage /></RequireAuth>} />
+            <Route path="/patients" element={<RequireAuth><PatientsPage /></RequireAuth>} />
+            <Route path="/patients/:name" element={<RequireAuth><PatientChartPage /></RequireAuth>} />
+            {/* Pages under the username menu */}
+            <Route path="/profile" element={<RequireAuth><MyProfilePage /></RequireAuth>} />
+            <Route path="/time" element={<RequireAuth><MyTimePage /></RequireAuth>} />
+            <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
+            <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
+          <Route path="/admin/staff/:username" element={<RequireAdmin><StaffProfilePage /></RequireAdmin>} />
+            {/* Help & Support: open to everyone, signed in or not */}
+            <Route path="/support" element={<SupportPage />} />
+            <Route path="/support/tickets" element={<RequireAuth><SupportTicketsPage /></RequireAuth>} />
+            {/* Old address for the single "My Page" -- keeps bookmarks working */}
+            <Route path="/me" element={<Navigate to="/profile" replace />} />
+          </Routes>
+          <Footer />
           <SupportNotifier />
         </ChatProvider>
       </TasksProvider>
