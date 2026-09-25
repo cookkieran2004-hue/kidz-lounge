@@ -450,7 +450,7 @@ export default function WeeklySchedulePage() {
       ) : loading ? (
         <p style={{ fontSize: 13, color: '#9ca3af' }}>Loading...</p>
       ) : (
-        <div style={{ background: 'white', borderRadius: 4, border: `1.5px solid ${BRAND.forest}`, overflow: 'clip', boxShadow: '0 8px 28px rgba(76,29,107,0.10)' }}>
+        <div style={{ background: 'white', borderRadius: 4, overflow: 'clip', boxShadow: '0 8px 28px rgba(76,29,107,0.10)' }}>
           <div style={{ position: 'relative' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
             <colgroup>
