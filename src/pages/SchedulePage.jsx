@@ -93,7 +93,7 @@ export function statusColor(status) {
   return map[status] || '#8B8D93';
 }
 
-export const STATUS_OPTIONS = ['Scheduled', 'Confirmed', 'Left Message', 'Emailed', 'Canceled', 'No Show', '*HOLD*', 'Make Up', 'MUS'];
+export const STATUS_OPTIONS = ['AHHH', 'Confirmed', 'Left Message', 'Emailed', 'Canceled', 'No Show', '*HOLD*', 'Make Up', 'MUS'];
 
 // ---------- The "HOLD - see comments" placeholder patient ----------
 // Not a real child: it's booked to hold time on a provider's schedule.
