@@ -71,6 +71,9 @@ export default function WeeklySchedulePage() {
   const [statusDropdown, setStatusDropdown] = useState(null); // { apt, top, left }
   const [showConflictDetails, setShowConflictDetails] = useState(false);
   const [lookaheadConflicts, setLookaheadConflicts] = useState([]);
+  // Which provider's week last finished loading. A Symbol to start, so it
+  // never equals any real (or empty) provider value.
+  const [loadedFor, setLoadedFor] = useState(() => Symbol('not loaded'));
   const [showLookaheadDetails, setShowLookaheadDetails] = useState(false);
   const [reviewingConflict, setReviewingConflict] = useState(null);
 
@@ -131,6 +134,7 @@ export default function WeeklySchedulePage() {
   const load = useCallback(async () => {
     if (!activeProvider) {
       setLoading(false);
+      setLoadedFor(activeProvider);
       return;
     }
     setLoading(true);
@@ -152,6 +156,7 @@ export default function WeeklySchedulePage() {
       setError(err.message);
     }
     setLoading(false);
+    setLoadedFor(activeProvider);
   }, [activeProvider, daysToShow]);
 
   useEffect(() => { load(); }, [load]);
@@ -180,11 +185,16 @@ export default function WeeklySchedulePage() {
     }
   }, [activeProvider]);
 
+  // Held back until this provider's week has loaded, same as the daily
+  // Schedule view: the two-week lookahead fired alongside the week's own
+  // requests and made the grid wait behind it.
+  const gridReady = loadedFor === activeProvider;
   useEffect(() => {
+    if (!gridReady) return;
     loadLookaheadConflicts();
     const interval = setInterval(loadLookaheadConflicts, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [loadLookaheadConflicts]);
+  }, [gridReady, loadLookaheadConflicts]);
 
   const grid = useMemo(() => {
     const g = {};
