@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { api } from '../../api';
 import { useAuth } from '../../AuthContext';
 import { PasswordConfirmModal, generateTempPassword } from '../ManageDataPage';
+import { DateField, TimeField } from '../SchedulePage';
 import {
   BRAND, BRAND_SERIF, INK, BODY, HAIRLINE, DANGER, FONT, WEEKDAYS,
   cardStyle, btn, inputStyle, labelStyle, hintStyle, overlayStyle, scheduleNameFor,
@@ -70,9 +71,9 @@ function WeeklyHoursPicker({ value, onChange }) {
       {Object.keys(value).sort().map(d => (
         <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13, color: BODY }}>
           <span style={{ width: 36, fontWeight: 600 }}>{WEEKDAYS[d]}</span>
-          <input type="time" value={value[d].start_time} onChange={e => setTime(d, 'start_time', e.target.value)} style={inputStyle({ width: 120, padding: '6px 8px', fontSize: 13 })} />
+          <TimeField floating minHour={6} maxHour={21} ariaLabel={`${WEEKDAYS[d]} start`} value={value[d].start_time} onChange={v => setTime(d, 'start_time', v)} style={inputStyle({ width: 'auto', padding: '6px 8px', fontSize: 13 })} />
           <span style={{ color: BRAND.muted }}>to</span>
-          <input type="time" value={value[d].end_time} onChange={e => setTime(d, 'end_time', e.target.value)} style={inputStyle({ width: 120, padding: '6px 8px', fontSize: 13 })} />
+          <TimeField floating minHour={6} maxHour={21} ariaLabel={`${WEEKDAYS[d]} end`} value={value[d].end_time} onChange={v => setTime(d, 'end_time', v)} style={inputStyle({ width: 'auto', padding: '6px 8px', fontSize: 13 })} />
         </div>
       ))}
     </div>
@@ -266,7 +267,7 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
             <div style={{ display: 'grid', gridTemplateColumns: twoCol, gap: 12, marginTop: 12 }}>
               <Field label="Preferred name"><input style={inputStyle()} value={person.preferred_name} onChange={setP('preferred_name')} placeholder="What they go by" /></Field>
               <Field label="Position" required><input style={inputStyle()} value={person.position} onChange={setP('position')} placeholder="Speech therapist" /></Field>
-              <Field label="Hire date"><input type="date" style={inputStyle()} value={person.hire_date} onChange={setP('hire_date')} /></Field>
+              <div><label htmlFor="kl-new-hire-date" style={{ display: 'block' }}><span style={labelStyle()}>Hire date</span></label><DateField id="kl-new-hire-date" yearNav clearable style={inputStyle()} value={person.hire_date} onChange={v => setPerson(p => ({ ...p, hire_date: v }))} /></div>
               <Field label="Role" hint="Admins can manage staff accounts and approve time off.">
                 <select style={inputStyle()} value={person.role} onChange={setP('role')}>
                   <option value="staff">Staff</option>

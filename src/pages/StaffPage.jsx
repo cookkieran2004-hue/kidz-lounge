@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
-import { CalendarIcon, UserIcon, dateToInputValue } from './SchedulePage';
+import { CalendarIcon, UserIcon, dateToInputValue, DateField, TimeField } from './SchedulePage';
 import { useSearchParams } from 'react-router-dom';
 import { MeetingAgendaEditor } from '../MeetingAgenda';
 import { useStaffDirectory, useStaffNames } from '../staffDirectory';
@@ -295,19 +295,19 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 12 }}>
           <div>
             <label style={labelStyle}>Start Date</label>
-            <input type="date" style={inputStyle} value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <DateField style={inputStyle} value={startDate} onChange={setStartDate} />
           </div>
           <div>
             <label style={labelStyle}>Start Time</label>
-            <input type="time" style={inputStyle} value={balanceStartTime} onChange={e => setBalanceStartTime(e.target.value)} />
+            <TimeField style={inputStyle} minHour={6} maxHour={21} value={balanceStartTime} onChange={setBalanceStartTime} />
           </div>
           <div>
             <label style={labelStyle}>End Date</label>
-            <input type="date" style={inputStyle} value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <DateField style={inputStyle} value={endDate} onChange={setEndDate} />
           </div>
           <div>
             <label style={labelStyle}>End Time</label>
-            <input type="time" style={inputStyle} value={balanceEndTime} onChange={e => setBalanceEndTime(e.target.value)} />
+            <TimeField style={inputStyle} minHour={6} maxHour={21} value={balanceEndTime} onChange={setBalanceEndTime} />
           </div>
         </div>
       ) : (
@@ -326,23 +326,23 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
               </div>
               <div>
                 <label style={labelStyle}>{isChange ? 'Change takes effect' : 'Starting'}</label>
-                <input type="date" style={inputStyle} value={recurringStartDate} onChange={e => setRecurringStartDate(e.target.value)} />
+                <DateField style={inputStyle} value={recurringStartDate} onChange={setRecurringStartDate} />
               </div>
             </div>
           ) : (
             <div style={{ marginBottom: 12 }}>
               <label style={labelStyle}>Date</label>
-              <input type="date" style={inputStyle} value={oooDate} onChange={e => setOooDate(e.target.value)} />
+              <DateField style={inputStyle} value={oooDate} onChange={setOooDate} />
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
             <div>
               <label style={labelStyle}>Start Time</label>
-              <input type="time" style={inputStyle} value={startTime} onChange={e => setStartTime(e.target.value)} />
+              <TimeField style={inputStyle} minHour={6} maxHour={21} value={startTime} onChange={setStartTime} />
             </div>
             <div>
               <label style={labelStyle}>End Time</label>
-              <input type="time" style={inputStyle} value={endTime} onChange={e => setEndTime(e.target.value)} />
+              <TimeField style={inputStyle} minHour={6} maxHour={21} value={endTime} onChange={setEndTime} />
             </div>
           </div>
         </>
@@ -801,6 +801,10 @@ export function OfficeHoursTab({ isMobile, embedded }) {
 
   const handleSaveDay = async (weekday, openTime, closeTime, closed) => {
     setError(null);
+    // Show the new time right away: the picker builds its next value from
+    // what's shown, so picking an hour then a minute before the save
+    // returns would otherwise save the old hour.
+    if (!closed) setHours(prev => prev.map(h => (h.weekday === weekday ? { ...h, open_time: openTime, close_time: closeTime } : h)));
     try {
       await api.setOfficeHours({ weekday, open_time: openTime, close_time: closeTime, closed });
     } catch (err) {
@@ -844,9 +848,9 @@ export function OfficeHoursTab({ isMobile, embedded }) {
                 <span style={{ fontSize: 12.5, color: BRAND.muted, fontStyle: 'italic' }}>Closed</span>
               ) : (
                 <>
-                  <input type="time" style={inputStyle} defaultValue={day.open_time?.slice(0, 5)} onBlur={e => handleSaveDay(weekday, e.target.value, day.close_time?.slice(0, 5), false)} />
+                  <TimeField style={inputStyle} floating minHour={6} maxHour={21} ariaLabel={`${label} opens`} value={day.open_time?.slice(0, 5)} onChange={v => handleSaveDay(weekday, v, day.close_time?.slice(0, 5), false)} />
                   <span style={{ fontSize: 12, color: BRAND.muted }}>to</span>
-                  <input type="time" style={inputStyle} defaultValue={day.close_time?.slice(0, 5)} onBlur={e => handleSaveDay(weekday, day.open_time?.slice(0, 5), e.target.value, false)} />
+                  <TimeField style={inputStyle} floating minHour={6} maxHour={21} ariaLabel={`${label} closes`} value={day.close_time?.slice(0, 5)} onChange={v => handleSaveDay(weekday, day.open_time?.slice(0, 5), v, false)} />
                 </>
               )}
               <button
@@ -865,7 +869,7 @@ export function OfficeHoursTab({ isMobile, embedded }) {
         A specific date the office is fully closed -- creates an all-day Unavailable block for every provider.
       </p>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <input type="date" style={inputStyle} value={newClosureDate} onChange={e => setNewClosureDate(e.target.value)} />
+        <DateField style={inputStyle} floating value={newClosureDate} onChange={setNewClosureDate} ariaLabel="Closure date" />
         <input placeholder="Reason (optional)" style={{ ...inputStyle, flex: 1, minWidth: 160 }} value={newClosureReason} onChange={e => setNewClosureReason(e.target.value)} />
         <button onClick={handleAddClosure} style={{ padding: isMobile ? '9px 14px' : '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND.forest, color: 'white', cursor: 'pointer' }}>
           Add closure
@@ -926,7 +930,7 @@ export function CredentialsTab({ isMobile }) {
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Expiration Date</label>
-            <input type="date" style={inputStyle} value={expiration} onChange={e => setExpiration(e.target.value)} />
+            <DateField style={inputStyle} yearNav clearable value={expiration} onChange={setExpiration} />
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Notes (optional)</label>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { api } from './api';
 import { useIsMobile } from './useIsMobile';
 import { useStaffNames } from './staffDirectory';
+import { DateField } from './pages/SchedulePage';
 
 const BRAND_PURPLE = '#6D28D9';
 const BORDER = '#E2E4E9';
@@ -198,10 +199,11 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
               style={{ width: '100%', minHeight: isMobile ? 60 : 50, padding: isMobile ? '9px 10px' : '7px 9px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 15 : 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }}
             />
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Due Date</label>
-            <input
-              type="date"
+            <DateField
+              clearable
               value={editDueDate}
-              onChange={e => setEditDueDate(e.target.value)}
+              onChange={setEditDueDate}
+              ariaLabel="Due date"
               style={{ padding: isMobile ? '9px 10px' : '7px 9px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 15 : 13, marginBottom: 10, width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 8 }}>

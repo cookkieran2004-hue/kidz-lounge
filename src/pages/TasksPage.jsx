@@ -3,7 +3,7 @@ import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useTasks } from '../TasksContext';
 import { useIsMobile } from '../useIsMobile';
-import { CalendarPicker, dateToInputValue } from './SchedulePage';
+import { CalendarPicker, DateField, dateToInputValue } from './SchedulePage';
 import TaskDetailModal, { taskHasComments } from '../TaskDetailModal';
 
 const BRAND_PURPLE = '#6D28D9';
@@ -123,7 +123,7 @@ function NewTaskForm({ staffOptions, defaultAssignee, onCreate }) {
             {staffOptions.map(s => <option key={s.username} value={s.username}>{s.display}</option>)}
           </select>
         )}
-        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ ...fieldStyle, width: isMobile ? '100%' : 'auto' }} />
+        <DateField clearable floating={!isMobile} placeholder="Due date" ariaLabel="Due date (optional)" value={dueDate} onChange={setDueDate} style={{ ...fieldStyle, width: isMobile ? '100%' : 'auto' }} />
       </div>
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 8 }}>
         <input

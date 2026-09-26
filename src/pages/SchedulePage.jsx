@@ -317,6 +317,8 @@ function Icon({ path, size = 14, color = 'currentColor', strokeWidth = 1.8 }) {
 }
 export const ChevronLeft = (p) => <Icon {...p} path={<polyline points="15 18 9 12 15 6" />} />;
 export const ChevronRight = (p) => <Icon {...p} path={<polyline points="9 18 15 12 9 6" />} />;
+const DoubleChevronLeft = (p) => <Icon {...p} path={<><polyline points="12 18 6 12 12 6" /><polyline points="19 18 13 12 19 6" /></>} />;
+const DoubleChevronRight = (p) => <Icon {...p} path={<><polyline points="12 18 18 12 12 6" /><polyline points="5 18 11 12 5 6" /></>} />;
 export const CalendarIcon = (p) => <Icon {...p} path={<><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>} />;
 export const PlusIcon = (p) => <Icon {...p} path={<><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></>} />;
 export const UserIcon = (p) => <Icon {...p} path={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>} />;
@@ -605,23 +607,49 @@ function generateCalendarDays(viewMonth) {
   return days;
 }
 
-export function CalendarPicker({ value, onChange }) {
+// The date and time pickers from the appointment form. Every date and time
+// field in the app uses DateField / TimeField so they all look and work the
+// same. Options beyond the appointment form's needs:
+//   min / max      'YYYY-MM-DD' -- days outside are greyed out
+//   yearNav        adds previous/next-year arrows (birthdays, hire dates)
+//   clearable      an x to empty an optional date
+//   minHour/maxHour  hour buttons offered (appointments: 8 AM - 6 PM)
+//   floating       opens over the page instead of pushing content down --
+//                  for fields sitting inline in a row
+//   style          the trigger's look, so it matches the form's other inputs
+//   id / ariaLabel for a separate <label htmlFor> or an unlabeled field
+export function CalendarPicker({ value, onChange, min, max, yearNav }) {
   const [viewMonth, setViewMonth] = useState(() => value ? new Date(value + 'T00:00:00') : new Date());
   const days = generateCalendarDays(viewMonth);
   const todayStr = dateToInputValue(new Date());
+  const shiftMonths = (n) => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + n, 1));
 
   return (
     <div style={{ border: '1px solid #e2e4e9', borderRadius: 8, padding: 10, marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <button type="button" onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))} style={iconBtnStyle()}>
-          <ChevronLeft size={13} />
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 4 }}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {yearNav && (
+            <button type="button" onClick={() => shiftMonths(-12)} style={iconBtnStyle()} aria-label="Previous year">
+              <DoubleChevronLeft size={13} />
+            </button>
+          )}
+          <button type="button" onClick={() => shiftMonths(-1)} style={iconBtnStyle()} aria-label="Previous month">
+            <ChevronLeft size={13} />
+          </button>
+        </div>
         <span style={{ fontWeight: 600, fontSize: 13, color: '#1f2937' }}>
           {viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
-        <button type="button" onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))} style={iconBtnStyle()}>
-          <ChevronRight size={13} />
-        </button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button type="button" onClick={() => shiftMonths(1)} style={iconBtnStyle()} aria-label="Next month">
+            <ChevronRight size={13} />
+          </button>
+          {yearNav && (
+            <button type="button" onClick={() => shiftMonths(12)} style={iconBtnStyle()} aria-label="Next year">
+              <DoubleChevronRight size={13} />
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
@@ -634,15 +662,17 @@ export function CalendarPicker({ value, onChange }) {
           const dayStr = dateToInputValue(day);
           const isSelected = dayStr === value;
           const isToday = dayStr === todayStr;
+          const outOfRange = (min && dayStr < min) || (max && dayStr > max);
           return (
             <button
               type="button"
               key={idx}
+              disabled={outOfRange}
               onClick={() => onChange(dayStr)}
               style={{
-                width: 28, height: 28, borderRadius: '50%', border: 'none', fontSize: 12, cursor: 'pointer', margin: '0 auto',
+                width: 28, height: 28, borderRadius: '50%', border: 'none', fontSize: 12, cursor: outOfRange ? 'not-allowed' : 'pointer', margin: '0 auto',
                 background: isSelected ? BRAND.forest : isToday ? BRAND.tint : 'transparent',
-                color: isSelected ? 'white' : isToday ? BRAND.forest : '#374151',
+                color: outOfRange ? '#d1d5db' : isSelected ? 'white' : isToday ? BRAND.forest : '#374151',
               }}
             >
               {day.getDate()}
@@ -654,10 +684,10 @@ export function CalendarPicker({ value, onChange }) {
   );
 }
 
-function TimePicker({ value, onChange }) {
+function TimePicker({ value, onChange, minHour = 8, maxHour = 18 }) {
   const [h, m] = (value || '09:00').split(':');
   const hours = [];
-  for (let i = 8; i <= 18; i++) hours.push(String(i).padStart(2, '0'));
+  for (let i = minHour; i <= maxHour; i++) hours.push(String(i).padStart(2, '0'));
   const minutes = ['00', '15', '30', '45'];
 
   return (
@@ -694,39 +724,79 @@ function TimePicker({ value, onChange }) {
   );
 }
 
-function DateField({ label, value, onChange }) {
-  const [open, setOpen] = useState(false);
+// Shared shell for DateField / TimeField: the trigger button, optional
+// clear button, and the picker -- inline below, or floating over the page.
+function PickerField({ label, id, ariaLabel, style, disabled, floating, icon, text, onClear, open, setOpen, children }) {
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    if (!open || !floating) return;
+    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open, floating, setOpen]);
+  const { marginBottom, ...triggerStyle } = style || inputStyle();
   return (
-    <div>
-      <label style={labelStyle()}>{label}</label>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        style={{ ...inputStyle(), textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-      >
-        <CalendarIcon size={13} color="#6b7280" />
-        {value ? new Date(value + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'Select date'}
-      </button>
-      {open && <CalendarPicker value={value} onChange={(v) => { onChange(v); setOpen(false); }} />}
+    <div ref={wrapRef} style={{ position: 'relative', marginBottom: open && !floating && !disabled ? 0 : marginBottom }}>
+      {label && <label htmlFor={id} style={labelStyle()}>{label}</label>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button
+          type="button"
+          id={id}
+          aria-label={ariaLabel}
+          aria-expanded={open}
+          disabled={disabled}
+          onClick={() => setOpen(o => !o)}
+          style={{ background: 'white', color: '#111827', ...triggerStyle, marginBottom: 0, textAlign: 'left', cursor: disabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', ...(disabled ? { opacity: 0.5 } : {}) }}
+        >
+          {icon}
+          {text}
+        </button>
+        {onClear && !disabled && (
+          <button type="button" onClick={onClear} aria-label="Clear" title="Clear"
+            style={{ border: 'none', background: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px' }}>
+            &times;
+          </button>
+        )}
+      </div>
+      {open && !disabled && (
+        floating ? (
+          <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 60, marginTop: 4, width: 260, background: 'white', borderRadius: 8, boxShadow: '0 10px 24px rgba(15,23,42,0.14)' }}>
+            {children}
+          </div>
+        ) : (
+          <div style={{ marginTop: marginBottom || 6 }}>{children}</div>
+        )
+      )}
     </div>
   );
 }
 
-function TimeField({ label, value, onChange }) {
+export function DateField({ label, value, onChange, style, placeholder = 'Select date', min, max, yearNav, clearable, disabled, floating, id, ariaLabel }) {
   const [open, setOpen] = useState(false);
   return (
-    <div>
-      <label style={labelStyle()}>{label}</label>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        style={{ ...inputStyle(), textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-      >
-        <ClockIcon size={13} color="#6b7280" />
-        {value ? formatSlotLabel(value) : 'Select time'}
-      </button>
-      {open && <TimePicker value={value} onChange={onChange} />}
-    </div>
+    <PickerField
+      label={label} id={id} ariaLabel={ariaLabel} style={style} disabled={disabled} floating={floating}
+      open={open} setOpen={setOpen}
+      icon={<CalendarIcon size={13} color="#6b7280" />}
+      text={value ? new Date(value + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : placeholder}
+      onClear={clearable && value ? () => { onChange(''); setOpen(false); } : null}
+    >
+      <CalendarPicker value={value} min={min} max={max} yearNav={yearNav} onChange={(v) => { onChange(v); setOpen(false); }} />
+    </PickerField>
+  );
+}
+
+export function TimeField({ label, value, onChange, style, placeholder = 'Select time', minHour, maxHour, disabled, floating, id, ariaLabel }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <PickerField
+      label={label} id={id} ariaLabel={ariaLabel} style={style} disabled={disabled} floating={floating}
+      open={open} setOpen={setOpen}
+      icon={<ClockIcon size={13} color="#6b7280" />}
+      text={value ? formatSlotLabel(value) : placeholder}
+    >
+      <TimePicker value={value} onChange={onChange} minHour={minHour} maxHour={maxHour} />
+    </PickerField>
   );
 }
 

@@ -9,7 +9,7 @@ import TaskDetailModal from '../../TaskDetailModal';
 import { PasswordConfirmModal, UsualScheduleEditor, ScheduleChangesEditor, TimeOffBalanceEditor, generateTempPassword } from '../ManageDataPage';
 import { TimeOffManageTab, calculateTenure } from '../StaffPage';
 import { CredentialsCard } from './NewStaffModal';
-import { roomDisplayText } from '../SchedulePage';
+import { roomDisplayText, DateField } from '../SchedulePage';
 import {
   BRAND, BRAND_SERIF, INK, BODY, HAIRLINE, PAGE_BG, DANGER, DANGER_BG, FONT,
   cardStyle, btn, inputStyle, labelStyle, pill, hintStyle, sectionTitleStyle,
@@ -166,7 +166,7 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
           <div style={{ display: 'grid', gridTemplateColumns: col, gap: 12, marginTop: 12 }}>
             <label style={{ display: 'block' }}><span style={labelStyle()}>Preferred name</span><input style={inputStyle()} value={form.preferred_name} onChange={set('preferred_name')} placeholder="Leave empty to use their first name" /></label>
             <label style={{ display: 'block' }}><span style={labelStyle()}>Position</span><input style={inputStyle()} value={form.position} onChange={set('position')} /></label>
-            <label style={{ display: 'block' }}><span style={labelStyle()}>Hire date</span><input type="date" style={inputStyle()} value={form.hire_date} onChange={set('hire_date')} /></label>
+            <div><label htmlFor="kl-profile-hire-date" style={labelStyle()}>Hire date</label><DateField id="kl-profile-hire-date" yearNav clearable style={inputStyle()} value={form.hire_date || ''} onChange={v => setForm(f => ({ ...f, hire_date: v }))} /></div>
             <div>
               <label style={{ display: 'block' }}>
                 <span style={labelStyle()}>Role</span>
@@ -616,7 +616,7 @@ function TasksSection({ staff }) {
       {error && <Notice kind="error">{error}</Notice>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         <input style={inputStyle({ flex: 1, minWidth: 200 })} value={title} onChange={e => setTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder={`Assign a task to ${staff.preferred_name || staff.first_name || staff.username}`} aria-label="New task title" />
-        <input type="date" style={inputStyle({ width: 160 })} value={due} onChange={e => setDue(e.target.value)} aria-label="Due date (optional)" />
+        <DateField floating clearable placeholder="Due date" style={inputStyle({ width: 'auto' })} value={due} onChange={setDue} ariaLabel="Due date (optional)" />
         <button type="button" onClick={add} disabled={adding || !title.trim()} style={btn('primary')}>{adding ? 'Adding...' : 'Assign'}</button>
       </div>
       {!tasks && !error && <p style={{ fontSize: 13.5, color: BRAND.muted }}>Loading...</p>}

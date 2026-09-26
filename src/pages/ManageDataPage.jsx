@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { Avatar } from '../Avatar';
 import { WarningIcon, SyringeIcon, refreshPatientAlerts } from '../patientAlerts';
+import { DateField, TimeField } from './SchedulePage';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -283,9 +284,9 @@ export function UsualScheduleEditor({ providerName, embedded }) {
             </label>
             {day && (
               <>
-                <input type="time" style={{ ...inputStyle(), width: embedded ? 132 : 110 }} value={day.start_time} onChange={e => updateDayTime(weekday, 'start_time', e.target.value)} />
+                <TimeField floating minHour={6} maxHour={21} ariaLabel={`${label} start`} style={{ ...inputStyle(), width: 'auto' }} value={day.start_time} onChange={v => updateDayTime(weekday, 'start_time', v)} />
                 <span style={{ fontSize: 12, color: '#9ca3af' }}>to</span>
-                <input type="time" style={{ ...inputStyle(), width: embedded ? 132 : 110 }} value={day.end_time} onChange={e => updateDayTime(weekday, 'end_time', e.target.value)} />
+                <TimeField floating minHour={6} maxHour={21} ariaLabel={`${label} end`} style={{ ...inputStyle(), width: 'auto' }} value={day.end_time} onChange={v => updateDayTime(weekday, 'end_time', v)} />
               </>
             )}
           </div>
@@ -343,9 +344,9 @@ function WeeklyHoursRows({ days, onChange }) {
           </label>
           {days[wd] && (
             <>
-              <input type="time" aria-label={`${WEEKDAY_LONG[wd]} start`} style={{ ...inputStyle(), width: 132 }} value={days[wd].start_time} onChange={e => setTime(wd, 'start_time', e.target.value)} />
+              <TimeField floating minHour={6} maxHour={21} ariaLabel={`${WEEKDAY_LONG[wd]} start`} style={{ ...inputStyle(), width: 'auto' }} value={days[wd].start_time} onChange={v => setTime(wd, 'start_time', v)} />
               <span style={{ fontSize: 12, color: '#9ca3af' }}>to</span>
-              <input type="time" aria-label={`${WEEKDAY_LONG[wd]} end`} style={{ ...inputStyle(), width: 132 }} value={days[wd].end_time} onChange={e => setTime(wd, 'end_time', e.target.value)} />
+              <TimeField floating minHour={6} maxHour={21} ariaLabel={`${WEEKDAY_LONG[wd]} end`} style={{ ...inputStyle(), width: 'auto' }} value={days[wd].end_time} onChange={v => setTime(wd, 'end_time', v)} />
             </>
           )}
         </div>
@@ -401,14 +402,14 @@ function ScheduleChangeForm({ providerName, existing, onDone, onCancel }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end', marginBottom: 12 }}>
         <div>
           <label htmlFor="kl-change-start" style={labelStyle()}>New hours start</label>
-          <input id="kl-change-start" type="date" style={{ ...inputStyle(), width: 170 }} value={startDate} min={existing ? undefined : today} onChange={e => setStartDate(e.target.value)} />
+          <DateField id="kl-change-start" floating style={{ ...inputStyle(), width: 'auto', minWidth: 170 }} value={startDate} min={existing ? undefined : today} onChange={setStartDate} />
         </div>
         <div>
           <label style={{ ...labelStyle(), display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
             <input type="checkbox" checked={hasEnd} onChange={e => setHasEnd(e.target.checked)} />
             Ends on (temporary)
           </label>
-          <input aria-label="Last day of these hours" type="date" disabled={!hasEnd} style={{ ...inputStyle(), width: 170, opacity: hasEnd ? 1 : 0.5 }} value={endDate} min={startDate || undefined} onChange={e => setEndDate(e.target.value)} />
+          <DateField ariaLabel="Last day of these hours" floating disabled={!hasEnd} style={{ ...inputStyle(), width: 'auto', minWidth: 170 }} value={endDate} min={startDate || undefined} onChange={setEndDate} />
         </div>
       </div>
       <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 8px' }}>
@@ -893,7 +894,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
           <input style={{ ...emrInputStyle(), marginBottom: 14 }} value={form.Name} onChange={e => setField('Name', e.target.value)} placeholder="Full name" />
 
           <label style={emrLabelStyle()}>Date of Birth</label>
-          <input type="date" style={{ ...emrInputStyle(), marginBottom: 14, maxWidth: 220 }} value={form.Date_of_Birth} onChange={e => setField('Date_of_Birth', e.target.value)} />
+          <DateField yearNav clearable style={{ ...emrInputStyle(), marginBottom: 14, maxWidth: 220 }} ariaLabel="Date of Birth" value={form.Date_of_Birth} onChange={v => setField('Date_of_Birth', v)} />
 
           <label style={emrLabelStyle()}>Services</label>
           <div style={{ marginBottom: 14 }}>
@@ -993,7 +994,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
           <div style={emrFieldGrid(2)}>
             <div>
               <label style={emrLabelStyle()}>RX Date</label>
-              <input type="date" style={emrInputStyle()} value={form.RX_Date} onChange={e => setRXDate(e.target.value)} />
+              <DateField yearNav clearable style={emrInputStyle()} ariaLabel="RX Date" value={form.RX_Date} onChange={setRXDate} />
             </div>
             <div>
               <label style={emrLabelStyle()}>RX Expiration</label>
@@ -1009,11 +1010,11 @@ export function PatientModal({ existing, onClose, onSaved }) {
           <div style={emrFieldGrid(2)}>
             <div>
               <label style={emrLabelStyle()}>IFSP Start Date</label>
-              <input type="date" style={emrInputStyle()} value={form.IFSP_Start_Date} onChange={e => setField('IFSP_Start_Date', e.target.value)} />
+              <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP Start Date" value={form.IFSP_Start_Date} onChange={v => setField('IFSP_Start_Date', v)} />
             </div>
             <div>
               <label style={emrLabelStyle()}>IFSP End Date</label>
-              <input type="date" style={emrInputStyle()} value={form.IFSP_End_Date} onChange={e => setIFSPEndDate(e.target.value)} />
+              <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP End Date" value={form.IFSP_End_Date} onChange={setIFSPEndDate} />
             </div>
           </div>
           <label style={emrLabelStyle()}>IFSP Type</label>
@@ -1479,7 +1480,7 @@ export function StaffModal({ existing, providers, onClose, onSaved }) {
         <input style={inputStyle()} value={position} onChange={e => setPosition(e.target.value)} placeholder="e.g. Speech Therapist, Front Desk" />
 
         <label style={labelStyle()}>Hire Date</label>
-        <input type="date" style={inputStyle()} value={hireDate} onChange={e => setHireDate(e.target.value)} />
+        <DateField yearNav clearable style={inputStyle()} ariaLabel="Hire Date" value={hireDate} onChange={setHireDate} />
 
         <label style={labelStyle()}>Role</label>
         <select style={inputStyle()} value={role} onChange={e => setRole(e.target.value)}>
