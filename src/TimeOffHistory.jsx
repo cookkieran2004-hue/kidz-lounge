@@ -40,7 +40,7 @@ function DayBreakdown({ details }) {
           <div style={{ fontSize: 10, fontWeight: 800, color: MUTED, letterSpacing: '0.04em' }}>{new Date(`${d.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>{d.worked}h</div>
           <div style={{ fontSize: 10, color: MUTED }}>
-            {d.closed ? 'closed' : d.off ? `−${d.off}h off` : ''}{d.overtime ? ` +${d.overtime}h OT` : ''}
+            {d.closed ? 'closed' : d.noPatients ? 'no patients seen' : d.off ? `−${d.off}h off` : ''}{d.overtime ? ` +${d.overtime}h OT` : ''}
           </div>
         </div>
       ))}
