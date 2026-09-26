@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
-import { CalendarIcon, UserIcon, dateToInputValue, DateField, TimeField } from './SchedulePage';
+import { UserIcon, dateToInputValue, formatSlotLabel, DateField, TimeField } from './SchedulePage';
 import { useSearchParams } from 'react-router-dom';
 import { MeetingAgendaEditor } from '../MeetingAgenda';
 import { useStaffDirectory, useStaffNames } from '../staffDirectory';
 import { useAuth } from '../AuthContext';
 import { Avatar } from '../Avatar';
+import { timeTypeStyle } from '../timeTypes';
 
 // Building blocks for the pages under the username menu (My profile,
 // My time, ADMIN). This file used to be the single "/me" page; the pages
@@ -21,7 +22,6 @@ function MiniIcon({ path, size = 14, color = 'currentColor', strokeWidth = 1.8 }
     </svg>
   );
 }
-const BriefcaseIcon = (p) => <MiniIcon {...p} path={<><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>} />;
 const BeachIcon = (p) => <MiniIcon {...p} path={<><path d="M2 22c8-2 12-2 20 0" /><path d="M12 12 3 21" /><path d="M12 12c3-6 8-8 12-6-1 5-4 9-9 10" /><path d="M12 12c-1-4 0-8 3-10" /></>} />;
 const FirstAidIcon = (p) => <MiniIcon {...p} path={<><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" /><line x1="12" y1="11" x2="12" y2="16" /><line x1="9.5" y1="13.5" x2="14.5" y2="13.5" /></>} />;
 
@@ -39,11 +39,6 @@ function formatDate(d) {
   if (!d) return '';
   const [y, m, day] = d.split('-');
   return `${m}/${day}/${y}`;
-}
-function daysUntil(dateStr) {
-  const target = new Date(dateStr + 'T00:00:00');
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  return Math.floor((target - today) / (24 * 60 * 60 * 1000));
 }
 export function calculateTenure(hireDate) {
   if (!hireDate) return null;
@@ -86,26 +81,6 @@ function requestSummary(req) {
     return `${req.request_type} \u2014 every ${WEEKDAY_LABELS[req.weekday]}, ${req.start_time?.slice(0, 5)}-${req.end_time?.slice(0, 5)}, starting ${formatDate(req.recurring_start_date)}`;
   }
   return `${req.request_type} \u2014 ${formatDate(req.ooo_date)}, ${req.start_time?.slice(0, 5)}-${req.end_time?.slice(0, 5)}`;
-}
-
-export function ProfileBanner({ profile, isMobile }) {
-  const tenure = calculateTenure(profile.hire_date);
-  const displayName = `${profile.preferred_name || profile.first_name} ${profile.last_name}`;
-  return (
-    <div style={{ padding: isMobile ? '16px 16px 14px' : '20px 28px 16px', borderBottom: `1.5px solid ${BRAND.box}`, background: '#FCFBFE', display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 16 }}>
-      <Avatar name={displayName} size={isMobile ? 44 : 52} />
-      <div>
-        <h1 style={{ fontFamily: BRAND_SERIF, fontSize: isMobile ? 19 : 24, fontWeight: 700, color: '#241A33', margin: '0 0 4px' }}>
-          {displayName}
-        </h1>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, fontSize: 12.5, color: BRAND.muted }}>
-          {profile.position && <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><BriefcaseIcon size={13} color={BRAND.muted} />{profile.position}</span>}
-          {profile.provider_name && <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><UserIcon size={13} color={BRAND.muted} />Linked provider: {profile.provider_name}</span>}
-          {tenure && <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><CalendarIcon size={13} color={BRAND.muted} />With us for {tenure}</span>}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 const BALANCE_TYPE_STYLE = {
@@ -197,6 +172,9 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
   const nameFor = useStaffNames();
   const isEditing = !!editingRequest;
   const isChange = !!changeOf;
+  // Changing approved PTO/UPTO cancels it right away and files the change
+  // as a new request (see POST /time-off/requests in the API).
+  const cancelsOriginal = isChange && BALANCE_TYPES.includes(changeOf.request_type);
   const adminMode = adminFor !== undefined || (isChange && !!changeApplies);
   const seed = editingRequest || changeOf;
   const todayInput = dateToInputValue(new Date());
@@ -225,6 +203,29 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
   useEffect(() => {
     if (isBalanceType && isRecurring) setIsRecurring(false);
   }, [isBalanceType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Employees get a heads-up -- never a block -- when a PTO/UPTO request
+  // would take their balance below zero. That's allowed; it just needs an
+  // admin's approval. (Admins get their own warning from the server.)
+  const selfService = !adminMode && !editingRequest;
+  const [myBalances, setMyBalances] = useState(null);
+  useEffect(() => {
+    if (!selfService) return undefined;
+    let alive = true;
+    api.getMyTimeOffBalances()
+      .then(b => { if (alive) setMyBalances(Object.fromEntries((b || []).map(x => [x.balance_type, Number(x.balance_hours)]))); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [selfService]);
+  const projected = (() => {
+    if (!selfService || !myBalances || !isBalanceType || !startDate || !endDate || !balanceStartTime || !balanceEndTime) return null;
+    const hours = requestHoursOf({ is_balance_type: true, start_date: startDate, end_date: endDate, start_time: balanceStartTime, end_time: balanceEndTime });
+    if (!hours) return null;
+    // Changing approved PTO/UPTO gives the original's hours back first.
+    const refund = cancelsOriginal && changeOf.request_type === requestType ? requestHoursOf(changeOf) : 0;
+    const current = Math.round(((myBalances[requestType] ?? 0) + refund) * 100) / 100;
+    return { hours, current, refund, after: Math.round((current - hours) * 100) / 100 };
+  })();
 
   const handleSubmit = async (confirmNegative = false) => {
     setError(null);
@@ -257,7 +258,7 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
         && [...(record.attendees || [])].sort().join(',') === [...(changeOf.request_type === 'Meeting' ? (changeOf.attendees || []) : [])].sort().join(',');
       if (same) { setError('Nothing has changed.'); return; }
       Object.assign(record, { replaces_request_id: changeOf.id });
-      if (adminMode) record.confirm_negative_balance = confirmNegative;
+      record.confirm_negative_balance = confirmNegative;
     } else if (adminMode) Object.assign(record, { username: adminFor, confirm_negative_balance: confirmNegative });
     setSaving(true);
     try {
@@ -265,7 +266,7 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
       else await api.submitTimeOffRequest(record);
     } catch (err) {
       setSaving(false);
-      if (adminMode && err.status === 409 && err.data?.negativeBalance) setNegativeWarning(err.data.negativeBalance);
+      if (err.status === 409 && err.data?.negativeBalance) setNegativeWarning(err.data.negativeBalance);
       else setError(err.message);
       return;
     }
@@ -368,17 +369,25 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
 
       {error && <p style={{ color: '#dc2626', fontSize: 12.5, marginBottom: 10 }}>{error}</p>}
 
+      {projected && projected.after < 0 && (
+        <div role="status" style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, color: '#92400E' }}>
+          If approved, this leaves you at <b>{projected.after}h {requestType}</b>. You have {projected.current}h
+          {projected.refund ? ` (including the ${projected.refund}h returned from the entry you're changing)` : ''} and this uses {projected.hours}h.
+          {' '}That's allowed -- an admin just has to approve it.
+        </div>
+      )}
+
       {negativeWarning && (
         <div role="alert" style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: '#92400E', margin: '0 0 4px' }}>
-            This will put {nameFor(negativeWarning.username)} below zero {negativeWarning.balance_type}
+            This will put {negativeWarning.username === me?.username ? 'you' : nameFor(negativeWarning.username)} below zero {negativeWarning.balance_type}
           </p>
           <p style={{ fontSize: 12.5, color: '#92400E', margin: '0 0 10px' }}>
-            They have {fmtHours(negativeWarning.current_hours)} and this uses {fmtHours(negativeWarning.hours_requested)}, which leaves {fmtHours(negativeWarning.resulting_hours)}.
+            {negativeWarning.username === me?.username ? 'You have' : 'They have'} {fmtHours(negativeWarning.current_hours)}{isChange ? ' (counting the hours returned from the entry being changed)' : ''} and this uses {fmtHours(negativeWarning.hours_requested)}, which leaves {fmtHours(negativeWarning.resulting_hours)}. Going below zero is allowed with an admin's approval.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={() => handleSubmit(true)} disabled={saving} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, border: 'none', background: '#B45309', color: 'white', cursor: 'pointer' }}>
-              {saving ? 'Adding...' : 'Add anyway'}
+              {saving ? 'Saving...' : isChange ? 'Approve and save anyway' : 'Add anyway'}
             </button>
             <button onClick={() => setNegativeWarning(null)} disabled={saving} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, border: '1px solid #FCD34D', background: 'white', color: '#92400E', cursor: 'pointer' }}>
               Change it
@@ -396,13 +405,15 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
         <p style={{ fontSize: 12, color: BRAND.muted, margin: '0 0 12px' }}>
           {changeApplies
             ? 'Your change applies right away: the schedule updates and PTO/UPTO hours are adjusted.'
-            : 'Changes to the date, time or type go to an admin for approval. Until then, the current entry stays on the schedule as it is.'}
+            : cancelsOriginal
+              ? `Submitting cancels your current ${changeOf.request_type} right away -- its hours go back to your balance and it comes off the schedule -- and sends this as a new request for approval. If it's denied, you won't have this time off.`
+              : 'Changes to the date, time or type go to an admin for approval. Until then, the current entry stays on the schedule as it is.'}
         </p>
       )}
 
       <div style={{ display: 'flex', gap: 8, flexDirection: isMobile ? 'column' : 'row' }}>
         <button onClick={() => handleSubmit(false)} disabled={saving || !!negativeWarning} style={{ padding: isMobile ? '11px' : '8px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: 'none', background: BRAND.forest, color: 'white', cursor: 'pointer' }}>
-          {saving ? 'Saving...' : isEditing ? 'Save Changes' : isChange ? (changeApplies ? 'Save changes' : 'Submit change for approval') : adminMode ? 'Add time off' : 'Submit Request'}
+          {saving ? 'Saving...' : isEditing ? 'Save Changes' : isChange ? (changeApplies ? 'Save changes' : cancelsOriginal ? 'Cancel it and submit new request' : 'Submit change for approval') : adminMode ? 'Add time off' : 'Submit Request'}
         </button>
         <button onClick={onCancel} disabled={saving} style={{ padding: isMobile ? '11px' : '8px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', color: '#374151', cursor: 'pointer' }}>
           Cancel
@@ -563,7 +574,11 @@ function MeetingsImIn({ isMobile }) {
   );
 }
 
-export function TimeOffTab({ isMobile }) {
+// `compact` (the My time dashboard): leaves out the intro and balance cards,
+// which that page shows its own way. `openFormToken` opens the new-request
+// form whenever it changes; `onChanged` fires after any submit or delete.
+export function TimeOffTab({ isMobile, compact, openFormToken, onChanged }) {
+  const { user: me } = useAuth();
   const [balances, setBalances] = useState([]);
   const [myRequests, setMyRequests] = useState(null); // null until loaded
   const [showForm, setShowForm] = useState(false);
@@ -577,16 +592,22 @@ export function TimeOffTab({ isMobile }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  // A new token from the page (its "+ New request" button) opens the form.
+  const [seenFormToken, setSeenFormToken] = useState(openFormToken);
+  if (openFormToken !== seenFormToken) { setSeenFormToken(openFormToken); setShowForm(true); }
+  const reload = () => { load(); onChanged?.(); };
 
-  const handleDelete = async (id) => { await api.deleteTimeOffRequest(id); load(); };
+  const handleDelete = async (id) => { await api.deleteTimeOffRequest(id); reload(); };
 
   return (
     <div>
-      <p style={{ fontSize: 12.5, color: BRAND.muted, marginBottom: 16, maxWidth: 480 }}>
-        Every kind of time away from the schedule -- vacation, sick time, a lunch break, a standing weekly commitment,
-        anything -- starts as a request here and goes to an admin for approval before it appears on the calendar.
-      </p>
-      <BalanceCards balances={balances} isMobile={isMobile} />
+      {!compact && (
+        <p style={{ fontSize: 12.5, color: BRAND.muted, marginBottom: 16, maxWidth: 480 }}>
+          Every kind of time away from the schedule -- vacation, sick time, a lunch break, a standing weekly commitment,
+          anything -- starts as a request here and goes to an admin for approval before it appears on the calendar.
+        </p>
+      )}
+      {!compact && <BalanceCards balances={balances} isMobile={isMobile} />}
 
       {notFound && (
         <p style={{ fontSize: 12.5, color: '#92400E', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '8px 12px' }}>
@@ -600,22 +621,262 @@ export function TimeOffTab({ isMobile }) {
           key={editing.id}
           request={editing}
           isMobile={isMobile}
-          adminApplies={false}
+          adminApplies={me?.role === 'admin'}
           initialDate={editDate}
-          onDone={() => { closeEdit(); setNotice('Change submitted. It will replace the current entry once an admin approves it.'); load(); }}
+          onDone={() => {
+            closeEdit();
+            setNotice(me?.role === 'admin'
+              ? 'Your change is saved and on the schedule.'
+              : BALANCE_TYPES.includes(editing.request_type)
+                ? `Your original ${editing.request_type} was cancelled and its hours returned. The new request is waiting for approval.`
+                : 'Change submitted. It will replace the current entry once an admin approves it.');
+            reload();
+          }}
           onCancel={() => { closeEdit(); load(); }}
         />
       ) : showForm ? (
-        <RequestForm isMobile={isMobile} onSubmitted={() => { setShowForm(false); load(); }} onCancel={() => setShowForm(false)} />
-      ) : (
+        <RequestForm isMobile={isMobile} onSubmitted={() => { setShowForm(false); reload(); }} onCancel={() => setShowForm(false)} />
+      ) : !compact && (
         <button onClick={() => setShowForm(true)} style={{ padding: isMobile ? '12px' : '9px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: 'none', background: BRAND.forest, color: 'white', cursor: 'pointer', marginBottom: 20, width: isMobile ? '100%' : 'auto' }}>
           + New Request
         </button>
       )}
 
-      <RequestList requests={myRequests || []} isMobile={isMobile} onDelete={handleDelete} onChange={(req) => { setNotice(null); setShowForm(false); setEditing(req); }} />
+      {compact ? (
+        <RequestBoard
+          requests={myRequests}
+          isMobile={isMobile}
+          formOpen={showForm || !!editing}
+          onNew={() => { setNotice(null); setShowForm(true); }}
+          onDelete={handleDelete}
+          onChange={(req) => { setNotice(null); setShowForm(false); setEditing(req); }}
+        />
+      ) : (
+        <>
+          <RequestList requests={myRequests || []} isMobile={isMobile} onDelete={handleDelete} onChange={(req) => { setNotice(null); setShowForm(false); setEditing(req); }} />
+          <MeetingsImIn isMobile={isMobile} />
+        </>
+      )}
+    </div>
+  );
+}
 
-      <MeetingsImIn isMobile={isMobile} />
+// ---------- My time: requests as cards ----------
+const REQUEST_STATUS = {
+  approved: { bg: '#DCFAE6', fg: '#067647', label: 'Approved' },
+  pending: { bg: '#FEF0C7', fg: '#93370D', label: 'Pending' },
+  denied: { bg: '#FEE4E2', fg: '#B42318', label: 'Denied' },
+};
+const rDate = (s) => new Date(s + 'T00:00:00');
+const rDay = (s) => rDate(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const rTime = (t) => (t ? formatSlotLabel(t.slice(0, 5)) : '');
+function requestLastDay(r) { return r.is_balance_type ? r.end_date : r.is_recurring ? null : r.ooo_date; }
+function requestFirstDay(r) { return r.is_balance_type ? r.start_date : r.is_recurring ? r.recurring_start_date : r.ooo_date; }
+// Clock hours between start and end -- how the API counts PTO/UPTO.
+function requestHoursOf(r) {
+  if (!r.is_balance_type || !r.start_date || !r.end_date || !r.start_time || !r.end_time) return 0;
+  return Math.max(0, Math.round(((new Date(`${r.end_date}T${r.end_time}`) - new Date(`${r.start_date}T${r.start_time}`)) / 3600000) * 100) / 100);
+}
+function requestWhen(r) {
+  if (r.is_balance_type) {
+    const hours = requestHoursOf(r);
+    const span = r.start_date === r.end_date
+      ? `${rDay(r.start_date)} · ${rTime(r.start_time)} – ${rTime(r.end_time)}`
+      : `${rDay(r.start_date)}, ${rTime(r.start_time)} → ${rDay(r.end_date)}, ${rTime(r.end_time)}`;
+    return hours ? `${span} · ${hours}h` : span;
+  }
+  if (r.is_recurring) return `Every ${WEEKDAY_LABELS[r.weekday]} · ${rTime(r.start_time)} – ${rTime(r.end_time)} · since ${rDay(r.recurring_start_date)}`;
+  return `${rDay(r.ooo_date)} · ${rTime(r.start_time)} – ${rTime(r.end_time)}`;
+}
+
+function DateTile({ req }) {
+  const s = timeTypeStyle(req.request_type);
+  const first = requestFirstDay(req);
+  const top = req.is_recurring ? 'EVERY' : first ? rDate(first).toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '';
+  const big = req.is_recurring ? WEEKDAY_LABELS[req.weekday].slice(0, 3) : first ? rDate(first).getDate() : '–';
+  return (
+    <div aria-hidden="true" style={{ width: 52, flexShrink: 0, borderRadius: 12, background: s.bg, border: `1.5px solid ${s.border}`, textAlign: 'center', padding: '7px 0' }}>
+      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', color: s.text }}>{top}</div>
+      <div style={{ fontFamily: BRAND_SERIF, fontSize: req.is_recurring ? 15 : 20, fontWeight: 700, color: s.text, lineHeight: 1.15 }}>{big}</div>
+    </div>
+  );
+}
+
+// One request as a card. Used by My time (your own requests) and by the
+// admin time-off screens, which add who it's for, how it changes their
+// balance, and the approval actions:
+//   who          show the employee's name and avatar
+//   balanceNote  { hours, type, current } for a pending PTO/UPTO request
+//   onApprove / onDeny / onEdit   admin actions on a pending request
+function RequestRow({ req, isMobile, onChange, onDelete, meeting, agendaOpen, onToggleAgenda, who, balanceNote, onApprove, onDeny, onEdit }) {
+  const nameFor = useStaffNames();
+  const [confirming, setConfirming] = useState(false);
+  const s = timeTypeStyle(req.request_type);
+  const st = REQUEST_STATUS[req.status] || REQUEST_STATUS.pending;
+  const ghost = { padding: '7px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: '1px solid #E7E2F3', background: 'white', color: '#374151', cursor: 'pointer' };
+  const pill = (bg, fg, text) => <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: bg, color: fg }}>{text}</span>;
+  const after = balanceNote ? Math.round((balanceNote.current - balanceNote.hours) * 100) / 100 : null;
+  return (
+    <div style={{ border: `1px solid ${req.status === 'pending' && onApprove ? '#F5D9A8' : '#EEEAF6'}`, borderRadius: 14, padding: 14, background: 'white', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+      <DateTile req={req} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {who && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+            <Avatar name={nameFor(who)} size={22} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: BRAND.forest }}>{nameFor(who)}</span>
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 14.5, fontWeight: 700, color: '#241A33' }}>{meeting ? 'Meeting' : s.label}</span>
+          {pill(st.bg, st.fg, st.label)}
+          {req.replaces_request_id && req.status === 'pending' && pill('#FFF4E5', '#B45309', 'Change request')}
+          {req.has_pending_change && req.status === 'approved' && pill('#FFF4E5', '#B45309', 'Change pending')}
+        </div>
+        <div style={{ fontSize: 13, color: '#374151', marginTop: 3 }}>{requestWhen(req)}</div>
+        {req.replaces_request_id && req.status === 'pending' && (
+          <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 3 }}>{req.original ? <>Replaces: {requestWhen(req.original)}</> : 'The entry it changes has since been removed.'}</div>
+        )}
+        {balanceNote && (
+          <div style={{ fontSize: 12.5, marginTop: 5, color: after < 0 ? '#B42318' : '#374151' }}>
+            Uses <b>{balanceNote.hours}h {balanceNote.type}</b> · balance {balanceNote.current}h → <b>{after}h</b>{after < 0 ? ' (below zero)' : ''}
+          </div>
+        )}
+        {meeting && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 3 }}>Organized by {nameFor(req.username)}</div>}
+        {(req.attendees || []).length > 0 && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 3 }}>With {req.attendees.map(nameFor).join(', ')}</div>}
+        {req.created_by && req.created_by !== req.username && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 3 }}>Added by {nameFor(req.created_by)}</div>}
+        {onApprove && req.status === 'pending' && req.requested_at && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 3 }}>Requested {rDay(String(req.requested_at).slice(0, 10))}</div>}
+        {req.notes && <div style={{ fontSize: 12.5, color: '#4B4659', marginTop: 6, padding: '6px 10px', background: '#FAF9FD', borderRadius: 8, borderLeft: `3px solid ${s.border}` }}>{req.notes}</div>}
+        {req.status === 'denied' && req.review_note && <div style={{ fontSize: 12.5, color: '#B42318', marginTop: 6 }}>Reason: {req.review_note}</div>}
+        {agendaOpen && <div style={{ marginTop: 12 }}><MeetingAgendaEditor requestId={req.id} /></div>}
+        {isMobile && <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{actions()}</div>}
+      </div>
+      {!isMobile && <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 330 }}>{actions()}</div>}
+    </div>
+  );
+
+  function actions() {
+    if (meeting) {
+      return <button type="button" onClick={onToggleAgenda} style={ghost}>{agendaOpen ? 'Hide agenda' : 'Agenda'}</button>;
+    }
+    if (confirming) {
+      return (
+        <>
+          <span style={{ fontSize: 12.5, color: '#B42318', fontWeight: 600, alignSelf: 'center' }}>Delete this?</span>
+          <button type="button" onClick={() => { setConfirming(false); onDelete(req.id); }} style={{ ...ghost, background: '#B42318', borderColor: '#B42318', color: 'white' }}>Delete</button>
+          <button type="button" onClick={() => setConfirming(false)} style={ghost}>Keep</button>
+        </>
+      );
+    }
+    return (
+      <>
+        {req.status === 'pending' && onApprove && (
+          <>
+            <button type="button" onClick={() => onApprove(req.id)} style={{ ...ghost, background: '#067647', borderColor: '#067647', color: 'white' }}>Approve</button>
+            <button type="button" onClick={() => onDeny(req.id)} style={ghost}>Deny</button>
+          </>
+        )}
+        {req.status === 'pending' && onEdit && <button type="button" onClick={() => onEdit(req)} style={ghost}>Edit</button>}
+        {req.status === 'approved' && !req.has_pending_change && onChange && <button type="button" onClick={() => onChange(req)} style={ghost}>Change</button>}
+        {onDelete && <button type="button" onClick={() => setConfirming(true)} style={{ ...ghost, color: '#B42318' }}>Delete</button>}
+      </>
+    );
+  }
+}
+
+// Pill-style tabs with a count on each, shared by My time and the admin lists.
+function CountTabs({ tabs, active, onPick, counts, label }) {
+  return (
+    <div role="tablist" aria-label={label} style={{ display: 'inline-flex', padding: 3, borderRadius: 11, background: '#F3F0FA', gap: 2, flexWrap: 'wrap' }}>
+      {tabs.map(t => {
+        const on = t.key === active;
+        return (
+          <button key={t.key} type="button" role="tab" aria-selected={on} onClick={() => onPick(t.key)}
+            style={{ padding: '7px 12px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: on ? 'white' : 'transparent', color: on ? BRAND.forest : BRAND.muted, boxShadow: on ? '0 1px 3px rgba(36,26,51,0.12)' : 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {t.label}
+            <span style={{ fontSize: 11, minWidth: 18, padding: '1px 6px', borderRadius: 999, background: on ? (t.key === 'pending' && counts[t.key] ? '#FEF0C7' : BRAND.tint) : 'rgba(255,255,255,0.7)', color: on ? (t.key === 'pending' && counts[t.key] ? '#93370D' : BRAND.forest) : BRAND.muted }}>{counts[t.key]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Splits requests into the lists both boards show, each in a useful order:
+// pending and upcoming soonest first, past and denied most recent first.
+function groupRequests(list, today) {
+  const first = (r) => requestFirstDay(r) || '';
+  const ended = (r) => !r.is_recurring && (requestLastDay(r) || '') < today;
+  const groups = {
+    pending: list.filter(r => r.status === 'pending'),
+    upcoming: list.filter(r => r.status === 'approved' && !ended(r)),
+    past: list.filter(r => r.status === 'approved' && ended(r)),
+    denied: list.filter(r => r.status === 'denied'),
+  };
+  groups.pending.sort((a, b) => first(a).localeCompare(first(b)));
+  groups.upcoming.sort((a, b) => first(a).localeCompare(first(b)));
+  groups.past.sort((a, b) => first(b).localeCompare(first(a)));
+  groups.denied.sort((a, b) => first(b).localeCompare(first(a)));
+  return groups;
+}
+
+function RequestBoard({ requests, isMobile, formOpen, onNew, onDelete, onChange }) {
+  const [meetings, setMeetings] = useState([]);
+  const [openAgenda, setOpenAgenda] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    api.getMyMeetings().then(m => { if (alive) setMeetings(m || []); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const g = groupRequests(requests || [], dateToInputValue(new Date()));
+  const groups = {
+    upcoming: g.upcoming,
+    pending: g.pending,
+    past: [...g.past, ...g.denied].sort((a, b) => (requestFirstDay(b) || '').localeCompare(requestFirstDay(a) || '')),
+    meetings,
+  };
+  const tabs = [
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'past', label: 'Past' },
+    ...(meetings.length ? [{ key: 'meetings', label: "Meetings I'm in" }] : []),
+  ];
+  const [picked, setPicked] = useState(null);
+  const tab = picked && groups[picked] ? picked : (groups.pending.length ? 'pending' : 'upcoming');
+  const empty = {
+    upcoming: 'No approved time off coming up.',
+    pending: 'Nothing waiting on approval.',
+    past: 'No past requests yet.',
+    meetings: 'No meetings.',
+  };
+
+  if (requests === null) return <p style={{ fontSize: 13, color: BRAND.muted }}>Loading your requests...</p>;
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+        <CountTabs tabs={tabs} active={tab} onPick={setPicked} label="Requests" counts={Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, v.length]))} />
+        {!formOpen && (
+          <button type="button" onClick={onNew} style={{ padding: '8px 14px', borderRadius: 9, border: `1px solid ${BRAND.box}`, background: BRAND.tint, color: BRAND.forest, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}>
+            + New request
+          </button>
+        )}
+      </div>
+      <div role="tabpanel" style={{ display: 'grid', gap: 10 }}>
+        {groups[tab].length === 0 && (
+          <div style={{ textAlign: 'center', padding: '28px 12px', border: '1.5px dashed #E7E2F3', borderRadius: 14, color: BRAND.muted, fontSize: 13 }}>{empty[tab]}</div>
+        )}
+        {groups[tab].map(r => (
+          <RequestRow
+            key={`${tab}-${r.id}`}
+            req={r}
+            isMobile={isMobile}
+            meeting={tab === 'meetings'}
+            agendaOpen={tab === 'meetings' && openAgenda === r.id}
+            onToggleAgenda={() => setOpenAgenda(openAgenda === r.id ? null : r.id)}
+            onChange={onChange}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -634,13 +895,15 @@ function staffOptionLabel(s) {
 export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, onAdded }) {
   const nameFor = useStaffNames();
   // Arriving from the schedule's "Edit on <name>'s profile" link (?edit=...)
-  // means an approved entry, so start on the Approved list.
+  // means an approved entry, so start on the Upcoming list.
   const [addressParams] = useSearchParams();
-  const [statusFilter, setStatusFilter] = useState(addressParams.get('edit') ? 'approved' : 'pending');
+  const [picked, setPicked] = useState(addressParams.get('edit') ? 'upcoming' : null);
   const [adding, setAdding] = useState(false);
   const [addFor, setAddFor] = useState(forUsername || '');
   const [staffOptions, setStaffOptions] = useState([]);
   const [addedNotice, setAddedNotice] = useState(null);
+  const [nameQuery, setNameQuery] = useState('');
+  const [balancesByUser, setBalancesByUser] = useState({});
 
   useEffect(() => {
     if (forUsername || !adding || staffOptions.length > 0) return;
@@ -649,39 +912,47 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
       .catch(() => setStaffOptions([]));
   }, [forUsername, adding, staffOptions.length]);
 
-  const startAdding = () => { setAddedNotice(null); setAddFor(forUsername || ''); setAdding(true); };
-  const handleAdded = (username) => {
-    setAdding(false);
-    setAddedNotice(`Time off added for ${nameFor(username)}. It's approved and on their schedule.`);
-    // It's approved, so it would be invisible under the default Pending filter.
-    if (statusFilter === 'pending' || statusFilter === 'denied') setStatusFilter('approved');
-    else load();
-    onAdded?.();
-  };
   const [requests, setRequests] = useState(null); // null until loaded
   const { editing: changing, setEditing: setChanging, editDate, notFound, close: closeChange } = useEditFromAddress(requests);
   const [denyingId, setDenyingId] = useState(null);
   const [denyNote, setDenyNote] = useState('');
   const [editingRequest, setEditingRequest] = useState(null);
 
-  const load = useCallback(async () => {
-    const all = await api.getAllTimeOffRequests(statusFilter === 'all' ? null : statusFilter);
-    setRequests(forUsername ? all.filter(r => r.username === forUsername) : all);
-    onChanged?.();
-  }, [statusFilter, onChanged, forUsername]);
+  // Everything at once (every status), so each tab can show its count.
+  const fetchRequests = useCallback(async () => {
+    const all = await api.getAllTimeOffRequests(null);
+    return forUsername ? all.filter(r => r.username === forUsername) : all;
+  }, [forUsername]);
+  const load = useCallback(() => fetchRequests().then(list => { setRequests(list); onChanged?.(); }), [fetchRequests, onChanged]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let alive = true;
+    fetchRequests().then(list => { if (alive) { setRequests(list); onChanged?.(); } });
+    return () => { alive = false; };
+  }, [fetchRequests, onChanged]);
 
-  const handleApprove = async (id) => { await api.approveTimeOffRequest(id); load(); };
+  // Current balances of everyone with a pending PTO/UPTO request, so each
+  // one shows what approving it would leave them with.
+  useEffect(() => {
+    const users = [...new Set((requests || []).filter(r => r.status === 'pending' && r.is_balance_type).map(r => r.username))];
+    if (!users.length) return undefined;
+    let alive = true;
+    Promise.all(users.map(u => api.getTimeOffBalancesFor(u).then(b => [u, Object.fromEntries((b || []).map(x => [x.balance_type, Number(x.balance_hours)]))]).catch(() => [u, null])))
+      .then(entries => { if (alive) setBalancesByUser(Object.fromEntries(entries.filter(([, v]) => v))); });
+    return () => { alive = false; };
+  }, [requests]);
+
+  const startAdding = () => { setAddedNotice(null); setAddFor(forUsername || ''); setAdding(true); };
+  const handleAdded = (username) => {
+    setAdding(false);
+    setAddedNotice(`Time off added for ${nameFor(username)}. It's approved and on their schedule.`);
+    setPicked('upcoming'); // it's approved, so it shows under Upcoming
+    load();
+    onAdded?.();
+  };
+  const handleApprove = async (id) => { await api.approveTimeOffRequest(id); load(); onAdded?.(); };
   const handleDenyConfirm = async () => { await api.denyTimeOffRequest(denyingId, denyNote); setDenyingId(null); setDenyNote(''); load(); };
-  const handleDelete = async (id) => { await api.deleteTimeOffRequest(id); load(); };
-
-  const FILTERS = [
-    { key: 'pending', label: 'Pending' },
-    { key: 'approved', label: 'Approved' },
-    { key: 'denied', label: 'Denied' },
-    { key: 'all', label: 'All' },
-  ];
+  const handleDelete = async (id) => { await api.deleteTimeOffRequest(id); load(); onAdded?.(); };
 
   if (changing) {
     return (
@@ -713,19 +984,33 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
     );
   }
 
+  const q = nameQuery.trim().toLowerCase();
+  const visible = (requests || []).filter(r => !q || nameFor(r.username).toLowerCase().includes(q) || r.username.toLowerCase().includes(q));
+  const groups = groupRequests(visible, dateToInputValue(new Date()));
+  const TABS = [
+    { key: 'pending', label: 'Pending' },
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'past', label: 'Past' },
+    { key: 'denied', label: 'Denied' },
+  ];
+  const tab = picked || (requests && groups.pending.length === 0 ? 'upcoming' : 'pending');
+  const EMPTY = {
+    pending: q ? 'No pending requests match that name.' : 'All caught up -- nothing waiting on approval.',
+    upcoming: 'No approved time off coming up.',
+    past: 'No past time off.',
+    denied: 'No denied requests.',
+  };
+  const inputBox = { padding: isMobile ? '10px 12px' : '8px 11px', borderRadius: 9, border: '1px solid #E7E2F3', fontSize: isMobile ? 15 : 13, boxSizing: 'border-box' };
+
   return (
     <div style={{ padding: embedded ? 0 : (isMobile ? 16 : '24px 28px 40px') }}>
-      {adding ? (
-        <div>
+      {adding && (
+        <div style={{ border: '1px solid #EEEAF6', borderRadius: 14, padding: 16, marginBottom: 16, background: '#FCFBFE' }}>
+          <p style={{ ...sectionHeaderStyle(), marginBottom: 12 }}>Add time off{forUsername ? ` for ${nameFor(forUsername)}` : ''}</p>
           {!forUsername && (
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginBottom: 12 }}>
               <label htmlFor="kl-add-time-off-for" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Employee</label>
-              <select
-                id="kl-add-time-off-for"
-                value={addFor}
-                onChange={e => setAddFor(e.target.value)}
-                style={{ width: '100%', maxWidth: 360, padding: isMobile ? '10px 12px' : '7px 10px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 15 : 13, boxSizing: 'border-box' }}
-              >
+              <select id="kl-add-time-off-for" value={addFor} onChange={e => setAddFor(e.target.value)} style={{ ...inputBox, width: '100%', maxWidth: 360 }}>
                 <option value="">Choose an employee...</option>
                 {staffOptions.map(s => <option key={s.username} value={s.username}>{staffOptionLabel(s)}</option>)}
               </select>
@@ -733,47 +1018,65 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
           )}
           <RequestForm isMobile={isMobile} adminFor={addFor} onSubmitted={handleAdded} onCancel={() => setAdding(false)} />
         </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-          <button onClick={startAdding} style={{ padding: isMobile ? '11px 14px' : '8px 14px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: 'none', background: BRAND.forest, color: 'white', cursor: 'pointer' }}>
-            + Add time off
-          </button>
-          {addedNotice && <span role="status" style={{ fontSize: 12.5, color: '#067647', fontWeight: 600 }}>{addedNotice}</span>}
-        </div>
       )}
 
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: `1.5px solid ${BORDER}` }}>
-        {FILTERS.map(f => (
-          <button key={f.key} onClick={() => setStatusFilter(f.key)} style={{ padding: '9px 14px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: statusFilter === f.key ? 700 : 500, color: statusFilter === f.key ? BRAND.forest : BRAND.muted, borderBottom: statusFilter === f.key ? `2px solid ${BRAND.forest}` : '2px solid transparent', marginBottom: -2 }}>
-            {f.label}
-          </button>
-        ))}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+        <CountTabs tabs={TABS} active={tab} onPick={setPicked} label="Time off" counts={Object.fromEntries(TABS.map(t => [t.key, groups[t.key].length]))} />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+          {!forUsername && (
+            <input type="search" value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="Filter by name" aria-label="Filter by name" style={{ ...inputBox, width: isMobile ? '100%' : 180 }} />
+          )}
+          {!adding && (
+            <button type="button" onClick={startAdding} style={{ padding: '8px 14px', borderRadius: 9, border: `1px solid ${BRAND.box}`, background: BRAND.tint, color: BRAND.forest, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}>
+              + Add time off
+            </button>
+          )}
+        </div>
       </div>
 
+      {addedNotice && <p role="status" style={{ fontSize: 12.5, color: '#067647', fontWeight: 600, margin: '0 0 12px' }}>{addedNotice}</p>}
       {notFound && (
         <p style={{ fontSize: 12.5, color: '#92400E', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '8px 12px' }}>
           That entry wasn't found here. It may have been changed or removed.
         </p>
       )}
-      <RequestList
-        requests={requests || []}
-        isMobile={isMobile}
-        showUsername={!forUsername}
-        onApprove={handleApprove}
-        onDeny={(id) => setDenyingId(id)}
-        onEdit={(req) => setEditingRequest(req)}
-        onDelete={handleDelete}
-        onChange={(req) => { setAddedNotice(null); setChanging(req); }}
-      />
+
+      {requests === null ? (
+        <p style={{ fontSize: 13, color: BRAND.muted }}>Loading time off...</p>
+      ) : (
+        <div role="tabpanel" style={{ display: 'grid', gap: 10 }}>
+          {groups[tab].length === 0 && (
+            <div style={{ textAlign: 'center', padding: '28px 12px', border: '1.5px dashed #E7E2F3', borderRadius: 14, color: BRAND.muted, fontSize: 13 }}>{EMPTY[tab]}</div>
+          )}
+          {groups[tab].map(r => {
+            const bal = r.status === 'pending' && r.is_balance_type ? balancesByUser[r.username] : null;
+            return (
+              <RequestRow
+                key={`${tab}-${r.id}`}
+                req={r}
+                isMobile={isMobile}
+                who={forUsername ? null : r.username}
+                balanceNote={bal && bal[r.request_type] !== undefined ? { hours: requestHoursOf(r), type: r.request_type, current: bal[r.request_type] } : null}
+                onApprove={handleApprove}
+                onDeny={(id) => setDenyingId(id)}
+                onEdit={(req) => setEditingRequest(req)}
+                onChange={(req) => { setAddedNotice(null); setChanging(req); }}
+                onDelete={handleDelete}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {denyingId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 16 }} onClick={() => setDenyingId(null)}>
-          <div style={{ background: 'white', borderRadius: 10, padding: 20, maxWidth: 400, width: '100%' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Deny this request?</h3>
-            <textarea placeholder="Reason (optional, shown to the employee)" value={denyNote} onChange={e => setDenyNote(e.target.value)} style={{ width: '100%', minHeight: 70, padding: 10, borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: 13, boxSizing: 'border-box', marginBottom: 12, resize: 'vertical' }} />
+        <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,51,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 16 }} onClick={() => setDenyingId(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Deny request" style={{ background: 'white', borderRadius: 16, padding: 22, maxWidth: 420, width: '100%', boxShadow: '0 24px 60px rgba(36,26,51,0.3)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, color: '#241A33', margin: '0 0 6px' }}>Deny this request?</h3>
+            {(() => { const r = (requests || []).find(x => x.id === denyingId); return r ? <p style={{ fontSize: 13, color: BRAND.muted, margin: '0 0 12px' }}>{nameFor(r.username)} · {r.request_type} · {requestWhen(r)}</p> : null; })()}
+            <textarea placeholder="Reason (optional, shown to the employee)" value={denyNote} onChange={e => setDenyNote(e.target.value)} style={{ width: '100%', minHeight: 80, padding: 10, borderRadius: 10, border: '1px solid #E7E2F3', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14, resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setDenyingId(null)} style={{ padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleDenyConfirm} style={{ padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: '#dc2626', color: 'white', cursor: 'pointer' }}>Deny</button>
+              <button type="button" onClick={() => setDenyingId(null)} style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 600, border: '1px solid #E7E2F3', background: 'white', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={handleDenyConfirm} style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 700, border: 'none', background: '#B42318', color: 'white', cursor: 'pointer' }}>Deny request</button>
             </div>
           </div>
         </div>
@@ -892,195 +1195,3 @@ export function OfficeHoursTab({ isMobile, embedded }) {
   );
 }
 
-export function CredentialsTab({ isMobile }) {
-  const [credentials, setCredentials] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState('');
-  const [expiration, setExpiration] = useState('');
-  const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  const load = useCallback(async () => setCredentials(await api.getMyCredentials()), []);
-  useEffect(() => { load(); }, [load]);
-
-  const handleAdd = async () => {
-    if (!name.trim() || !expiration) { setError('Name and expiration date are required.'); return; }
-    setSaving(true); setError(null);
-    try {
-      await api.addCredential({ credential_name: name.trim(), expiration_date: expiration, notes: notes || null });
-    } catch (err) {
-      setSaving(false); setError(err.message); return;
-    }
-    setSaving(false); setShowForm(false); setName(''); setExpiration(''); setNotes('');
-    load();
-  };
-
-  const handleDelete = async (id) => { await api.deleteCredential(id); load(); };
-
-  const inputStyle = { width: '100%', padding: isMobile ? '10px 12px' : '7px 10px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 15 : 13, boxSizing: 'border-box' };
-
-  return (
-    <div>
-      {showForm ? (
-        <div style={{ padding: isMobile ? 16 : 20, border: `1.5px solid ${BRAND.box}`, borderRadius: 8, marginBottom: 20, background: '#fafafa' }}>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Credential Name</label>
-            <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. CCC-SLP License, CPR Certification" />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Expiration Date</label>
-            <DateField style={inputStyle} yearNav clearable value={expiration} onChange={setExpiration} />
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Notes (optional)</label>
-            <input style={inputStyle} value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Renew via ASHA" />
-          </div>
-          {error && <p style={{ color: '#dc2626', fontSize: 12.5, marginBottom: 10 }}>{error}</p>}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleAdd} disabled={saving} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND.forest, color: 'white', cursor: 'pointer' }}>
-              {saving ? 'Saving...' : 'Add Credential'}
-            </button>
-            <button onClick={() => setShowForm(false)} disabled={saving} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', color: '#374151', cursor: 'pointer' }}>Cancel</button>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => setShowForm(true)} style={{ padding: isMobile ? '12px' : '9px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: 'none', background: BRAND.forest, color: 'white', cursor: 'pointer', marginBottom: 20, width: isMobile ? '100%' : 'auto' }}>
-          + Add Credential
-        </button>
-      )}
-
-      {credentials.length === 0 ? (
-        <p style={{ fontSize: 13, color: BRAND.muted, textAlign: 'center', padding: 24 }}>No credentials on file yet.</p>
-      ) : (
-        credentials.map(c => {
-          const remaining = daysUntil(c.expiration_date);
-          const urgent = remaining <= 14;
-          return (
-            <div key={c.id} style={{ padding: '12px 4px', borderBottom: '1px solid #f1f2f4', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: 8 }}>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#241A33' }}>{c.credential_name}</div>
-                <div style={{ fontSize: 12, color: urgent ? '#991B1B' : BRAND.muted, marginTop: 2 }}>
-                  Expires {formatDate(c.expiration_date)}{urgent && remaining >= 0 ? ` \u2014 ${remaining} day${remaining === 1 ? '' : 's'} left` : ''}{remaining < 0 ? ' \u2014 expired' : ''}
-                </div>
-                {c.notes && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>{c.notes}</div>}
-              </div>
-              <button onClick={() => handleDelete(c.id)} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', color: '#991B1B', cursor: 'pointer' }}>Remove</button>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-}
-
-export function ProfileTab({ profile, onUpdated, isMobile }) {
-  const [phone, setPhone] = useState(profile.phone || '');
-  const [email, setEmail] = useState(profile.email || '');
-  const [preferredName, setPreferredName] = useState(profile.preferred_name || '');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = async () => {
-    setSaving(true); setSaved(false);
-    const updated = await api.updateMyProfile({ phone, email, preferred_name: preferredName });
-    setSaving(false); setSaved(true);
-    onUpdated(updated);
-  };
-
-  const inputStyle = { width: '100%', padding: isMobile ? '10px 12px' : '7px 10px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 15 : 13, boxSizing: 'border-box' };
-  const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 };
-
-  return (
-    <div style={cardStyle()}>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <div>
-          <label style={labelStyle}>Legal Name</label>
-          <input style={{ ...inputStyle, background: '#f3f4f6', color: BRAND.muted }} value={`${profile.first_name} ${profile.last_name}`} disabled />
-        </div>
-        <div>
-          <label style={labelStyle}>Preferred Name</label>
-          <input style={inputStyle} value={preferredName} onChange={e => setPreferredName(e.target.value)} />
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div>
-          <label style={labelStyle}>Phone</label>
-          <input style={inputStyle} value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" />
-        </div>
-        <div>
-          <label style={labelStyle}>Email</label>
-          <input type="email" style={inputStyle} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
-        </div>
-      </div>
-      <p style={{ fontSize: 12, color: BRAND.muted, marginBottom: 14 }}>
-        Position, role, and provider link are managed by an admin. Contact an admin to change those.
-      </p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND.forest, color: 'white', cursor: 'pointer' }}>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-        {saved && <span style={{ fontSize: 12.5, color: '#059669', fontWeight: 600 }}>Saved</span>}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Shared layout pieces for the pages reached from the username menu
-// (My profile, My time, ADMIN).
-// ---------------------------------------------------------------------------
-
-// Simple title strip for pages that don't use the full ProfileBanner.
-export function PageHeader({ title, subtitle, isMobile }) {
-  return (
-    <div style={{ padding: isMobile ? '16px 16px 14px' : '20px 28px 16px', borderBottom: `1.5px solid ${BRAND.box}`, background: '#FCFBFE' }}>
-      <h1 style={{ fontFamily: BRAND_SERIF, fontSize: isMobile ? 19 : 24, fontWeight: 700, color: '#241A33', margin: 0 }}>{title}</h1>
-      {subtitle && <p style={{ fontSize: 12.5, color: BRAND.muted, margin: '4px 0 0' }}>{subtitle}</p>}
-    </div>
-  );
-}
-
-// Row of tabs under a page header. `tabs` is [{ key, label, badge? }].
-export function TabStrip({ tabs, active, onChange, isMobile }) {
-  return (
-    <div role="tablist" style={{ display: 'flex', gap: isMobile ? 2 : 4, padding: isMobile ? '0 12px' : '0 28px', borderBottom: `1.5px solid ${BRAND.box}`, overflowX: 'auto' }}>
-      {tabs.map(t => {
-        const isActive = t.key === active;
-        return (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(t.key)}
-            style={{
-              padding: isMobile ? '10px 10px' : '11px 14px', border: 'none', background: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-              fontSize: isMobile ? 13 : 13.5, fontWeight: isActive ? 700 : 500,
-              color: isActive ? BRAND.brassText : BRAND.muted,
-              borderBottom: isActive ? `2.5px solid ${BRAND.forest}` : '2.5px solid transparent',
-              marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6,
-            }}
-          >
-            {t.label}
-            {t.badge > 0 && <CountBadge count={t.badge} />}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-export function CountBadge({ count }) {
-  return (
-    <span style={{ background: '#dc2626', color: 'white', fontSize: 10.5, fontWeight: 700, borderRadius: 999, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', lineHeight: 1 }}>
-      {count}
-    </span>
-  );
-}
-
-// Content area wrapper so every page has the same padding and width.
-export function PageBody({ children, isMobile }) {
-  return <div style={{ padding: isMobile ? 16 : '24px 28px 40px' }}>{children}</div>;
-}
-
-export const PAGE_WRAP_STYLE = { fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', maxWidth: 960, margin: '0 auto' };

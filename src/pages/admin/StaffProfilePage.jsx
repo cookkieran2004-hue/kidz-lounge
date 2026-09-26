@@ -465,7 +465,7 @@ function TimeOffSection({ staff, isMobile, onChanged }) {
   // and show the hours that just came off.
   const [balanceVersion, setBalanceVersion] = useState(0);
   return (
-    <SectionCard title="Time off" hint="Correct balances directly, for example to give someone their real starting balance. Each one saves when you press Update.">
+    <SectionCard title="Time off" hint="Balances, and every request. Use Adjust to correct a balance directly, for example to give someone their real starting balance.">
       <TimeOffBalanceEditor key={`${staff.username}:${balanceVersion}`} username={staff.username} embedded />
       <div style={{ marginTop: 22 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Time off and requests</h3>

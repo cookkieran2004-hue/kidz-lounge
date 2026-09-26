@@ -2967,7 +2967,11 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
 // the same on every attendee's copy (per week for a recurring meeting).
 // The only change allowed here: an admin can delete an older entry that
 // wasn't created through My time (so it has nowhere else to be managed).
-export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
+// `requestOnly` (My time): `existing` is built from a time-off request that
+// has no calendar row -- a pending request, or someone who isn't a provider
+// -- so the block's own comments and the legacy delete are left out.
+// `onEdit(request, weekDate)`: used instead of navigating to the edit page.
+export function OOOModal({ existing, onClose, onSaved, onCommentsSynced, requestOnly, onEdit }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [localComments, setLocalComments] = useState(existing?.comments || '');
@@ -3029,8 +3033,9 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
       ? `/time?edit=${encodeURIComponent(link.request.id)}&date=${weekDate}`
       : `/admin/staff/${encodeURIComponent(owner)}?section=time-off&edit=${encodeURIComponent(link.request.id)}&date=${weekDate}`)
     : null;
-  const canEdit = !!link.request && link.can_change;
-  const canDeleteLegacy = !link.loading && !link.request && isAdmin;
+  const isPendingRequest = link.request?.status === 'pending';
+  const canEdit = !!link.request && link.can_change && !(requestOnly && isPendingRequest);
+  const canDeleteLegacy = !requestOnly && !link.loading && !link.request && isAdmin;
 
   const materializeCurrentOccurrence = async () => {
     const created = await api.createOOOException(existing.series_id, {
@@ -3119,7 +3124,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
           {detailRow('Who', existing.provider)}
           {detailRow('Date', dateLabel)}
           {detailRow('Time', timeLabel)}
-          {seriesId && detailRow('Repeats', 'Weekly')}
+          {(seriesId || (requestOnly && link.request?.is_recurring)) && detailRow('Repeats', 'Weekly')}
           {isMeeting && attendees.length > 0 && detailRow('Organizer', nameFor(owner))}
           {isMeeting && attendees.length > 0 && detailRow('With', attendees.map(nameFor).join(', '))}
           {notes && detailRow(existing.type === 'Other' ? 'Details' : 'Notes', <span style={{ whiteSpace: 'pre-wrap' }}>{notes}</span>)}
@@ -3174,7 +3179,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
               )}
             </>
           )
-        ) : (
+        ) : requestOnly ? null : (
           <CommentsThread
             table="Out_of_Office"
             recordId={effectiveId}
@@ -3218,6 +3223,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
             <div style={{ fontSize: 12, color: BRAND.muted, maxWidth: 260 }}>
               {link.loading ? null
                 : canDeleteLegacy ? <button onClick={openDeleteConfirm} disabled={saving} style={modalBtnStyle(false, true)}>Delete</button>
+                : requestOnly && isPendingRequest ? 'Waiting for an admin to approve.'
                 : !link.request ? "This entry wasn't created through My time."
                 : !canEdit ? `Only ${nameFor(owner)} or an admin can change the date or time.`
                 : null}
@@ -3225,7 +3231,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced }) {
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={onClose} style={modalBtnStyle()}>Close</button>
               {canEdit && (
-                <button onClick={() => navigate(editHref)} style={modalBtnStyle(true)}>
+                <button onClick={() => (onEdit ? onEdit(link.request, weekDate) : navigate(editHref))} style={modalBtnStyle(true)}>
                   {isOwner ? 'Edit in My time' : `Edit on ${nameFor(owner)}'s profile`}
                 </button>
               )}
