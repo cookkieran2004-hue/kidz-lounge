@@ -1254,9 +1254,8 @@ export default function SchedulePage() {
   return <ScheduleApp />;
 }
 
-// Chips above the daily grid: disciplines (any number at once; none = all)
-// and whether providers not working today are shown.
-function ProviderFilterBar({ prefs, onChange, counts, totalShown, offToday }) {
+// Chips above the daily grid: disciplines, any number at once (none = all).
+function ProviderFilterBar({ prefs, onChange, counts, totalShown }) {
   const chip = (active, extra = {}) => ({
     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, fontSize: 12.5, fontWeight: 600,
     cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
@@ -1283,16 +1282,6 @@ function ProviderFilterBar({ prefs, onChange, counts, totalShown, offToday }) {
           </button>
         );
       })}
-      <span style={{ width: 1, height: 20, background: '#e2e4e9', margin: '0 4px' }} />
-      {prefs.showOff ? (
-        <button type="button" onClick={() => onChange({ ...prefs, showOff: false })} style={chip(false, { fontWeight: 500, color: '#6b7280' })}>
-          Hide providers not working today
-        </button>
-      ) : offToday.length > 0 ? (
-        <button type="button" onClick={() => onChange({ ...prefs, showOff: true })} title={offToday.map(p => p.Name).join(', ')} style={chip(false, { fontWeight: 500, color: '#6b7280', borderStyle: 'dashed' })}>
-          +{offToday.length} not working today
-        </button>
-      ) : null}
       <span style={{ fontSize: 11.5, color: '#9ca3af', marginLeft: 4 }}>{totalShown} shown</span>
     </div>
   );
@@ -1311,15 +1300,14 @@ function disciplinesOf(provider) {
   }
   return found;
 }
-const GRID_DAY_MINUTES = (18 - 8) * 60; // the grid's 8 AM - 6 PM day
-// The chosen chips and "show everyone", remembered per person on this device.
+// The chosen chips, remembered per person on this device.
 const viewPrefsKey = (username) => `kl.schedule.providerFilter.${username || 'anon'}`;
 function loadViewPrefs(username) {
   try {
     const saved = JSON.parse(localStorage.getItem(viewPrefsKey(username)) || 'null');
-    return { disciplines: Array.isArray(saved?.disciplines) ? saved.disciplines : [], showOff: !!saved?.showOff };
+    return { disciplines: Array.isArray(saved?.disciplines) ? saved.disciplines : [] };
   } catch {
-    return { disciplines: [], showOff: false };
+    return { disciplines: [] };
   }
 }
 
@@ -1596,38 +1584,23 @@ function ScheduleApp() {
     return extra.length ? [...providers, ...extra] : providers;
   }, [providers, archivedProviders, appointments]);
 
-  // Working today: has a session booked (not canceled or a no-show), or is
-  // contracted for some of the day. Until the contracted hours have loaded
-  // everyone counts as working, so columns don't vanish and reappear.
-  const workingToday = useMemo(() => {
-    const set = new Set();
-    allGridProviders.forEach(p => {
-      const booked = appointments.some(a => a.provider === p.Name && a.appointment_status !== 'Canceled' && a.appointment_status !== 'No Show');
-      const gapMinutes = (contractedGapsByProvider[p.Name] || []).reduce((sum, g) => sum + timeToMinutes(g.end_time) - timeToMinutes(g.start_time), 0);
-      if (booked || gapMinutes < GRID_DAY_MINUTES) set.add(p.Name);
-    });
-    return set;
-  }, [allGridProviders, appointments, contractedGapsByProvider]);
-
   const disciplineCounts = useMemo(() => {
     const counts = Object.fromEntries(DISCIPLINES.map(d => [d, 0]));
     let other = 0;
     allGridProviders.forEach(p => {
-      if (!viewPrefs.showOff && !workingToday.has(p.Name)) return;
       const ds = disciplinesOf(p);
       if (!ds.size) other++;
       ds.forEach(d => { counts[d]++; });
     });
     return { ...counts, other };
-  }, [allGridProviders, workingToday, viewPrefs.showOff]);
+  }, [allGridProviders]);
 
   const matchesDisciplines = (p) => {
     if (!viewPrefs.disciplines.length) return true;
     const ds = disciplinesOf(p);
     return viewPrefs.disciplines.some(d => (d === 'Other' ? ds.size === 0 : ds.has(d)));
   };
-  const offToday = allGridProviders.filter(p => matchesDisciplines(p) && !workingToday.has(p.Name));
-  const gridProviders = allGridProviders.filter(p => matchesDisciplines(p) && (viewPrefs.showOff || workingToday.has(p.Name)));
+  const gridProviders = allGridProviders.filter(matchesDisciplines);
 
   const grid = useMemo(() => {
     const map = {};
@@ -1844,7 +1817,6 @@ function ScheduleApp() {
             onChange={updateViewPrefs}
             counts={disciplineCounts}
             totalShown={gridProviders.length}
-            offToday={offToday}
           />
         )}
       </div>
