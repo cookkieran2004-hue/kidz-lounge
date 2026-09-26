@@ -1284,7 +1284,7 @@ export function PasswordConfirmModal({ expectedUsername, actionLabel, onConfirm,
 // isn't the same kind of sensitive change as editing role or position.
 // Balances as cards (same look as My time), each adjustable in place --
 // e.g. to give someone their real starting balance.
-export function TimeOffBalanceEditor({ username, embedded }) {
+export function TimeOffBalanceEditor({ username, embedded, onSaved }) {
   const [balances, setBalances] = useState(null);
   const [editingType, setEditingType] = useState(null);
   const [draft, setDraft] = useState('');
@@ -1307,6 +1307,7 @@ export function TimeOffBalanceEditor({ username, embedded }) {
       await api.setTimeOffBalance(username, type, value);
       setBalances(list => list.map(b => (b.balance_type === type ? { ...b, balance_hours: value } : b)));
       setEditingType(null); setSavedType(type);
+      onSaved?.();
     } catch (err) {
       setError(err.message);
     }
@@ -1329,7 +1330,7 @@ export function TimeOffBalanceEditor({ username, embedded }) {
               <div style={{ position: 'absolute', inset: '0 auto 0 0', width: 4, background: s.border }} />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: s.accent }}>{b.balance_type === 'PTO' ? 'PAID TIME OFF' : b.balance_type === 'UPTO' ? 'UNPAID TIME OFF' : b.balance_type}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: s.bg, color: s.text }}>+{monthlyAccrual(b.balance_type)}h / month</span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: s.bg, color: s.text }}>{b.balance_type === 'PTO' ? '0.08h / hour worked' : `+${monthlyAccrual(b.balance_type)}h / month`}</span>
               </div>
               {isEditing ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>

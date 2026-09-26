@@ -207,6 +207,12 @@ export const api = {
   getMyMeetings: () => request('/time-off/meetings'),
   getMyTimeOffBalances: () => request('/time-off/balances'),
   getTimeOffBalancesFor: (username) => request(`/time-off/balances?username=${encodeURIComponent(username)}`),
+  // Balance history (newest first) and the accrual rules for someone.
+  // Without a username: your own. With one: admins only.
+  getTimeOffLedger: (username, type) => request(`/time-off/ledger?${new URLSearchParams({ ...(username ? { username } : {}), ...(type ? { type } : {}) })}`),
+  // Scheduled hours a PTO/UPTO span would cost ({ hours }).
+  getTimeOffEstimate: (record, username) => request(`/time-off/estimate?${new URLSearchParams({ start_date: record.start_date, end_date: record.end_date, start_time: record.start_time, end_time: record.end_time, ...(username ? { username } : {}) })}`),
+  getTimeOffPolicy: (username) => request(`/time-off/policy${username ? `?username=${encodeURIComponent(username)}` : ''}`),
   setTimeOffBalance: (username, balanceType, balanceHours) =>
     request('/time-off/balances', { method: 'PUT', body: JSON.stringify({ username, balance_type: balanceType, balance_hours: balanceHours }) }),
 

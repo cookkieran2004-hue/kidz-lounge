@@ -208,6 +208,24 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
   // would take their balance below zero. That's allowed; it just needs an
   // admin's approval. (Admins get their own warning from the server.)
   const selfService = !adminMode && !editingRequest;
+
+  // What this span would cost in scheduled hours (asked of the API, since
+  // it depends on the person's schedule and office closures).
+  const estimateFor = adminFor || changeOf?.username || editingRequest?.username || undefined;
+  const estimateKey = isBalanceType && startDate && endDate && balanceStartTime && balanceEndTime
+    ? [startDate, balanceStartTime, endDate, balanceEndTime, estimateFor || ''].join('|') : null;
+  const [estimate, setEstimate] = useState({ key: null, hours: null });
+  useEffect(() => {
+    if (!estimateKey) return undefined;
+    let alive = true;
+    const timer = setTimeout(() => {
+      api.getTimeOffEstimate({ start_date: startDate, end_date: endDate, start_time: balanceStartTime, end_time: balanceEndTime }, me?.role === 'admin' ? estimateFor : undefined)
+        .then(r => { if (alive) setEstimate({ key: estimateKey, hours: Number(r.hours) }); })
+        .catch(() => {});
+    }, 250);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [estimateKey, startDate, endDate, balanceStartTime, balanceEndTime, estimateFor, me?.role]);
+  const estimatedHours = estimate.key === estimateKey ? estimate.hours : null;
   const [myBalances, setMyBalances] = useState(null);
   useEffect(() => {
     if (!selfService) return undefined;
@@ -219,7 +237,7 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
   }, [selfService]);
   const projected = (() => {
     if (!selfService || !myBalances || !isBalanceType || !startDate || !endDate || !balanceStartTime || !balanceEndTime) return null;
-    const hours = requestHoursOf({ is_balance_type: true, start_date: startDate, end_date: endDate, start_time: balanceStartTime, end_time: balanceEndTime });
+    const hours = estimatedHours;
     if (!hours) return null;
     // Changing approved PTO/UPTO gives the original's hours back first.
     const refund = cancelsOriginal && changeOf.request_type === requestType ? requestHoursOf(changeOf) : 0;
@@ -368,6 +386,12 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
       </div>
 
       {error && <p style={{ color: '#dc2626', fontSize: 12.5, marginBottom: 10 }}>{error}</p>}
+
+      {isBalanceType && estimatedHours !== null && (
+        <p style={{ fontSize: 12.5, color: '#374151', margin: '0 0 12px' }}>
+          Uses <b>{estimatedHours}h of {requestType}</b> -- the scheduled work hours this covers{estimatedHours === 0 ? ' (none: no scheduled hours in this span)' : ''}.
+        </p>
+      )}
 
       {projected && projected.after < 0 && (
         <div role="status" style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, color: '#92400E' }}>
@@ -672,9 +696,12 @@ const rDay = (s) => rDate(s).toLocaleDateString('en-US', { weekday: 'short', mon
 const rTime = (t) => (t ? formatSlotLabel(t.slice(0, 5)) : '');
 function requestLastDay(r) { return r.is_balance_type ? r.end_date : r.is_recurring ? null : r.ooo_date; }
 function requestFirstDay(r) { return r.is_balance_type ? r.start_date : r.is_recurring ? r.recurring_start_date : r.ooo_date; }
-// Clock hours between start and end -- how the API counts PTO/UPTO.
+// What a PTO/UPTO request costs: the scheduled hours it covers, as worked
+// out by the API (charged_hours). Older requests fall back to clock hours.
 function requestHoursOf(r) {
-  if (!r.is_balance_type || !r.start_date || !r.end_date || !r.start_time || !r.end_time) return 0;
+  if (!r.is_balance_type) return 0;
+  if (r.charged_hours !== null && r.charged_hours !== undefined) return Number(r.charged_hours);
+  if (!r.start_date || !r.end_date || !r.start_time || !r.end_time) return 0;
   return Math.max(0, Math.round(((new Date(`${r.end_date}T${r.end_time}`) - new Date(`${r.start_date}T${r.start_time}`)) / 3600000) * 100) / 100);
 }
 function requestWhen(r) {

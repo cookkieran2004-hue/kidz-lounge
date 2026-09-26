@@ -5,6 +5,7 @@ import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
 import { TimeOffTab, BRAND, BRAND_SERIF, calculateTenure } from './StaffPage';
 import { timeTypeStyle, sessionStyle, monthlyAccrual } from '../timeTypes';
+import TimeOffHistory from '../TimeOffHistory';
 import { Card, Pill, INK, MUTED, HAIRLINE, PAGE_BG, FONT } from '../dashboardUi';
 import { DateField, AppointmentModal, OOOModal, dateToInputValue, formatSlotLabel } from './SchedulePage';
 
@@ -44,15 +45,35 @@ function mondayOf(s) {
   const back = (d.getDay() + 6) % 7;
   return addDays(s, -back);
 }
-// Same straight clock-hours math the API uses to deduct PTO/UPTO.
+// What a PTO/UPTO request costs: the scheduled hours it covers, worked out
+// by the API (charged_hours). Older requests without one fall back to the
+// clock hours they were deducted at.
 function requestHours(r) {
-  if (!r.is_balance_type || !r.start_date || !r.end_date || !r.start_time || !r.end_time) return 0;
+  if (!r.is_balance_type) return 0;
+  if (r.charged_hours !== null && r.charged_hours !== undefined) return Number(r.charged_hours);
+  if (!r.start_date || !r.end_date || !r.start_time || !r.end_time) return 0;
   const start = new Date(`${r.start_date}T${r.start_time}`);
   const end = new Date(`${r.end_date}T${r.end_time}`);
   return Math.max(0, Math.round(((end - start) / 3600000) * 100) / 100);
 }
 function firstDayOf(r) { return r.is_balance_type ? r.start_date : r.is_recurring ? r.recurring_start_date : r.ooo_date; }
 function lastDayOf(r) { return r.is_balance_type ? r.end_date : r.is_recurring ? null : r.ooo_date; }
+// PTO on `target`: a weekly credit every Sunday at the person's scheduled
+// rate, never past the 120-hour cap, cut to 40 at each year end -- the same
+// rules as the Sunday job (kidz-lounge-api/lib/ptoAccrual.js).
+function forecastPto(start, weekly, policy, fromStr, target) {
+  let bal = start;
+  let weeks = 0;
+  let d = toDate(fromStr); d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7)); // next Sunday
+  for (; dateToInputValue(d) <= target; d.setDate(d.getDate() + 7)) {
+    const sunday = dateToInputValue(d);
+    if (bal < policy.balance_cap) bal = Math.min(policy.balance_cap, bal + weekly);
+    weeks++;
+    const yearEnd = `${Number(sunday.slice(0, 4)) - 1}-12-31`;
+    if (addDays(sunday, -7) < yearEnd && yearEnd < sunday && bal > policy.carryover_max) bal = policy.carryover_max;
+  }
+  return { value: Math.round(bal * 100) / 100, weeks };
+}
 // 1st-of-month credits strictly after today, up to and including `target`.
 function creditsBetween(fromStr, target) {
   let n = 0;
@@ -127,7 +148,7 @@ function greeting() {
 }
 
 // ---------- balances + forecast ----------
-function BalanceCard({ type, hours, pendingHours }) {
+function BalanceCard({ type, hours, pendingHours, policy }) {
   const s = typeStyle(type);
   const negative = hours < 0;
   const days = hours / 8;
@@ -136,7 +157,9 @@ function BalanceCard({ type, hours, pendingHours }) {
       <div style={{ position: 'absolute', inset: '0 auto 0 0', width: 4, background: s.border }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: s.accent }}>{type === 'PTO' ? 'PAID TIME OFF' : 'UNPAID TIME OFF'}</span>
-        <Pill bg={s.bg} color={s.text}>+{hoursLabel(monthlyAccrual(type))} / month</Pill>
+        {type === 'PTO'
+          ? <span title={policy ? `${policy.pto.rate}h of PTO for every hour worked, credited on Sundays. About ${policy.pto.estimated_weekly_credit}h a week on your usual schedule.` : undefined}><Pill bg={s.bg} color={s.text}>+{policy ? hoursLabel(policy.pto.estimated_weekly_credit) : '…'} / week</Pill></span>
+          : <Pill bg={s.bg} color={s.text}>+{hoursLabel(policy?.upto?.monthly_hours ?? monthlyAccrual(type))} / month</Pill>}
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
         <span style={{ fontFamily: BRAND_SERIF, fontSize: 34, fontWeight: 700, color: negative ? '#B42318' : INK, lineHeight: 1.1 }}>{hoursLabel(hours).replace('h', '')}</span>
@@ -146,17 +169,28 @@ function BalanceCard({ type, hours, pendingHours }) {
       <div style={{ fontSize: 12, color: MUTED, marginTop: 6, minHeight: 16 }}>
         {pendingHours > 0 ? <><b style={{ color: '#92400E' }}>{hoursLabel(pendingHours)}</b> waiting on approval</> : 'Nothing pending'}
       </div>
+      {type === 'PTO' && policy && (
+        <div style={{ fontSize: 11.5, color: hours >= policy.pto.balance_cap ? '#B54708' : MUTED, marginTop: 4 }}>
+          {hours >= policy.pto.balance_cap
+            ? `At the ${policy.pto.balance_cap}h cap -- use some to keep earning`
+            : `${policy.pto.rate}h per hour worked · cap ${policy.pto.balance_cap}h`}
+        </div>
+      )}
     </Card>
   );
 }
 
-function ForecastCard({ balances, pendingByType }) {
+function ForecastCard({ balances, pendingByType, policy }) {
   const [target, setTarget] = useState(() => addDays(todayStr(), 90));
-  const credits = target > todayStr() ? creditsBetween(todayStr(), target) : 0;
-  const rows = ['PTO', 'UPTO'].map(t => {
-    const now = balances[t] ?? 0;
-    return { t, value: now + credits * monthlyAccrual(t) - (pendingByType[t] || 0) };
-  });
+  const future = target > todayStr();
+  const credits = future ? creditsBetween(todayStr(), target) : 0;
+  const pto = policy && future
+    ? forecastPto((balances.PTO ?? 0) - (pendingByType.PTO || 0), policy.pto.estimated_weekly_credit, policy.pto, todayStr(), target)
+    : { value: (balances.PTO ?? 0) - (pendingByType.PTO || 0), weeks: 0 };
+  const rows = [
+    { t: 'PTO', value: pto.value },
+    { t: 'UPTO', value: (balances.UPTO ?? 0) + credits * (policy?.upto?.monthly_hours ?? monthlyAccrual('UPTO')) - (pendingByType.UPTO || 0) },
+  ];
   return (
     <Card pad={16} style={{ background: `linear-gradient(135deg, ${BRAND.forest} 0%, #8B5CF6 100%)`, border: 'none', color: 'white' }}>
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', opacity: 0.85, marginBottom: 8 }}>PLAN AHEAD</div>
@@ -178,7 +212,7 @@ function ForecastCard({ balances, pendingByType }) {
         ))}
       </div>
       <div style={{ fontSize: 11, opacity: 0.8, marginTop: 8 }}>
-        {credits} monthly credit{credits === 1 ? '' : 's'} by then{Object.values(pendingByType).some(Boolean) ? ', after pending requests' : ''}.
+        {pto.weeks} weekly PTO credit{pto.weeks === 1 ? '' : 's'} on your usual schedule and {credits} monthly UPTO credit{credits === 1 ? '' : 's'} by then{Object.values(pendingByType).some(Boolean) ? ', after pending requests' : ''}.
       </div>
     </Card>
   );
@@ -459,7 +493,7 @@ export default function MyTimePage() {
   const fetchBase = useCallback(async () => {
     const settled = await Promise.allSettled([
       api.getMyTimeOffBalances(), api.getMyTimeOffRequests(), api.getMyMeetings(),
-      api.getMyProfile(), api.getOfficeHours(), api.getOfficeClosures(),
+      api.getMyProfile(), api.getOfficeHours(), api.getOfficeClosures(), api.getTimeOffPolicy(),
       providerName ? api.getProviderUsualSchedule(providerName) : Promise.resolve([]),
       providerName ? api.getScheduleChanges(providerName) : Promise.resolve([]),
     ]);
@@ -467,7 +501,7 @@ export default function MyTimePage() {
     return {
       balances: Object.fromEntries(v(0, []).map(b => [b.balance_type, Number(b.balance_hours)])),
       requests: v(1, []), meetings: v(2, []), profile: v(3, null),
-      officeHours: v(4, []), closures: v(5, []), standing: v(6, []), changes: v(7, []),
+      officeHours: v(4, []), closures: v(5, []), policy: v(6, null), standing: v(7, []), changes: v(8, []),
     };
   }, [providerName]);
   useEffect(() => {
@@ -482,7 +516,8 @@ export default function MyTimePage() {
     fetchBase().then(d => { if (alive) setData(d); });
     return () => { alive = false; };
   }, [fetchBase]);
-  const loadBase = () => fetchBase().then(setData);
+  const [historyKey, setHistoryKey] = useState(0);
+  const loadBase = () => fetchBase().then(d => { setData(d); setHistoryKey(k => k + 1); });
 
   const weekEnd = addDays(weekStart, 6);
   useEffect(() => {
@@ -648,10 +683,10 @@ export default function MyTimePage() {
           <>
             {/* Balances, forecast, next up */}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : isNarrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 18 }}>
-              <BalanceCard type="PTO" hours={data.balances.PTO ?? 0} pendingHours={derived.pendingByType.PTO || 0} />
-              <BalanceCard type="UPTO" hours={data.balances.UPTO ?? 0} pendingHours={derived.pendingByType.UPTO || 0} />
+              <BalanceCard type="PTO" hours={data.balances.PTO ?? 0} pendingHours={derived.pendingByType.PTO || 0} policy={data.policy} />
+              <BalanceCard type="UPTO" hours={data.balances.UPTO ?? 0} pendingHours={derived.pendingByType.UPTO || 0} policy={data.policy} />
               <NextUpCard next={derived.next} onNew={openNewRequest} />
-              <ForecastCard balances={data.balances} pendingByType={derived.pendingByType} />
+              <ForecastCard balances={data.balances} pendingByType={derived.pendingByType} policy={data.policy} />
             </div>
 
             {/* Week + side column */}
@@ -693,6 +728,15 @@ export default function MyTimePage() {
             onCommentsSynced={refreshWeek}
           />
         )}
+        {data && (
+          <Card title="Balance history" style={{ marginBottom: 28 }}>
+            <p style={{ fontSize: 12.5, color: MUTED, margin: '-4px 0 12px' }}>
+              PTO is earned every Sunday for the hours you worked Monday-Friday -- open a week to see how it was worked out.
+            </p>
+            <TimeOffHistory refreshKey={historyKey} />
+          </Card>
+        )}
+
         {/* Requests: the form, list and meetings */}
         <div ref={requestsRef} style={{ scrollMarginTop: 16 }}>
           <Card title="My requests">

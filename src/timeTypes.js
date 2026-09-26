@@ -21,7 +21,8 @@ export function sessionStyle(status) {
   return { bg: `color-mix(in srgb, ${c} ${faded ? 30 : 10}%, white)`, border: c, text: '#1f2937', accent: c, label: 'Session', bar: true };
 }
 
-// Mirrors ANNUAL_HOURS in the API's lib/timeOffAccrual.js: credited on the
-// 1st of each month, rounded to the nearest quarter hour.
-export const ANNUAL_HOURS = { PTO: 80, UPTO: 40 };
+// UPTO's flat yearly amount, credited 1/12th on the 1st of each month
+// (mirrors kidz-lounge-api/lib/timeOffAccrual.js). PTO isn't monthly: it's
+// earned weekly from hours worked (lib/ptoAccrual.js there).
+export const ANNUAL_HOURS = { UPTO: 40 };
 export const monthlyAccrual = (type) => Math.round(((ANNUAL_HOURS[type] || 0) / 12) * 4) / 4;

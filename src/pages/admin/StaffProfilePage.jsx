@@ -8,6 +8,7 @@ import { usePendingTimeOff } from '../../PendingTimeOffContext';
 import TaskDetailModal from '../../TaskDetailModal';
 import { PasswordConfirmModal, UsualScheduleEditor, ScheduleChangesEditor, TimeOffBalanceEditor, generateTempPassword } from '../ManageDataPage';
 import { TimeOffManageTab, calculateTenure } from '../StaffPage';
+import TimeOffHistory from '../../TimeOffHistory';
 import { CredentialsCard } from './NewStaffModal';
 import { roomDisplayText, DateField } from '../SchedulePage';
 import {
@@ -464,9 +465,14 @@ function TimeOffSection({ staff, isMobile, onChanged }) {
   // Bumped after time off is added here, so the balances above re-load
   // and show the hours that just came off.
   const [balanceVersion, setBalanceVersion] = useState(0);
+  const [historyVersion, setHistoryVersion] = useState(0);
   return (
     <SectionCard title="Time off" hint="Balances, and every request. Use Adjust to correct a balance directly, for example to give someone their real starting balance.">
-      <TimeOffBalanceEditor key={`${staff.username}:${balanceVersion}`} username={staff.username} embedded />
+      <TimeOffBalanceEditor key={`${staff.username}:${balanceVersion}`} username={staff.username} embedded onSaved={() => setHistoryVersion(v => v + 1)} />
+      <div style={{ marginTop: 22 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Balance history</h3>
+        <TimeOffHistory username={staff.username} refreshKey={balanceVersion + historyVersion} limit={8} />
+      </div>
       <div style={{ marginTop: 22 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Time off and requests</h3>
         <TimeOffManageTab isMobile={isMobile} embedded forUsername={staff.username} onChanged={onChanged} onAdded={() => setBalanceVersion(v => v + 1)} />
