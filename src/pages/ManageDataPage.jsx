@@ -286,9 +286,9 @@ export function UsualScheduleEditor({ providerName, embedded }) {
             </label>
             {day && (
               <>
-                <TimeField floating minHour={6} maxHour={21} ariaLabel={`${label} start`} style={{ ...inputStyle(), width: 'auto' }} value={day.start_time} onChange={v => updateDayTime(weekday, 'start_time', v)} />
+                <TimeField floating ariaLabel={`${label} start`} style={{ ...inputStyle(), width: 'auto' }} value={day.start_time} onChange={v => updateDayTime(weekday, 'start_time', v)} />
                 <span style={{ fontSize: 12, color: '#9ca3af' }}>to</span>
-                <TimeField floating minHour={6} maxHour={21} ariaLabel={`${label} end`} style={{ ...inputStyle(), width: 'auto' }} value={day.end_time} onChange={v => updateDayTime(weekday, 'end_time', v)} />
+                <TimeField floating ariaLabel={`${label} end`} style={{ ...inputStyle(), width: 'auto' }} value={day.end_time} onChange={v => updateDayTime(weekday, 'end_time', v)} />
               </>
             )}
           </div>
@@ -346,9 +346,9 @@ function WeeklyHoursRows({ days, onChange }) {
           </label>
           {days[wd] && (
             <>
-              <TimeField floating minHour={6} maxHour={21} ariaLabel={`${WEEKDAY_LONG[wd]} start`} style={{ ...inputStyle(), width: 'auto' }} value={days[wd].start_time} onChange={v => setTime(wd, 'start_time', v)} />
+              <TimeField floating ariaLabel={`${WEEKDAY_LONG[wd]} start`} style={{ ...inputStyle(), width: 'auto' }} value={days[wd].start_time} onChange={v => setTime(wd, 'start_time', v)} />
               <span style={{ fontSize: 12, color: '#9ca3af' }}>to</span>
-              <TimeField floating minHour={6} maxHour={21} ariaLabel={`${WEEKDAY_LONG[wd]} end`} style={{ ...inputStyle(), width: 'auto' }} value={days[wd].end_time} onChange={v => setTime(wd, 'end_time', v)} />
+              <TimeField floating ariaLabel={`${WEEKDAY_LONG[wd]} end`} style={{ ...inputStyle(), width: 'auto' }} value={days[wd].end_time} onChange={v => setTime(wd, 'end_time', v)} />
             </>
           )}
         </div>

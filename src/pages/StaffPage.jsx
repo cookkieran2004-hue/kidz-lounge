@@ -318,7 +318,7 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
           </div>
           <div>
             <label style={labelStyle}>Start Time</label>
-            <TimeField style={inputStyle} minHour={6} maxHour={21} value={balanceStartTime} onChange={setBalanceStartTime} />
+            <TimeField style={inputStyle} value={balanceStartTime} onChange={setBalanceStartTime} />
           </div>
           <div>
             <label style={labelStyle}>End Date</label>
@@ -326,7 +326,7 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
           </div>
           <div>
             <label style={labelStyle}>End Time</label>
-            <TimeField style={inputStyle} minHour={6} maxHour={21} value={balanceEndTime} onChange={setBalanceEndTime} />
+            <TimeField style={inputStyle} value={balanceEndTime} onChange={setBalanceEndTime} />
           </div>
         </div>
       ) : (
@@ -357,11 +357,11 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
             <div>
               <label style={labelStyle}>Start Time</label>
-              <TimeField style={inputStyle} minHour={6} maxHour={21} value={startTime} onChange={setStartTime} />
+              <TimeField style={inputStyle} value={startTime} onChange={setStartTime} />
             </div>
             <div>
               <label style={labelStyle}>End Time</label>
-              <TimeField style={inputStyle} minHour={6} maxHour={21} value={endTime} onChange={setEndTime} />
+              <TimeField style={inputStyle} value={endTime} onChange={setEndTime} />
             </div>
           </div>
         </>
@@ -1178,9 +1178,9 @@ export function OfficeHoursTab({ isMobile, embedded }) {
                 <span style={{ fontSize: 12.5, color: BRAND.muted, fontStyle: 'italic' }}>Closed</span>
               ) : (
                 <>
-                  <TimeField style={inputStyle} floating minHour={6} maxHour={21} ariaLabel={`${label} opens`} value={day.open_time?.slice(0, 5)} onChange={v => handleSaveDay(weekday, v, day.close_time?.slice(0, 5), false)} />
+                  <TimeField style={inputStyle} floating ariaLabel={`${label} opens`} value={day.open_time?.slice(0, 5)} onChange={v => handleSaveDay(weekday, v, day.close_time?.slice(0, 5), false)} />
                   <span style={{ fontSize: 12, color: BRAND.muted }}>to</span>
-                  <TimeField style={inputStyle} floating minHour={6} maxHour={21} ariaLabel={`${label} closes`} value={day.close_time?.slice(0, 5)} onChange={v => handleSaveDay(weekday, day.open_time?.slice(0, 5), v, false)} />
+                  <TimeField style={inputStyle} floating ariaLabel={`${label} closes`} value={day.close_time?.slice(0, 5)} onChange={v => handleSaveDay(weekday, day.open_time?.slice(0, 5), v, false)} />
                 </>
               )}
               <button

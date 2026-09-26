@@ -632,7 +632,6 @@ function generateCalendarDays(viewMonth) {
 //   min / max      'YYYY-MM-DD' -- days outside are greyed out
 //   yearNav        adds previous/next-year arrows (birthdays, hire dates)
 //   clearable      an x to empty an optional date
-//   minHour/maxHour  hour buttons offered (appointments: 8 AM - 6 PM)
 //   floating       opens over the page instead of pushing content down --
 //                  for fields sitting inline in a row
 //   style          the trigger's look, so it matches the form's other inputs
@@ -703,11 +702,17 @@ export function CalendarPicker({ value, onChange, min, max, yearNav }) {
   );
 }
 
-function TimePicker({ value, onChange, minHour = 8, maxHour = 18 }) {
+// Every time in the app is 8:00 AM - 6:00 PM in 15-minute steps (the
+// practice's day), so 6 PM itself only goes with :00.
+const PICKER_FIRST_HOUR = 8;
+const PICKER_LAST_HOUR = 18;
+function TimePicker({ value, onChange }) {
   const [h, m] = (value || '09:00').split(':');
   const hours = [];
-  for (let i = minHour; i <= maxHour; i++) hours.push(String(i).padStart(2, '0'));
+  for (let i = PICKER_FIRST_HOUR; i <= PICKER_LAST_HOUR; i++) hours.push(String(i).padStart(2, '0'));
   const minutes = ['00', '15', '30', '45'];
+  const lastHour = String(PICKER_LAST_HOUR).padStart(2, '0');
+  const minuteAllowed = (hh, mm) => hh !== lastHour || mm === '00';
 
   return (
     <div style={{ border: '1px solid #e2e4e9', borderRadius: 8, padding: 10, marginBottom: 12 }}>
@@ -717,7 +722,7 @@ function TimePicker({ value, onChange, minHour = 8, maxHour = 18 }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, maxHeight: 110, overflowY: 'auto' }}>
             {hours.map(hh => (
               <button
-                type="button" key={hh} onClick={() => onChange(`${hh}:${m}`)}
+                type="button" key={hh} onClick={() => onChange(`${hh}:${minuteAllowed(hh, m) ? m : '00'}`)}
                 style={{ padding: '5px 0', borderRadius: 6, border: 'none', fontSize: 11, cursor: 'pointer', background: h === hh ? '#6D28D9' : '#f3f4f6', color: h === hh ? 'white' : '#374151' }}
               >
                 {formatSlotLabel(`${hh}:00`).replace(':00', '')}
@@ -730,8 +735,8 @@ function TimePicker({ value, onChange, minHour = 8, maxHour = 18 }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
             {minutes.map(mm => (
               <button
-                type="button" key={mm} onClick={() => onChange(`${h}:${mm}`)}
-                style={{ padding: '5px 0', borderRadius: 6, border: 'none', fontSize: 11, cursor: 'pointer', background: m === mm ? '#6D28D9' : '#f3f4f6', color: m === mm ? 'white' : '#374151' }}
+                type="button" key={mm} disabled={!minuteAllowed(h, mm)} onClick={() => onChange(`${h}:${mm}`)}
+                style={{ padding: '5px 0', borderRadius: 6, border: 'none', fontSize: 11, cursor: minuteAllowed(h, mm) ? 'pointer' : 'not-allowed', background: m === mm ? '#6D28D9' : '#f3f4f6', color: m === mm ? 'white' : minuteAllowed(h, mm) ? '#374151' : '#c9ccd1' }}
               >
                 :{mm}
               </button>
@@ -805,7 +810,7 @@ export function DateField({ label, value, onChange, style, placeholder = 'Select
   );
 }
 
-export function TimeField({ label, value, onChange, style, placeholder = 'Select time', minHour, maxHour, disabled, floating, id, ariaLabel }) {
+export function TimeField({ label, value, onChange, style, placeholder = 'Select time', disabled, floating, id, ariaLabel }) {
   const [open, setOpen] = useState(false);
   return (
     <PickerField
@@ -814,7 +819,7 @@ export function TimeField({ label, value, onChange, style, placeholder = 'Select
       icon={<ClockIcon size={13} color="#6b7280" />}
       text={value ? formatSlotLabel(value) : placeholder}
     >
-      <TimePicker value={value} onChange={onChange} minHour={minHour} maxHour={maxHour} />
+      <TimePicker value={value} onChange={onChange} />
     </PickerField>
   );
 }

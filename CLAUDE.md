@@ -36,11 +36,10 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 - **Grids always fit the screen.** No sideways scrolling: columns share the width, and the provider filter chips narrow what's shown.
 - **Schedule colors are consistent everywhere.** Time-off and OOO colors come from `oooBlockColors` / `statusColor` in `SchedulePage.jsx`, via `src/timeTypes.js` (`timeTypeStyle`, `sessionStyle`). Never hard-code another palette for PTO/UPTO/Lunch/Meeting or session status.
 - **Things on schedule events stay neutral** and shouldn't stand out, e.g. the grey dashed "Set room" pill.
-- **Dates and times** always use `DateField` / `TimeField` from `SchedulePage.jsx` (the appointment form's picker), never `<input type="date|time">`. Their options:
+- **Dates and times** always use `DateField` / `TimeField` from `SchedulePage.jsx` (the appointment form's picker), never `<input type="date|time">`. Times are **always 8:00 AM - 6:00 PM in 15-minute steps**, everywhere (6 PM only as :00), with no per-field hour range. The options:
   - `min`/`max` (limit the dates)
   - `yearNav` (birthdays and hire dates)
   - `clearable`
-  - `minHour`/`maxHour` (appointments 8-18, everything else 6-21)
   - `floating` (for inline rows)
   - `style` (match the surrounding inputs)
 - **Phone numbers** are US 10-digit, formatted as you type, `(555) 555-5555`, never free text.

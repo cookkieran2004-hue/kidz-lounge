@@ -71,9 +71,9 @@ function WeeklyHoursPicker({ value, onChange }) {
       {Object.keys(value).sort().map(d => (
         <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13, color: BODY }}>
           <span style={{ width: 36, fontWeight: 600 }}>{WEEKDAYS[d]}</span>
-          <TimeField floating minHour={6} maxHour={21} ariaLabel={`${WEEKDAYS[d]} start`} value={value[d].start_time} onChange={v => setTime(d, 'start_time', v)} style={inputStyle({ width: 'auto', padding: '6px 8px', fontSize: 13 })} />
+          <TimeField floating ariaLabel={`${WEEKDAYS[d]} start`} value={value[d].start_time} onChange={v => setTime(d, 'start_time', v)} style={inputStyle({ width: 'auto', padding: '6px 8px', fontSize: 13 })} />
           <span style={{ color: BRAND.muted }}>to</span>
-          <TimeField floating minHour={6} maxHour={21} ariaLabel={`${WEEKDAYS[d]} end`} value={value[d].end_time} onChange={v => setTime(d, 'end_time', v)} style={inputStyle({ width: 'auto', padding: '6px 8px', fontSize: 13 })} />
+          <TimeField floating ariaLabel={`${WEEKDAYS[d]} end`} value={value[d].end_time} onChange={v => setTime(d, 'end_time', v)} style={inputStyle({ width: 'auto', padding: '6px 8px', fontSize: 13 })} />
         </div>
       ))}
     </div>
