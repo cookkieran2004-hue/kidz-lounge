@@ -1254,8 +1254,84 @@ export default function SchedulePage() {
   return <ScheduleApp />;
 }
 
+// Chips above the daily grid: disciplines (any number at once; none = all)
+// and whether providers not working today are shown.
+function ProviderFilterBar({ prefs, onChange, counts, totalShown, offToday }) {
+  const chip = (active, extra = {}) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, fontSize: 12.5, fontWeight: 600,
+    cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+    border: active ? `1.5px solid ${BRAND.forest}` : '1.5px solid #e2e4e9',
+    background: active ? BRAND.tint : 'white', color: active ? BRAND.forest : '#374151', ...extra,
+  });
+  const count = (n, active) => <span style={{ fontSize: 11, fontWeight: 700, color: active ? BRAND.forest : '#9ca3af' }}>{n}</span>;
+  const toggle = (d) => {
+    const on = prefs.disciplines.includes(d);
+    onChange({ ...prefs, disciplines: on ? prefs.disciplines.filter(x => x !== d) : [...prefs.disciplines, d] });
+  };
+  const options = [...DISCIPLINES, ...(counts.other ? ['Other'] : [])];
+  return (
+    <div role="group" aria-label="Filter providers" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+      <button type="button" aria-pressed={!prefs.disciplines.length} onClick={() => onChange({ ...prefs, disciplines: [] })} style={chip(!prefs.disciplines.length)}>
+        All
+      </button>
+      {options.map(d => {
+        const active = prefs.disciplines.includes(d);
+        const n = d === 'Other' ? counts.other : counts[d];
+        return (
+          <button key={d} type="button" aria-pressed={active} onClick={() => toggle(d)} style={chip(active, n === 0 && !active ? { color: '#b0b4bb' } : {})} title={d === 'SI' ? 'Sensory integration' : undefined}>
+            {d} {count(n, active)}
+          </button>
+        );
+      })}
+      <span style={{ width: 1, height: 20, background: '#e2e4e9', margin: '0 4px' }} />
+      {prefs.showOff ? (
+        <button type="button" onClick={() => onChange({ ...prefs, showOff: false })} style={chip(false, { fontWeight: 500, color: '#6b7280' })}>
+          Hide providers not working today
+        </button>
+      ) : offToday.length > 0 ? (
+        <button type="button" onClick={() => onChange({ ...prefs, showOff: true })} title={offToday.map(p => p.Name).join(', ')} style={chip(false, { fontWeight: 500, color: '#6b7280', borderStyle: 'dashed' })}>
+          +{offToday.length} not working today
+        </button>
+      ) : null}
+      <span style={{ fontSize: 11.5, color: '#9ca3af', marginLeft: 4 }}>{totalShown} shown</span>
+    </div>
+  );
+}
+
+// ---- Daily grid: which provider columns show ----
+// Disciplines come from each provider's specialty (ST, OT, PT, SI -- "ST",
+// "ST/OT" or "Speech-Language Pathologist" all work).
+const DISCIPLINES = ['ST', 'OT', 'PT', 'SI'];
+const DISCIPLINE_WORDS = { SPEECH: 'ST', OCCUPATIONAL: 'OT', PHYSICAL: 'PT', SENSORY: 'SI' };
+function disciplinesOf(provider) {
+  const found = new Set();
+  for (const word of String(provider.specialty || '').toUpperCase().split(/[^A-Z]+/)) {
+    if (DISCIPLINES.includes(word)) found.add(word);
+    else if (DISCIPLINE_WORDS[word]) found.add(DISCIPLINE_WORDS[word]);
+  }
+  return found;
+}
+const GRID_DAY_MINUTES = (18 - 8) * 60; // the grid's 8 AM - 6 PM day
+// The chosen chips and "show everyone", remembered per person on this device.
+const viewPrefsKey = (username) => `kl.schedule.providerFilter.${username || 'anon'}`;
+function loadViewPrefs(username) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(viewPrefsKey(username)) || 'null');
+    return { disciplines: Array.isArray(saved?.disciplines) ? saved.disciplines : [], showOff: !!saved?.showOff };
+  } catch {
+    return { disciplines: [], showOff: false };
+  }
+}
+
 function ScheduleApp() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [viewPrefs, setViewPrefs] = useState(() => loadViewPrefs(user?.username));
+  const updateViewPrefs = (next) => {
+    setViewPrefs(next);
+    try { localStorage.setItem(viewPrefsKey(user?.username), JSON.stringify(next)); } catch { /* private mode etc. */ }
+  };
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const selectedDateRef = useRef(selectedDate);
@@ -1301,6 +1377,7 @@ function ScheduleApp() {
   const [gridEl, setGridEl] = useState(null); // the grid's box (the page scrolls, not the grid)
   const [nowLineTop, setNowLineTop] = useState(null); // px from top of grid content, or null if hidden
   const autoScrolledGridRef = useRef(null);
+
 
   // ---- Unassigned view: rows you've given a room stay listed until you leave the view ----
   const [pinnedUnassignedKeys, setPinnedUnassignedKeys] = useState(() => new Set());
@@ -1514,10 +1591,43 @@ function ScheduleApp() {
   // Columns on the daily grid: every active provider, plus an archived one
   // only when they still have a non-canceled appointment that day -- so a
   // leftover booking never silently disappears. Past days work the same way.
-  const gridProviders = useMemo(() => {
+  const allGridProviders = useMemo(() => {
     const extra = archivedProviders.filter(p => appointments.some(a => a.provider === p.Name && a.appointment_status !== 'Canceled'));
     return extra.length ? [...providers, ...extra] : providers;
   }, [providers, archivedProviders, appointments]);
+
+  // Working today: has a session booked (not canceled or a no-show), or is
+  // contracted for some of the day. Until the contracted hours have loaded
+  // everyone counts as working, so columns don't vanish and reappear.
+  const workingToday = useMemo(() => {
+    const set = new Set();
+    allGridProviders.forEach(p => {
+      const booked = appointments.some(a => a.provider === p.Name && a.appointment_status !== 'Canceled' && a.appointment_status !== 'No Show');
+      const gapMinutes = (contractedGapsByProvider[p.Name] || []).reduce((sum, g) => sum + timeToMinutes(g.end_time) - timeToMinutes(g.start_time), 0);
+      if (booked || gapMinutes < GRID_DAY_MINUTES) set.add(p.Name);
+    });
+    return set;
+  }, [allGridProviders, appointments, contractedGapsByProvider]);
+
+  const disciplineCounts = useMemo(() => {
+    const counts = Object.fromEntries(DISCIPLINES.map(d => [d, 0]));
+    let other = 0;
+    allGridProviders.forEach(p => {
+      if (!viewPrefs.showOff && !workingToday.has(p.Name)) return;
+      const ds = disciplinesOf(p);
+      if (!ds.size) other++;
+      ds.forEach(d => { counts[d]++; });
+    });
+    return { ...counts, other };
+  }, [allGridProviders, workingToday, viewPrefs.showOff]);
+
+  const matchesDisciplines = (p) => {
+    if (!viewPrefs.disciplines.length) return true;
+    const ds = disciplinesOf(p);
+    return viewPrefs.disciplines.some(d => (d === 'Other' ? ds.size === 0 : ds.has(d)));
+  };
+  const offToday = allGridProviders.filter(p => matchesDisciplines(p) && !workingToday.has(p.Name));
+  const gridProviders = allGridProviders.filter(p => matchesDisciplines(p) && (viewPrefs.showOff || workingToday.has(p.Name)));
 
   const grid = useMemo(() => {
     const map = {};
@@ -1728,6 +1838,15 @@ function ScheduleApp() {
             </span>
           </div>
         </div>
+        {viewMode === 'provider' && (
+          <ProviderFilterBar
+            prefs={viewPrefs}
+            onChange={updateViewPrefs}
+            counts={disciplineCounts}
+            totalShown={gridProviders.length}
+            offToday={offToday}
+          />
+        )}
       </div>
 
       {/* On the grid views a closed day gets the diagonal sash instead (ClosedDaySash). */}
@@ -1865,7 +1984,7 @@ function ScheduleApp() {
                     </th>
                   );
                 })}
-                {viewMode === 'provider' && gridProviders.length === 0 && <th style={thStyle()}>No providers yet</th>}
+                {viewMode === 'provider' && gridProviders.length === 0 && <th style={thStyle()}>{allGridProviders.length ? 'No providers match these filters' : 'No providers yet'}</th>}
                 {viewMode === 'room' && TREATMENT_AREA_OPTIONS.map(room => (
                   <th key={room} style={thStyle()}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, overflow: 'hidden' }}>
