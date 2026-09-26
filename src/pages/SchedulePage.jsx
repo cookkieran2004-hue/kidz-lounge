@@ -326,7 +326,9 @@ export const HouseIcon = (p) => <Icon {...p} path={<><path d="M3 9.5 12 3l9 6.5"
 export const ListIcon = (p) => <Icon {...p} path={<><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></>} />;
 const ClockIcon = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></>} />;
 
-export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColor, heightPx, onRoomClick, onStatusClick, stackIndex = 0, hasConflict, offsetWithinSlot = 0 }) {
+// `setRoom`: the session has no room yet -- the badge becomes a "Set room"
+// button (same look as the Unassigned view's), opening the room menu.
+export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColor, heightPx, onRoomClick, onStatusClick, stackIndex = 0, hasConflict, offsetWithinSlot = 0, setRoom = false }) {
   const color = statusColor(apt.appointment_status);
   const isCanceled = apt.appointment_status === 'Canceled';
   const isNoShow = apt.appointment_status === 'No Show';
@@ -378,7 +380,24 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
           {formatSlotLabel(apt.appointment_time.slice(0, 5))} &middot; {Number(apt.duration) || 30} min
         </div>
       )}
-      {badgeLabel && (
+      {setRoom && onRoomClick && (
+        <div style={{ flexShrink: 0, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
+          <button
+            type="button"
+            title="Set room"
+            onClick={(e) => { e.stopPropagation(); onRoomClick(e); }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3, maxWidth: '100%', whiteSpace: 'nowrap',
+              fontSize: 10, fontWeight: 600, fontFamily: 'inherit', lineHeight: 1.3, cursor: 'pointer', borderRadius: 999, padding: '0 6px',
+              border: '1px dashed #c4b5fd', background: '#F5F3FF', color: '#6D28D9',
+            }}
+          >
+            <HouseIcon size={9} color="currentColor" strokeWidth={2.2} />
+            Set room
+          </button>
+        </div>
+      )}
+      {!setRoom && badgeLabel && (
         <div style={{ flexShrink: 0, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
           <span
             onClick={onRoomClick ? (e) => { e.stopPropagation(); onRoomClick(e); } : undefined}
@@ -1951,6 +1970,7 @@ function ScheduleApp() {
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
                                 badgeLabel={viewMode === 'provider' ? roomBadgeLabel(apt.treatment_area) : apt.provider}
                                 badgeColor={viewMode === 'provider' && apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
+                                setRoom={viewMode === 'provider' && !apt.treatment_area && !['Canceled', 'No Show'].includes(apt.appointment_status)}
                                 badgeIcon={viewMode === 'provider'
                                   ? <HouseIcon size={10} color="#9ca3af" strokeWidth={2} />
                                   : <UserIcon size={10} color="#9ca3af" strokeWidth={2} />}

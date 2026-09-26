@@ -547,6 +547,7 @@ export default function WeeklySchedulePage() {
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
                                 badgeLabel={roomBadgeLabel(apt.treatment_area)}
                                 badgeColor={apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
+                                setRoom={!apt.treatment_area && !['Canceled', 'No Show'].includes(apt.appointment_status)}
                                 badgeIcon={null}
                                 onRoomClick={(e) => {
                                   const rect = e.currentTarget.getBoundingClientRect();
