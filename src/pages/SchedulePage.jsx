@@ -388,8 +388,8 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
             onClick={(e) => { e.stopPropagation(); onRoomClick(e); }}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 3, maxWidth: '100%', whiteSpace: 'nowrap',
-              fontSize: 10, fontWeight: 600, fontFamily: 'inherit', lineHeight: 1.3, cursor: 'pointer', borderRadius: 999, padding: '0 6px',
-              border: '1px dashed #c4b5fd', background: '#F5F3FF', color: '#6D28D9',
+              fontSize: 10, fontWeight: 500, fontFamily: 'inherit', lineHeight: 1.3, cursor: 'pointer', borderRadius: 999, padding: '0 6px',
+              border: '1px dashed #d1d5db', background: 'rgba(255,255,255,0.6)', color: '#6b7280',
             }}
           >
             <HouseIcon size={9} color="currentColor" strokeWidth={2.2} />
