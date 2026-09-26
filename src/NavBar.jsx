@@ -78,7 +78,7 @@ const ACCOUNT_LINKS = [
   { to: '/time', label: 'My time' },
   { to: '/tasks', label: 'My tasks' },
   { to: '/support/tickets', label: 'Support tickets', supportOnly: true },
-  { to: '/admin', label: 'ADMIN', adminOnly: true },
+  { to: '/admin', label: 'Admin', adminOnly: true },
 ];
 const SUPPORT_GREEN = '#16a34a';
 
