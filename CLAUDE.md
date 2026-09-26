@@ -44,11 +44,17 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - `style` (match the surrounding inputs)
 - **Phone numbers** are US 10-digit, formatted as you type, `(555) 555-5555`, never free text.
 - **Deleting** asks inline ("Delete this? Delete / Keep"), not a browser `confirm()`.
-- **Personal and admin pages use the dashboard look** (`src/dashboardUi.jsx`):
-  - `Card`, `Pill`, `INK`, `MUTED`, `HAIRLINE`, `PAGE_BG` on a pale lilac page
-  - serif page titles with a small uppercase eyebrow above them
-  - pill tabs with counts
-  - see My time, My profile, Admin
+- **Professional, not playful.** This is a business tool. Kieran rejected an earlier design as "too fun" and "very AI". Avoid:
+  - greetings ("Good evening, Jamie")
+  - gradients and drop shadows
+  - colored stripes, oversized serif numbers and emoji-like flourishes
+  - pill-shaped everything
+- **Personal pages use the plain business look** (My time, My profile):
+  - tokens in `src/uiTokens.js`: neutral greys, `ACCENT` purple only for primary actions, links and the selected tab, and `TONES` for status
+  - components in `src/dashboardUi.jsx`: `PageHeader`, `Card` (white, 1px border, 8px radius), `StatStrip`/`Stat` (figures in one panel with dividers), `Tag` (small, square-ish), `UnderlineTabs`, and `buttonStyle(variant)`
+  - lists and tables with thin row dividers
+  - numbers with tabular figures (`NUMERIC`)
+  - sentence case, and no ALL-CAPS labels
 
 ## Commands
 

@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
-import { TimeOffTab, BRAND, BRAND_SERIF, calculateTenure } from './StaffPage';
+import { TimeOffTab, BRAND } from './StaffPage';
 import { timeTypeStyle, sessionStyle, monthlyAccrual } from '../timeTypes';
 import TimeOffHistory from '../TimeOffHistory';
-import { Card, Pill, INK, MUTED, HAIRLINE, PAGE_BG, FONT } from '../dashboardUi';
+import { Card, Tag, PageHeader, StatStrip, Stat } from '../dashboardUi';
+import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, ACCENT, buttonStyle } from '../uiTokens';
 import { DateField, AppointmentModal, OOOModal, dateToInputValue, formatSlotLabel } from './SchedulePage';
 
 // My time: a personal dashboard for everything about your time at work --
@@ -139,112 +140,78 @@ function layoutLanes(blocks) {
 
 // ---------- visual building blocks ----------
 function iconBtn() {
-  return { width: 30, height: 30, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: `1px solid ${HAIRLINE}`, background: 'white', color: MUTED, cursor: 'pointer', fontSize: 15 };
+  return buttonStyle('secondary', { width: 30, height: 30, padding: 0, fontSize: 15, color: MUTED });
 }
+const hoursText = (h) => `${hoursLabel(h).replace('h', '')} h`;
 
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
-
-// ---------- balances + forecast ----------
-function BalanceCard({ type, hours, pendingHours, policy }) {
-  const s = typeStyle(type);
-  const negative = hours < 0;
-  const days = hours / 8;
+// ---------- summary: balances, next time off, projection ----------
+// The schedule's greens: a swatch drawn exactly like the schedule block, and
+// the figure in a readable shade of it (UPTO's block is pale, so its figure
+// uses a mid green rather than the pale fill).
+const BALANCE_GREEN = { PTO: '#166534', UPTO: '#15803D' };
+function BalanceStat({ type, hours, pendingHours, policy, first, isMobile }) {
+  const atCap = type === 'PTO' && policy && hours >= policy.pto.balance_cap;
+  const block = timeTypeStyle(type);
+  const label = (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+      <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: block.bg, border: `1px solid ${block.border}`, boxSizing: 'border-box' }} />
+      {type === 'PTO' ? 'PTO balance' : 'UPTO balance'}
+    </span>
+  );
   return (
-    <Card pad={16} style={{ position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', inset: '0 auto 0 0', width: 4, background: s.border }} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: s.accent }}>{type === 'PTO' ? 'PAID TIME OFF' : 'UNPAID TIME OFF'}</span>
+    <Stat first={first} isMobile={isMobile} label={label} value={hoursText(hours)} valueColor={hours < 0 ? '#B42318' : BALANCE_GREEN[type]}
+      sub={`About ${(hours / 8).toFixed(1)} days`}>
+      <div style={{ fontSize: 12.5, color: atCap ? '#B54708' : MUTED, marginTop: 2 }}>
         {type === 'PTO'
-          ? <span title={policy ? `${policy.pto.rate}h of PTO for every hour worked, credited on Sundays. About ${policy.pto.estimated_weekly_credit}h a week on your usual schedule.` : undefined}><Pill bg={s.bg} color={s.text}>+{policy ? hoursLabel(policy.pto.estimated_weekly_credit) : '…'} / week</Pill></span>
-          : <Pill bg={s.bg} color={s.text}>+{hoursLabel(policy?.upto?.monthly_hours ?? monthlyAccrual(type))} / month</Pill>}
+          ? (atCap ? `At the ${policy.pto.balance_cap} h cap; accrual paused` : policy ? `Earns about ${hoursText(policy.pto.estimated_weekly_credit)} per week` : '')
+          : `${hoursText(policy?.upto?.monthly_hours ?? monthlyAccrual('UPTO'))} credited monthly`}
       </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ fontFamily: BRAND_SERIF, fontSize: 34, fontWeight: 700, color: negative ? '#B42318' : INK, lineHeight: 1.1 }}>{hoursLabel(hours).replace('h', '')}</span>
-        <span style={{ fontSize: 13, color: MUTED }}>hours</span>
-        <span style={{ fontSize: 12, color: MUTED, marginLeft: 'auto' }}>≈ {days.toFixed(1)} days</span>
-      </div>
-      <div style={{ fontSize: 12, color: MUTED, marginTop: 6, minHeight: 16 }}>
-        {pendingHours > 0 ? <><b style={{ color: '#92400E' }}>{hoursLabel(pendingHours)}</b> waiting on approval</> : 'Nothing pending'}
-      </div>
-      {type === 'PTO' && policy && (
-        <div style={{ fontSize: 11.5, color: hours >= policy.pto.balance_cap ? '#B54708' : MUTED, marginTop: 4 }}>
-          {hours >= policy.pto.balance_cap
-            ? `At the ${policy.pto.balance_cap}h cap -- use some to keep earning`
-            : `${policy.pto.rate}h per hour worked · cap ${policy.pto.balance_cap}h`}
-        </div>
-      )}
-    </Card>
+      {pendingHours > 0 && <div style={{ fontSize: 12.5, color: '#B54708', marginTop: 2 }}>{hoursText(pendingHours)} pending approval</div>}
+    </Stat>
   );
 }
 
-function ForecastCard({ balances, pendingByType, policy }) {
+function NextTimeOffStat({ next, onNew, isMobile }) {
+  if (!next) {
+    return (
+      <Stat isMobile={isMobile} label="Next time off" value={<span style={{ fontSize: 16, fontWeight: 500, color: MUTED }}>None scheduled</span>}>
+        <button type="button" onClick={onNew} style={buttonStyle('text', { marginTop: 4, marginLeft: -6, fontSize: 12.5 })}>Request time off</button>
+      </Stat>
+    );
+  }
+  const inDays = daysBetween(todayStr(), firstDayOf(next));
+  const span = next.is_balance_type && next.end_date !== next.start_date ? `${shortDate(next.start_date)} – ${shortDate(next.end_date)}` : shortDate(firstDayOf(next));
+  return (
+    <Stat isMobile={isMobile} label="Next time off" value={<span style={{ fontSize: 18 }}>{span}</span>}
+      sub={`${next.request_type}${requestHours(next) > 0 ? ` · ${hoursText(requestHours(next))}` : ''} · ${inDays <= 0 ? 'today' : `in ${inDays} day${inDays === 1 ? '' : 's'}`}`} />
+  );
+}
+
+function ProjectionStat({ balances, pendingByType, policy, isMobile }) {
   const [target, setTarget] = useState(() => addDays(todayStr(), 90));
   const future = target > todayStr();
   const credits = future ? creditsBetween(todayStr(), target) : 0;
   const pto = policy && future
     ? forecastPto((balances.PTO ?? 0) - (pendingByType.PTO || 0), policy.pto.estimated_weekly_credit, policy.pto, todayStr(), target)
     : { value: (balances.PTO ?? 0) - (pendingByType.PTO || 0), weeks: 0 };
-  const rows = [
-    { t: 'PTO', value: pto.value },
-    { t: 'UPTO', value: (balances.UPTO ?? 0) + credits * (policy?.upto?.monthly_hours ?? monthlyAccrual('UPTO')) - (pendingByType.UPTO || 0) },
-  ];
+  const upto = (balances.UPTO ?? 0) + credits * (policy?.upto?.monthly_hours ?? monthlyAccrual('UPTO')) - (pendingByType.UPTO || 0);
   return (
-    <Card pad={16} style={{ background: `linear-gradient(135deg, ${BRAND.forest} 0%, #8B5CF6 100%)`, border: 'none', color: 'white' }}>
-      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', opacity: 0.85, marginBottom: 8 }}>PLAN AHEAD</div>
-      <div style={{ fontSize: 13, marginBottom: 8, opacity: 0.95 }}>What you'll have on</div>
-      <DateField
-        value={target}
-        onChange={(v) => v && setTarget(v)}
-        min={todayStr()}
-        floating
-        ariaLabel="Forecast date"
-        style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.35)', fontSize: 13, boxSizing: 'border-box', background: 'rgba(255,255,255,0.14)', color: 'white' }}
-      />
-      <div style={{ display: 'flex', gap: 18, marginTop: 12 }}>
-        {rows.map(r => (
-          <div key={r.t}>
-            <div style={{ fontFamily: BRAND_SERIF, fontSize: 24, fontWeight: 700 }}>{hoursLabel(r.value)}</div>
-            <div style={{ fontSize: 11, opacity: 0.85 }}>{r.t}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize: 11, opacity: 0.8, marginTop: 8 }}>
-        {pto.weeks} weekly PTO credit{pto.weeks === 1 ? '' : 's'} on your usual schedule and {credits} monthly UPTO credit{credits === 1 ? '' : 's'} by then{Object.values(pendingByType).some(Boolean) ? ', after pending requests' : ''}.
-      </div>
-    </Card>
-  );
-}
-
-function NextUpCard({ next, onNew }) {
-  if (!next) {
-    return (
-      <Card pad={16}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: MUTED, marginBottom: 8 }}>NEXT TIME OFF</div>
-        <div style={{ fontFamily: BRAND_SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 4 }}>Nothing booked yet</div>
-        <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 12px' }}>Time for a break? Requests go to an admin for approval.</p>
-        <button type="button" onClick={onNew} style={{ padding: '8px 14px', borderRadius: 8, border: `1px solid ${BRAND.box}`, background: BRAND.tint, color: BRAND.forest, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Plan time off</button>
-      </Card>
-    );
-  }
-  const s = typeStyle(next.request_type);
-  const inDays = daysBetween(todayStr(), firstDayOf(next));
-  const span = next.is_balance_type && next.end_date !== next.start_date ? `${shortDate(next.start_date)} – ${shortDate(next.end_date)}` : longDate(firstDayOf(next));
-  return (
-    <Card pad={16}>
-      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: MUTED, marginBottom: 8 }}>NEXT TIME OFF</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ fontFamily: BRAND_SERIF, fontSize: 34, fontWeight: 700, color: INK, lineHeight: 1.1 }}>{inDays <= 0 ? 'Today' : inDays}</span>
-        {inDays > 0 && <span style={{ fontSize: 13, color: MUTED }}>day{inDays === 1 ? '' : 's'} to go</span>}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-        <Pill bg={s.bg} color={s.text}>{s.label}</Pill>
-        <span style={{ fontSize: 12.5, color: INK }}>{span}</span>
-        {requestHours(next) > 0 && <span style={{ fontSize: 12, color: MUTED }}>· {hoursLabel(requestHours(next))}</span>}
-      </div>
-    </Card>
+    <Stat isMobile={isMobile} label={
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        Projected on
+        <DateField
+          value={target}
+          onChange={(v) => v && setTarget(v)}
+          min={todayStr()}
+          floating
+          ariaLabel="Projection date"
+          style={{ padding: '2px 8px', borderRadius: 6, border: `1px solid ${HAIRLINE}`, fontSize: 12.5, color: INK, background: 'white', boxSizing: 'border-box' }}
+        />
+      </span>
+    }
+      value={<span style={{ fontSize: 18 }}>PTO {hoursText(pto.value)}<span style={{ color: SUBTLE, fontWeight: 400 }}> · </span>UPTO {hoursText(upto)}</span>}
+      sub={`Includes ${pto.weeks} weekly PTO and ${credits} monthly UPTO credit${credits === 1 ? '' : 's'}${Object.values(pendingByType).some(Boolean) ? ', less pending requests' : ''}.`}
+    />
   );
 }
 
@@ -257,13 +224,13 @@ function WeekView({ weekStart, setWeekStart, days, isMobile, isProvider, onOpen 
   const nav = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <button type="button" style={iconBtn()} aria-label="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>‹</button>
-      <button type="button" onClick={() => setWeekStart(mondayOf(today))} style={{ ...iconBtn(), width: 'auto', padding: '0 10px', fontSize: 12, fontWeight: 600, color: INK }}>This week</button>
+      <button type="button" onClick={() => setWeekStart(mondayOf(today))} style={buttonStyle('secondary', { height: 30, padding: '0 10px', fontSize: 12.5 })}>This week</button>
       <button type="button" style={iconBtn()} aria-label="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>›</button>
     </div>
   );
 
   const legend = (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, fontSize: 11, color: MUTED }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 12, fontSize: 11.5, color: MUTED }}>
       {isProvider && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: NOT_CONTRACTED_BG, border: '1px solid #e2e4e9' }} />Not contracted</span>}
       {(isProvider ? ['Appointment', 'PTO', 'UPTO', 'Lunch', 'Meeting'] : ['PTO', 'UPTO', 'Lunch', 'Meeting']).map(t => {
         const ts = typeStyle(t);
@@ -276,20 +243,20 @@ function WeekView({ weekStart, setWeekStart, days, isMobile, isProvider, onOpen 
 
   if (isMobile) {
     return (
-      <Card title={`Week of ${heading}`} action={nav}>
+      <Card title="Schedule" subtitle={`Week of ${heading}`} action={nav}>
         {days.map(d => (
           <div key={d.date} style={{ padding: '10px 0', borderTop: `1px solid ${HAIRLINE}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-              <span style={{ fontWeight: 700, fontSize: 13.5, color: d.date === today ? BRAND.forest : INK }}>{longDate(d.date)}</span>
+              <span style={{ fontWeight: 600, fontSize: 13.5, color: d.date === today ? ACCENT : INK }}>{longDate(d.date)}{d.date === today ? ' (today)' : ''}</span>
               <span style={{ fontSize: 11.5, color: MUTED }}>{d.closed ? d.closed : d.contract ? timeRange(d.contract.start_time, d.contract.end_time) : isProvider ? 'Not scheduled' : ''}</span>
             </div>
             {d.blocks.length === 0 && !d.closed && <div style={{ fontSize: 12, color: MUTED }}>Nothing booked</div>}
             {[...d.blocks].sort((a, b) => mins(a.start) - mins(b.start)).map((b, i) => {
               const s = typeStyle(b.type, b.appointment?.appointment_status);
               return (
-                <button type="button" key={i} onClick={() => onOpen(b)} style={{ display: 'flex', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit', border: 'none', gap: 8, alignItems: 'center', padding: '6px 8px', marginBottom: 4, borderRadius: 8, background: s.bg, borderLeft: `3px ${b.pending ? 'dashed' : 'solid'} ${s.border}` }}>
-                  <span style={{ fontSize: 11.5, color: s.text, fontWeight: 700, minWidth: 110 }}>{timeRange(b.start, b.end)}</span>
-                  <span style={{ fontSize: 12.5, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}{b.pending ? ' · pending' : ''}{b.canceled ? ' · canceled' : ''}</span>
+                <button type="button" key={i} onClick={() => onOpen(b)} style={{ display: 'flex', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit', border: 'none', gap: 8, alignItems: 'center', padding: '6px 8px', marginBottom: 4, borderRadius: 4, background: s.bg, borderLeft: `3px ${b.pending ? 'dashed' : 'solid'} ${s.border}` }}>
+                  <span style={{ fontSize: 12, color: s.text, fontWeight: 600, minWidth: 110, ...NUMERIC }}>{timeRange(b.start, b.end)}</span>
+                  <span style={{ fontSize: 12.5, color: s.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}{b.pending ? ' · pending' : ''}{b.canceled ? ' · canceled' : ''}</span>
                 </button>
               );
             })}
@@ -307,24 +274,25 @@ function WeekView({ weekStart, setWeekStart, days, isMobile, isProvider, onOpen 
   const nowTop = topFor(`${now.getHours()}:${now.getMinutes()}`);
 
   return (
-    <Card title={`Week of ${heading}`} action={nav}>
-      <div style={{ display: 'grid', gridTemplateColumns: `52px repeat(${days.length}, 1fr)`, border: `1px solid ${HAIRLINE}`, borderRadius: 10, overflow: 'hidden' }}>
-        <div style={{ background: '#FCFBFE', borderBottom: `1px solid ${HAIRLINE}` }} />
+    <Card title="Schedule" subtitle={`Week of ${heading}`} action={nav}>
+      <div style={{ display: 'grid', gridTemplateColumns: `52px repeat(${days.length}, 1fr)`, border: `1px solid ${HAIRLINE}`, borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ background: '#FAFAFA', borderBottom: `1px solid ${HAIRLINE}` }} />
         {days.map(d => (
-          <div key={d.date} style={{ padding: '8px 6px', textAlign: 'center', background: d.date === today ? BRAND.tint : '#FCFBFE', borderBottom: `1px solid ${HAIRLINE}`, borderLeft: `1px solid ${HAIRLINE}` }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', color: d.date === today ? BRAND.forest : MUTED }}>{toDate(d.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div>
-            <div style={{ fontFamily: BRAND_SERIF, fontSize: 18, fontWeight: 700, color: d.date === today ? BRAND.forest : INK }}>{toDate(d.date).getDate()}</div>
-            <div style={{ fontSize: 10.5, color: MUTED, minHeight: 14 }}>{d.bookedLabel}</div>
+          <div key={d.date} style={{ padding: '8px 6px', textAlign: 'center', background: '#FAFAFA', borderBottom: `${d.date === today ? 2 : 1}px solid ${d.date === today ? ACCENT : HAIRLINE}`, borderLeft: `1px solid ${HAIRLINE}` }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: d.date === today ? ACCENT : INK, ...NUMERIC }}>
+              {toDate(d.date).toLocaleDateString('en-US', { weekday: 'short' })} {toDate(d.date).getDate()}
+            </div>
+            <div style={{ fontSize: 11, color: MUTED, minHeight: 14 }}>{d.bookedLabel}</div>
           </div>
         ))}
         <div style={{ position: 'relative', height }}>
           {hours.map(h => (
-            <div key={h} style={{ position: 'absolute', top: (h - DAY_START) * HOUR_PX - 6, right: 6, fontSize: 10, color: '#A7A1B5' }}>{h === DAY_START ? '' : formatSlotLabel(`${h}:00`).replace(':00', '')}</div>
+            <div key={h} style={{ position: 'absolute', top: (h - DAY_START) * HOUR_PX - 6, right: 6, fontSize: 10.5, color: SUBTLE }}>{h === DAY_START ? '' : formatSlotLabel(`${h}:00`).replace(':00', '')}</div>
           ))}
         </div>
         {days.map(d => (
           <div key={d.date} style={{ position: 'relative', height, borderLeft: `1px solid ${HAIRLINE}`, background: 'white' }}>
-            {hours.map(h => <div key={h} style={{ position: 'absolute', left: 0, right: 0, top: (h - DAY_START) * HOUR_PX, borderTop: h === DAY_START ? 'none' : '1px solid #F3F1F8' }} />)}
+            {hours.map(h => <div key={h} style={{ position: 'absolute', left: 0, right: 0, top: (h - DAY_START) * HOUR_PX, borderTop: h === DAY_START ? 'none' : '1px solid #F4F4F5' }} />)}
             {isProvider && !d.closed && (d.contract
               ? [[0, topFor(d.contract.start_time)], [topFor(d.contract.end_time), height]]
               : [[0, height]]
@@ -353,18 +321,18 @@ function WeekView({ weekStart, setWeekStart, days, isMobile, isProvider, onOpen 
                     left: `calc(${(b.lane / b.lanes) * 100}% + 3px)`, width: `calc(${100 / b.lanes}% - 6px)`,
                     background: s.bg, boxSizing: 'border-box', overflow: 'hidden', padding: '3px 6px',
                     ...(s.bar
-                      ? { border: 'none', borderLeft: `3px solid ${s.border}`, borderRadius: 6, boxShadow: '0 0 0 1px white, 0 1px 3px rgba(0,0,0,0.1)' }
-                      : { border: `1.5px ${b.pending ? 'dashed' : 'solid'} ${s.border}`, borderRadius: 7, boxShadow: 'none' }),
+                      ? { border: 'none', borderLeft: `3px solid ${s.border}`, borderRadius: 4, boxShadow: '0 0 0 1px white' }
+                      : { border: `1px ${b.pending ? 'dashed' : 'solid'} ${s.border}`, borderRadius: 4, boxShadow: 'none' }),
                   }}
                 >
-                  <div style={{ fontSize: 11, fontWeight: 700, color: s.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: b.canceled ? 'line-through' : 'none' }}>{b.title}</div>
-                  {h > 34 && <div style={{ fontSize: 10, color: s.text, opacity: 0.8, whiteSpace: 'nowrap' }}>{timeRange(b.start, b.end)}</div>}
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: s.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: b.canceled ? 'line-through' : 'none' }}>{b.title}</div>
+                  {h > 34 && <div style={{ fontSize: 10.5, color: s.text, opacity: 0.85, whiteSpace: 'nowrap', ...NUMERIC }}>{timeRange(b.start, b.end)}</div>}
                 </button>
               );
             })}
             {d.date === today && nowTop > 0 && nowTop < height && (
-              <div style={{ position: 'absolute', left: 0, right: 0, top: nowTop, height: 2, background: '#E11D48', zIndex: 3 }}>
-                <div style={{ position: 'absolute', left: -4, top: -3, width: 8, height: 8, borderRadius: '50%', background: '#E11D48' }} />
+              <div style={{ position: 'absolute', left: 0, right: 0, top: nowTop, height: 1.5, background: '#DC2626', zIndex: 3 }}>
+                <div style={{ position: 'absolute', left: -3, top: -2.5, width: 6.5, height: 6.5, borderRadius: '50%', background: '#DC2626' }} />
               </div>
             )}
           </div>
@@ -375,29 +343,23 @@ function WeekView({ weekStart, setWeekStart, days, isMobile, isProvider, onOpen 
   );
 }
 
-// ---------- coming up ----------
+// ---------- upcoming ----------
 function ComingUp({ items }) {
   return (
-    <Card title="Coming up">
-      {items.length === 0 && <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Nothing on the horizon.</p>}
-      <ol style={{ listStyle: 'none', margin: 0, padding: 0, position: 'relative' }}>
+    <Card title="Upcoming" style={{ paddingBottom: 6 }}>
+      {items.length === 0 && <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Nothing scheduled.</p>}
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {items.map((it, i) => (
-          <li key={i} style={{ display: 'flex', gap: 12, paddingBottom: i === items.length - 1 ? 0 : 14, position: 'relative' }}>
-            {i < items.length - 1 && <span style={{ position: 'absolute', left: 21, top: 44, bottom: 0, width: 2, background: HAIRLINE }} />}
-            <div style={{ width: 44, flexShrink: 0, textAlign: 'center', borderRadius: 10, background: it.accentBg, padding: '5px 0' }}>
-              <div style={{ fontSize: 9.5, fontWeight: 800, color: it.accent, letterSpacing: '0.05em' }}>{toDate(it.date).toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</div>
-              <div style={{ fontFamily: BRAND_SERIF, fontSize: 17, fontWeight: 700, color: it.accent, lineHeight: 1.1 }}>{toDate(it.date).getDate()}</div>
-            </div>
-            <div style={{ minWidth: 0, paddingTop: 2 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{it.title}</span>
-                {it.badge}
-              </div>
-              <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{it.detail}</div>
-            </div>
+          <li key={i} style={{ display: 'grid', gridTemplateColumns: '84px minmax(0, 1fr) auto', gap: 10, alignItems: 'baseline', padding: '10px 0', borderTop: `1px solid ${HAIRLINE}` }}>
+            <span style={{ fontSize: 12.5, color: MUTED, ...NUMERIC }}>{toDate(it.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 500, color: INK }}>{it.title}</span>
+              <span style={{ display: 'block', fontSize: 12.5, color: MUTED, marginTop: 1 }}>{it.detail}</span>
+            </span>
+            {it.badge || <span />}
           </li>
         ))}
-      </ol>
+      </ul>
     </Card>
   );
 }
@@ -411,27 +373,27 @@ function MyHoursCard({ isProvider, standing, changes, officeHours }) {
   const rows = isProvider ? standing : officeHours.map(o => ({ weekday: o.weekday, start_time: o.open_time, end_time: o.close_time }));
   const total = rows.reduce((sum, r) => sum + (mins(r.end_time) - mins(r.start_time)) / 60, 0);
   return (
-    <Card title={isProvider ? 'My contracted hours' : 'Office hours'} action={isProvider && total > 0 ? <Pill bg={BRAND.tint} color={BRAND.forest}>{hoursLabel(Math.round(total * 100) / 100)} / week</Pill> : null}>
+    <Card title={isProvider ? 'Contracted hours' : 'Office hours'} action={isProvider && total > 0 ? <span style={{ fontSize: 12.5, color: MUTED, ...NUMERIC }}>{hoursText(Math.round(total * 100) / 100)} per week</span> : null}>
       {rows.length === 0 && <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>{isProvider ? 'No contracted hours are set up yet. Ask an admin.' : 'Office hours aren\'t set up yet.'}</p>}
-      <div style={{ display: 'grid', gap: 4 }}>
+      <div>
         {WEEKDAY_ORDER.map(wd => {
           const r = rows.find(x => Number(x.weekday) === wd);
           if (!r && (wd === 0 || wd === 6)) return null;
           const todayWd = new Date().getDay() === wd;
           return (
-            <div key={wd} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '5px 8px', borderRadius: 7, background: todayWd ? BRAND.tint : 'transparent' }}>
-              <span style={{ fontWeight: 600, color: todayWd ? BRAND.forest : INK }}>{WEEKDAY_NAMES[wd]}</span>
-              <span style={{ color: r ? INK : '#A7A1B5' }}>{r ? timeRange(r.start_time, r.end_time) : 'Off'}</span>
+            <div key={wd} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, padding: '7px 0', borderTop: `1px solid ${HAIRLINE}` }}>
+              <span style={{ fontWeight: todayWd ? 600 : 400, color: INK }}>{WEEKDAY_NAMES[wd]}{todayWd ? <span style={{ color: MUTED, fontWeight: 400 }}> (today)</span> : null}</span>
+              <span style={{ color: r ? INK : SUBTLE, ...NUMERIC }}>{r ? timeRange(r.start_time, r.end_time) : 'Off'}</span>
             </div>
           );
         })}
       </div>
       {isProvider && upcoming.length > 0 && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${HAIRLINE}` }}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: MUTED, marginBottom: 6 }}>SCHEDULED CHANGES</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: INK, marginBottom: 6 }}>Scheduled changes</div>
           {upcoming.map(c => (
             <div key={c.id} style={{ fontSize: 12.5, color: INK, marginBottom: 4 }}>
-              {c.end_date ? <>Temporary hours <b>{shortDate(c.start_date)} – {shortDate(c.end_date)}</b></> : <>New hours from <b>{shortDate(c.start_date)}</b></>}
+              {c.end_date ? <>Temporary hours, {shortDate(c.start_date)} – {shortDate(c.end_date)}</> : <>New hours from {shortDate(c.start_date)}</>}
               <span style={{ color: MUTED }}> · {c.schedule.length ? c.schedule.map(d => WEEKDAY_NAMES[d.weekday]).join(', ') : 'no days'}</span>
             </div>
           ))}
@@ -447,24 +409,18 @@ function ThisWeekCard({ appointments, contractedHours }) {
   const canceled = appointments.length - active.length;
   const booked = active.reduce((s, a) => s + (Number(a.duration) || 30) / 60, 0);
   const pct = contractedHours > 0 ? Math.min(100, Math.round((booked / contractedHours) * 100)) : 0;
+  const row = (label, value) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, padding: '7px 0', borderTop: `1px solid ${HAIRLINE}` }}>
+      <span style={{ color: MUTED }}>{label}</span><span style={{ color: INK, ...NUMERIC }}>{value}</span>
+    </div>
+  );
   return (
     <Card title="This week">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-        <div style={{ background: BRAND.tint, borderRadius: 10, padding: '10px 12px' }}>
-          <div style={{ fontFamily: BRAND_SERIF, fontSize: 24, fontWeight: 700, color: INK }}>{active.length}</div>
-          <div style={{ fontSize: 11.5, color: MUTED }}>sessions</div>
-        </div>
-        <div style={{ background: '#FEF3F2', borderRadius: 10, padding: '10px 12px' }}>
-          <div style={{ fontFamily: BRAND_SERIF, fontSize: 24, fontWeight: 700, color: '#B42318' }}>{canceled}</div>
-          <div style={{ fontSize: 11.5, color: MUTED }}>canceled</div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: MUTED, marginBottom: 6 }}>
-        <span>Booked vs contracted</span>
-        <span style={{ color: INK, fontWeight: 700 }}>{hoursLabel(Math.round(booked * 100) / 100)} of {hoursLabel(Math.round(contractedHours * 100) / 100)}</span>
-      </div>
-      <div style={{ height: 8, borderRadius: 999, background: '#EEEAF6', overflow: 'hidden' }}>
-        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${BRAND.forest}, #A78BFA)` }} />
+      {row('Sessions', active.length)}
+      {row('Canceled', canceled)}
+      {row('Booked of contracted hours', `${hoursText(Math.round(booked * 100) / 100)} of ${hoursText(Math.round(contractedHours * 100) / 100)}`)}
+      <div style={{ height: 6, borderRadius: 3, background: '#F4F4F5', overflow: 'hidden', marginTop: 10 }}>
+        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: ACCENT }} />
       </div>
     </Card>
   );
@@ -589,7 +545,7 @@ export default function MyTimePage() {
         detail: r.is_balance_type
           ? `${r.start_date === r.end_date ? longDate(r.start_date) : `${shortDate(r.start_date)} – ${shortDate(r.end_date)}`} · ${hoursLabel(requestHours(r))}`
           : `${longDate(r.ooo_date)} · ${timeRange(r.start_time, r.end_time)}`,
-        badge: r.status === 'pending' ? <Pill bg="#FEF0C7" color="#93370D">Pending</Pill> : null,
+        badge: r.status === 'pending' ? <Tag tone="warning">Pending</Tag> : null,
       });
     });
     data.meetings.forEach(m => {
@@ -648,51 +604,34 @@ export default function MyTimePage() {
     [days],
   );
 
-  const firstName = user?.preferredName || user?.firstName || user?.username || '';
   const fullName = [user?.preferredName || user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.username || '';
-  const tenure = calculateTenure(data?.profile?.hire_date);
 
   return (
     <div style={{ background: PAGE_BG, fontFamily: FONT, minHeight: '100%' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'flex-end', justifyContent: 'space-between', gap: 14, flexDirection: isMobile ? 'column' : 'row', marginBottom: 22 }}>
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.forest, letterSpacing: '0.04em', marginBottom: 4 }}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase()}
-            </div>
-            <h1 style={{ fontFamily: BRAND_SERIF, fontSize: isMobile ? 26 : 32, fontWeight: 700, color: INK, margin: 0 }}>
-              {greeting()}{firstName ? `, ${firstName}` : ''}
-            </h1>
-            <div style={{ fontSize: 13.5, color: MUTED, marginTop: 4 }}>
-              Your time, balances and schedule in one place{tenure ? ` · with us for ${tenure}` : ''}.
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={openNewRequest}
-            style={{ padding: '11px 18px', borderRadius: 10, border: 'none', background: BRAND.forest, color: 'white', fontWeight: 700, fontSize: 13.5, cursor: 'pointer', boxShadow: '0 6px 16px rgba(109,40,217,0.28)', width: isMobile ? '100%' : 'auto' }}
-          >
-            + New request
-          </button>
-        </div>
+        <PageHeader
+          title="My time"
+          subtitle="Time off balances, your schedule and requests."
+          isMobile={isMobile}
+          actions={<button type="button" onClick={openNewRequest} style={buttonStyle('primary', isMobile ? { width: '100%' } : {})}>New request</button>}
+        />
 
         {!data || !derived ? (
-          <p style={{ fontSize: 14, color: MUTED }}>Loading your time…</p>
+          <p style={{ fontSize: 13.5, color: MUTED }}>Loading...</p>
         ) : (
           <>
-            {/* Balances, forecast, next up */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : isNarrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 18 }}>
-              <BalanceCard type="PTO" hours={data.balances.PTO ?? 0} pendingHours={derived.pendingByType.PTO || 0} policy={data.policy} />
-              <BalanceCard type="UPTO" hours={data.balances.UPTO ?? 0} pendingHours={derived.pendingByType.UPTO || 0} policy={data.policy} />
-              <NextUpCard next={derived.next} onNew={openNewRequest} />
-              <ForecastCard balances={data.balances} pendingByType={derived.pendingByType} policy={data.policy} />
-            </div>
+            {/* Balances, next time off, projection */}
+            <StatStrip columns={isNarrow ? 2 : 4} isMobile={isMobile}>
+              <BalanceStat first type="PTO" hours={data.balances.PTO ?? 0} pendingHours={derived.pendingByType.PTO || 0} policy={data.policy} isMobile={isMobile} />
+              <BalanceStat type="UPTO" hours={data.balances.UPTO ?? 0} pendingHours={derived.pendingByType.UPTO || 0} policy={data.policy} isMobile={isMobile} />
+              <NextTimeOffStat next={derived.next} onNew={openNewRequest} isMobile={isMobile} />
+              <ProjectionStat balances={data.balances} pendingByType={derived.pendingByType} policy={data.policy} isMobile={isMobile} />
+            </StatStrip>
 
             {/* Week + side column */}
-            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 320px', gap: 18, marginBottom: 18, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 320px', gap: 20, marginBottom: 20, alignItems: 'start' }}>
               <WeekView weekStart={weekStart} setWeekStart={setWeekStart} days={days} isMobile={isMobile} isProvider={isProvider} onOpen={openBlock} />
-              <div style={{ display: 'grid', gap: 18, minWidth: 0 }}>
+              <div style={{ display: 'grid', gap: 20, minWidth: 0 }}>
                 <ComingUp items={derived.comingUp} />
                 {!isProvider && <MyHoursCard isProvider={false} standing={[]} changes={[]} officeHours={data.officeHours} />}
               </div>
@@ -700,7 +639,7 @@ export default function MyTimePage() {
 
             {/* Providers: contracted hours + this week */}
             {isProvider && (
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 18, marginBottom: 28 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 20, marginBottom: 20 }}>
                 <MyHoursCard isProvider standing={data.standing} changes={data.changes} officeHours={data.officeHours} />
                 <ThisWeekCard appointments={week.appointments} contractedHours={contractedThisWeek} />
               </div>
@@ -728,21 +667,19 @@ export default function MyTimePage() {
             onCommentsSynced={refreshWeek}
           />
         )}
+        {/* Requests: the form, list and meetings */}
+        <div ref={requestsRef} style={{ scrollMarginTop: 16 }}>
+          <Card title="Requests" style={{ marginBottom: 20 }}>
+            <TimeOffTab isMobile={isMobile} compact openFormToken={formToken} onChanged={loadBase} />
+          </Card>
+        </div>
+
         {data && (
-          <Card title="Balance history" style={{ marginBottom: 28 }}>
-            <p style={{ fontSize: 12.5, color: MUTED, margin: '-4px 0 12px' }}>
-              PTO is earned every Sunday for the hours you worked Monday-Friday -- open a week to see how it was worked out.
-            </p>
+          <Card title="Balance history" subtitle="PTO is credited each Sunday for the hours worked Monday to Friday. Select a week to see the calculation.">
             <TimeOffHistory refreshKey={historyKey} />
           </Card>
         )}
 
-        {/* Requests: the form, list and meetings */}
-        <div ref={requestsRef} style={{ scrollMarginTop: 16 }}>
-          <Card title="My requests">
-            <TimeOffTab isMobile={isMobile} compact openFormToken={formToken} onChanged={loadBase} />
-          </Card>
-        </div>
       </div>
     </div>
   );

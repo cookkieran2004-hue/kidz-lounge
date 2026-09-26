@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useIsMobile } from '../useIsMobile';
 import { Avatar } from '../Avatar';
-import { BRAND, BRAND_SERIF, calculateTenure } from './StaffPage';
+import { calculateTenure } from './StaffPage';
 import { DateField, dateToInputValue } from './SchedulePage';
-import { Card, Pill, INK, MUTED, HAIRLINE, PAGE_BG, FONT } from '../dashboardUi';
+import { Card, Tag, PageHeader, StatStrip, Stat, UnderlineTabs } from '../dashboardUi';
+import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 
 // My profile: who you are at the practice (a summary up top), the details
 // you can change yourself, and your licences/certifications. Position,
@@ -48,30 +49,16 @@ function daysToAnniversary(hireDate) {
 }
 
 function credentialTone(c) {
-  if (!c.expiration_date) return { bg: '#F1F0F4', fg: MUTED, text: 'No expiry', key: 'none' };
+  if (!c.expiration_date) return { tone: 'neutral', text: 'No expiry', key: 'none' };
   const left = daysFromToday(c.expiration_date);
-  if (left < 0) return { bg: '#FEE4E2', fg: '#B42318', text: 'Expired', key: 'expired' };
-  if (left <= EXPIRING_SOON_DAYS) return { bg: '#FEF0C7', fg: '#93370D', text: left === 0 ? 'Expires today' : `${left} day${left === 1 ? '' : 's'} left`, key: 'soon' };
-  return { bg: '#DCFAE6', fg: '#067647', text: 'Valid', key: 'valid' };
+  if (left < 0) return { tone: 'danger', text: 'Expired', key: 'expired' };
+  if (left <= EXPIRING_SOON_DAYS) return { tone: 'warning', text: left === 0 ? 'Expires today' : `Expires in ${left} day${left === 1 ? '' : 's'}`, key: 'soon' };
+  return { tone: 'success', text: 'Current', key: 'valid' };
 }
 
-const fieldStyle = (isMobile) => ({ width: '100%', padding: isMobile ? '10px 12px' : '9px 11px', borderRadius: 9, border: `1px solid ${HAIRLINE}`, fontSize: isMobile ? 15 : 13.5, boxSizing: 'border-box', fontFamily: 'inherit', color: INK, background: 'white' });
-const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: '#4B4659', marginBottom: 5 };
-const primaryBtn = { padding: '9px 16px', borderRadius: 9, border: 'none', background: BRAND.forest, color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' };
-const ghostBtn = { padding: '8px 13px', borderRadius: 9, border: `1px solid ${HAIRLINE}`, background: 'white', color: '#374151', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' };
-const tintBtn = { padding: '8px 14px', borderRadius: 9, border: `1px solid ${BRAND.box}`, background: BRAND.tint, color: BRAND.forest, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' };
-
-// ---------- summary ----------
-function StatCard({ eyebrow, big, sub, accent = BRAND.forest }) {
-  return (
-    <Card pad={16} style={{ position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', inset: '0 auto 0 0', width: 4, background: accent }} />
-      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: accent, marginBottom: 6 }}>{eyebrow}</div>
-      <div style={{ fontFamily: BRAND_SERIF, fontSize: 22, fontWeight: 700, color: INK, lineHeight: 1.2, overflowWrap: 'anywhere' }}>{big}</div>
-      {sub && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 5 }}>{sub}</div>}
-    </Card>
-  );
-}
+const fieldStyle = (isMobile) => ({ width: '100%', padding: isMobile ? '10px 12px' : '8px 10px', borderRadius: 6, border: `1px solid ${HAIRLINE}`, fontSize: isMobile ? 15 : 13.5, boxSizing: 'border-box', fontFamily: 'inherit', color: INK, background: 'white' });
+const labelStyle = { display: 'block', fontSize: 12.5, fontWeight: 500, color: '#3F3F46', marginBottom: 5 };
+const helpStyle = { fontSize: 12, color: MUTED, marginTop: 4 };
 
 // ---------- profile tab ----------
 function ProfileDetails({ profile, onUpdated, isMobile }) {
@@ -107,27 +94,27 @@ function ProfileDetails({ profile, onUpdated, isMobile }) {
       <div style={{ ...grid, marginBottom: 14 }}>
         <div>
           <label style={labelStyle} htmlFor="kl-me-legal">Legal name</label>
-          <input id="kl-me-legal" style={{ ...fieldStyle(isMobile), background: '#F6F4FA', color: MUTED }} value={[profile.first_name, profile.middle_name, profile.last_name].filter(Boolean).join(' ')} disabled />
+          <input id="kl-me-legal" style={{ ...fieldStyle(isMobile), background: '#FAFAFA', color: MUTED }} value={[profile.first_name, profile.middle_name, profile.last_name].filter(Boolean).join(' ')} disabled />
         </div>
         <div>
           <label style={labelStyle} htmlFor="kl-me-preferred">Preferred name</label>
           <input id="kl-me-preferred" style={fieldStyle(isMobile)} value={form.preferred_name} onChange={set('preferred_name')} placeholder={profile.first_name || ''} />
-          <div style={{ fontSize: 11.5, color: MUTED, marginTop: 4 }}>What everyone sees on the schedule, tasks and chat.</div>
+          <div style={helpStyle}>Shown on the schedule, tasks and chat.</div>
         </div>
         <div>
           <label style={labelStyle} htmlFor="kl-me-phone">Phone</label>
           <input
             id="kl-me-phone" type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={14}
             aria-invalid={!phoneValid} aria-describedby="kl-me-phone-hint"
-            style={{ ...fieldStyle(isMobile), ...(phoneValid ? {} : { borderColor: '#F04438', boxShadow: '0 0 0 3px rgba(240,68,56,0.12)' }) }}
+            style={{ ...fieldStyle(isMobile), ...(phoneValid ? {} : { borderColor: '#D92D20' }) }}
             value={form.phone} onChange={setPhone} placeholder="(555) 555-5555"
           />
-          <div id="kl-me-phone-hint" style={{ fontSize: 11.5, marginTop: 4, color: phoneValid ? MUTED : '#B42318' }}>
+          <div id="kl-me-phone-hint" style={{ ...helpStyle, color: phoneValid ? MUTED : '#B42318' }}>
             {!phoneValid
               ? `Enter all 10 digits (${phoneCount} of 10 so far).`
               : storedPhoneInvalid && form.phone === savedPhone
                 ? `Your saved number (${profile.phone}) isn't a full phone number. Please re-enter it.`
-                : '10-digit US number, area code first.'}
+                : '10-digit US number, including area code.'}
           </div>
         </div>
         <div>
@@ -136,12 +123,12 @@ function ProfileDetails({ profile, onUpdated, isMobile }) {
         </div>
       </div>
       {error && <p role="alert" style={{ color: '#B42318', fontSize: 12.5, margin: '0 0 10px' }}>{error}</p>}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 14, borderTop: `1px solid ${HAIRLINE}` }}>
-        <button type="button" onClick={handleSave} disabled={saving || !dirty || !phoneValid} style={{ ...primaryBtn, opacity: saving || !dirty || !phoneValid ? 0.5 : 1, cursor: saving || !dirty || !phoneValid ? 'default' : 'pointer' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 16, borderTop: `1px solid ${HAIRLINE}` }}>
+        <button type="button" onClick={handleSave} disabled={saving || !dirty || !phoneValid} style={buttonStyle('primary', { opacity: saving || !dirty || !phoneValid ? 0.45 : 1, cursor: saving || !dirty || !phoneValid ? 'default' : 'pointer' })}>
           {saving ? 'Saving...' : 'Save changes'}
         </button>
-        {saved && !dirty && <span role="status" style={{ fontSize: 12.5, color: '#067647', fontWeight: 700 }}>Saved</span>}
-        {dirty && !saving && <span style={{ fontSize: 12.5, color: phoneValid ? MUTED : '#B42318' }}>{phoneValid ? 'You have unsaved changes.' : 'Finish the phone number to save.'}</span>}
+        {saved && !dirty && <span role="status" style={{ fontSize: 12.5, color: TONES.success.fg }}>Changes saved.</span>}
+        {dirty && !saving && <span style={{ fontSize: 12.5, color: phoneValid ? MUTED : '#B42318' }}>{phoneValid ? 'Unsaved changes' : 'Complete the phone number to save.'}</span>}
       </div>
     </Card>
   );
@@ -156,16 +143,15 @@ function AdminManagedCard({ profile }) {
     ['Username', profile.username],
   ];
   return (
-    <Card title="Managed by an admin">
+    <Card title="Employment" subtitle="Maintained by an administrator.">
       <dl style={{ margin: 0 }}>
         {rows.map(([label, value]) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: `1px solid ${HAIRLINE}` }}>
-            <dt style={{ fontSize: 12.5, fontWeight: 700, color: MUTED }}>{label}</dt>
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: `1px solid ${HAIRLINE}` }}>
+            <dt style={{ fontSize: 13, color: MUTED }}>{label}</dt>
             <dd style={{ margin: 0, fontSize: 13.5, color: INK, textAlign: 'right' }}>{value}</dd>
           </div>
         ))}
       </dl>
-      <p style={{ fontSize: 12, color: MUTED, margin: '10px 0 0' }}>Ask an admin if any of these need changing.</p>
     </Card>
   );
 }
@@ -189,7 +175,7 @@ function CredentialForm({ initial, isMobile, onSave, onCancel }) {
   };
 
   return (
-    <div style={{ border: `1px solid ${BRAND.box}`, borderRadius: 14, padding: 16, background: '#FCFBFE' }}>
+    <div style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: 16, background: '#FAFAFA', margin: '12px 0' }}>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 14, marginBottom: 14 }}>
         <div>
           <label style={labelStyle} htmlFor="kl-cred-name">Credential name</label>
@@ -206,49 +192,53 @@ function CredentialForm({ initial, isMobile, onSave, onCancel }) {
       </div>
       {error && <p role="alert" style={{ color: '#B42318', fontSize: 12.5, margin: '0 0 10px' }}>{error}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" onClick={submit} disabled={saving} style={primaryBtn}>{saving ? 'Saving...' : initial ? 'Save' : 'Add credential'}</button>
-        <button type="button" onClick={onCancel} disabled={saving} style={ghostBtn}>Cancel</button>
+        <button type="button" onClick={submit} disabled={saving} style={buttonStyle('primary')}>{saving ? 'Saving...' : initial ? 'Save' : 'Add credential'}</button>
+        <button type="button" onClick={onCancel} disabled={saving} style={buttonStyle('secondary')}>Cancel</button>
       </div>
     </div>
   );
 }
 
+const CRED_COLUMNS = 'minmax(0, 1fr) 150px 170px 150px';
+
 function CredentialRow({ c, isMobile, onEdit, onRemove }) {
   const [confirming, setConfirming] = useState(false);
-  const tone = credentialTone(c);
-  const left = c.expiration_date ? daysFromToday(c.expiration_date) : null;
+  const status = credentialTone(c);
+  const small = { padding: '5px 10px', fontSize: 12.5 };
   const actions = confirming ? (
     <>
-      <span style={{ fontSize: 12.5, color: '#B42318', fontWeight: 600, alignSelf: 'center' }}>Remove this?</span>
-      <button type="button" onClick={() => { setConfirming(false); onRemove(c.id); }} style={{ ...ghostBtn, background: '#B42318', borderColor: '#B42318', color: 'white' }}>Remove</button>
-      <button type="button" onClick={() => setConfirming(false)} style={ghostBtn}>Keep</button>
+      <button type="button" onClick={() => { setConfirming(false); onRemove(c.id); }} style={buttonStyle('secondary', { ...small, background: '#B42318', borderColor: '#B42318', color: 'white' })}>Remove</button>
+      <button type="button" onClick={() => setConfirming(false)} style={buttonStyle('secondary', small)}>Cancel</button>
     </>
   ) : (
     <>
-      <button type="button" onClick={() => onEdit(c)} style={ghostBtn}>Edit</button>
-      <button type="button" onClick={() => setConfirming(true)} style={{ ...ghostBtn, color: '#B42318' }}>Remove</button>
+      <button type="button" onClick={() => onEdit(c)} style={buttonStyle('secondary', small)}>Edit</button>
+      <button type="button" onClick={() => setConfirming(true)} style={buttonStyle('danger', small)}>Remove</button>
     </>
   );
+  const name = (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 500, color: INK }}>{c.credential_name}</div>
+      {c.notes && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}>{c.notes}</div>}
+      {confirming && <div style={{ fontSize: 12.5, color: '#B42318', marginTop: 4 }}>Remove this credential?</div>}
+    </div>
+  );
+  const expires = <span style={{ fontSize: 13.5, color: INK, ...NUMERIC }}>{c.expiration_date ? shortDate(c.expiration_date) : '–'}</span>;
+  if (isMobile) {
+    return (
+      <div style={{ padding: '12px 0', borderBottom: `1px solid ${HAIRLINE}` }}>
+        {name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>{expires}<Tag tone={status.tone}>{status.text}</Tag></div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>{actions}</div>
+      </div>
+    );
+  }
   return (
-    <div style={{ border: `1px solid ${tone.key === 'expired' ? '#F7C5C0' : tone.key === 'soon' ? '#F5D9A8' : '#EEEAF6'}`, borderRadius: 14, padding: 14, background: 'white', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-      <div aria-hidden="true" style={{ width: 52, flexShrink: 0, borderRadius: 12, background: tone.bg, textAlign: 'center', padding: '7px 0' }}>
-        <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', color: tone.fg }}>{c.expiration_date ? toDate(c.expiration_date).toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '—'}</div>
-        <div style={{ fontFamily: BRAND_SERIF, fontSize: 17, fontWeight: 700, color: tone.fg, lineHeight: 1.15 }}>{c.expiration_date ? toDate(c.expiration_date).getFullYear() : ''}</div>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 14.5, fontWeight: 700, color: INK }}>{c.credential_name}</span>
-          <Pill bg={tone.bg} color={tone.fg}>{tone.text}</Pill>
-        </div>
-        {c.expiration_date && (
-          <div style={{ fontSize: 13, color: '#374151', marginTop: 3 }}>
-            {left < 0 ? 'Expired' : 'Expires'} {longDate(c.expiration_date)}
-          </div>
-        )}
-        {c.notes && <div style={{ fontSize: 12.5, color: '#4B4659', marginTop: 6, padding: '6px 10px', background: PAGE_BG, borderRadius: 8, borderLeft: `3px solid ${tone.fg}` }}>{c.notes}</div>}
-        {isMobile && <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{actions}</div>}
-      </div>
-      {!isMobile && <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>{actions}</div>}
+    <div style={{ display: 'grid', gridTemplateColumns: CRED_COLUMNS, gap: 16, alignItems: 'center', padding: '12px 0', borderBottom: `1px solid ${HAIRLINE}` }}>
+      {name}
+      {expires}
+      <span><Tag tone={status.tone}>{status.text}</Tag></span>
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>{actions}</div>
     </div>
   );
 }
@@ -261,16 +251,20 @@ function CredentialsPanel({ credentials, isMobile, onChanged }) {
   const remove = async (id) => { await api.deleteCredential(id); onChanged(); };
 
   return (
-    <Card title="Licences and certifications" action={!mode && <button type="button" onClick={() => setMode('new')} style={tintBtn}>+ Add credential</button>}>
-      <p style={{ fontSize: 12.5, color: MUTED, margin: '-4px 0 14px' }}>
-        Anything expiring within {EXPIRING_SOON_DAYS} days is flagged here, and you'll get a renewal task 14 days before it expires.
-      </p>
-      <div style={{ display: 'grid', gap: 10 }}>
+    <Card
+      title="Licences and certifications"
+      subtitle={`Credentials expiring within ${EXPIRING_SOON_DAYS} days are flagged. A renewal task is created 14 days before expiry.`}
+      action={!mode && <button type="button" onClick={() => setMode('new')} style={buttonStyle('secondary')}>Add credential</button>}
+    >
+      <div>
         {mode === 'new' && <CredentialForm isMobile={isMobile} onSave={add} onCancel={() => setMode(null)} />}
-        {sorted.length === 0 && mode !== 'new' && (
-          <div style={{ textAlign: 'center', padding: '28px 12px', border: `1.5px dashed ${HAIRLINE}`, borderRadius: 14, color: MUTED, fontSize: 13 }}>
-            No credentials on file yet.
+        {sorted.length > 0 && !isMobile && (
+          <div style={{ display: 'grid', gridTemplateColumns: CRED_COLUMNS, gap: 16, padding: '0 0 8px', fontSize: 12, color: MUTED, borderBottom: `1px solid ${HAIRLINE}` }}>
+            <span>Credential</span><span>Expires</span><span>Status</span><span />
           </div>
+        )}
+        {sorted.length === 0 && mode !== 'new' && (
+          <p style={{ fontSize: 13.5, color: MUTED, margin: 0 }}>No credentials on file.</p>
         )}
         {sorted.map(c => (mode && mode !== 'new' && mode.id === c.id
           ? <CredentialForm key={c.id} initial={c} isMobile={isMobile} onSave={save} onCancel={() => setMode(null)} />
@@ -313,63 +307,49 @@ export default function MyProfilePage() {
   const soon = credentials.filter(c => credentialTone(c).key === 'soon').length;
   const counts = { profile: null, credentials: credentials.length };
 
+  const meta = [profile.position, profile.role === 'admin' ? 'Administrator' : 'Staff', profile.provider_name ? `Provider: ${profile.provider_name}` : null].filter(Boolean).join(' · ');
   return (
     <div style={{ background: PAGE_BG, fontFamily: FONT, minHeight: '100%' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 14 : 18, marginBottom: 22 }}>
-          <Avatar name={displayName} size={isMobile ? 56 : 72} />
+        <PageHeader title="My profile" subtitle="Your contact details, employment information and credentials." isMobile={isMobile} />
+
+        {/* Who you are, at a glance */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <Avatar name={displayName} size={40} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.forest, letterSpacing: '0.04em', marginBottom: 2 }}>MY PROFILE</div>
-            <h1 style={{ fontFamily: BRAND_SERIF, fontSize: isMobile ? 26 : 32, fontWeight: 700, color: INK, margin: 0 }}>{displayName}</h1>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
-              {profile.position && <span style={{ fontSize: 13.5, color: MUTED }}>{profile.position}</span>}
-              <Pill bg={BRAND.tint} color={BRAND.forest}>{profile.role === 'admin' ? 'Admin' : 'Staff'}</Pill>
-              {profile.provider_name && <Pill bg="#E0EDFB" color="#0C447C">Provider: {profile.provider_name}</Pill>}
-            </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: INK }}>{displayName}</div>
+            {meta && <div style={{ fontSize: 13, color: MUTED }}>{meta}</div>}
           </div>
         </div>
 
-        {/* Summary */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : isNarrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: 14, marginBottom: 22 }}>
-          <StatCard
-            eyebrow="WITH THE PRACTICE"
-            big={tenure ? tenure.replace(/^./, c => c.toUpperCase()) : 'Hire date not set'}
-            sub={profile.hire_date ? (anniversary === 0 ? `Since ${shortDate(profile.hire_date)} · Happy work anniversary!` : `Since ${shortDate(profile.hire_date)} · anniversary in ${anniversary} day${anniversary === 1 ? '' : 's'}`) : 'Ask an admin to add it.'}
+        <StatStrip columns={isNarrow ? 1 : 3} isMobile={isMobile || isNarrow}>
+          <Stat first isMobile={isMobile || isNarrow} label="Hire date"
+            value={<span style={{ fontSize: 18 }}>{profile.hire_date ? shortDate(profile.hire_date) : 'Not set'}</span>}
+            sub={profile.hire_date ? `${tenure ? tenure.replace(/^./, c => c.toUpperCase()) : ''} of service${anniversary === 0 ? '; anniversary today' : `; anniversary in ${anniversary} day${anniversary === 1 ? '' : 's'}`}` : 'An administrator can add it.'}
           />
-          <StatCard
-            eyebrow="CONTACT"
-            accent="#2F6FB5"
-            big={profile.email || 'No email yet'}
-            sub={profile.phone ? (phoneDigits(profile.phone).length === 10 ? formatPhone(profile.phone) : profile.phone) : 'No phone yet'}
+          <Stat isMobile={isMobile || isNarrow} label="Contact"
+            value={<span style={{ fontSize: 15, fontWeight: 500 }}>{profile.email || <span style={{ color: SUBTLE }}>No email on file</span>}</span>}
+            sub={profile.phone ? (phoneDigits(profile.phone).length === 10 ? formatPhone(profile.phone) : profile.phone) : 'No phone on file'}
           />
-          <StatCard
-            eyebrow="CREDENTIALS"
-            accent={expired ? '#B42318' : soon ? '#B54708' : '#067647'}
-            big={`${credentials.length} on file`}
-            sub={expired || soon ? [expired && `${expired} expired`, soon && `${soon} expiring soon`].filter(Boolean).join(' · ') : credentials.length ? 'All up to date' : 'Add your licences and certifications'}
-          />
-        </div>
+          <Stat isMobile={isMobile || isNarrow} label="Credentials"
+            value={<span style={{ fontSize: 18 }}>{credentials.length} on file</span>}
+          >
+            <div style={{ fontSize: 12.5, marginTop: 4, color: expired ? TONES.danger.fg : soon ? TONES.warning.fg : MUTED }}>
+              {expired || soon ? [expired && `${expired} expired`, soon && `${soon} expiring soon`].filter(Boolean).join(', ') : credentials.length ? 'All current' : 'None added yet'}
+            </div>
+          </Stat>
+        </StatStrip>
 
-        {/* Tabs */}
-        <div role="tablist" aria-label="Profile sections" style={{ display: 'inline-flex', padding: 3, borderRadius: 11, background: '#F3F0FA', gap: 2, marginBottom: 16 }}>
-          {TABS.map(t => {
-            const on = t.key === tab;
-            const warn = t.key === 'credentials' && (expired || soon);
-            return (
-              <button key={t.key} type="button" role="tab" aria-selected={on} onClick={() => setTab(t.key)}
-                style={{ padding: '8px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, background: on ? 'white' : 'transparent', color: on ? BRAND.forest : MUTED, boxShadow: on ? '0 1px 3px rgba(36,26,51,0.12)' : 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {t.label}
-                {counts[t.key] !== null && (
-                  <span style={{ fontSize: 11, minWidth: 18, padding: '1px 6px', borderRadius: 999, background: warn ? '#FEF0C7' : on ? BRAND.tint : 'rgba(255,255,255,0.7)', color: warn ? '#93370D' : on ? BRAND.forest : MUTED }}>{counts[t.key]}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <UnderlineTabs
+          label="Profile sections"
+          active={tab}
+          onPick={setTab}
+          style={{ marginBottom: 20 }}
+          tabs={TABS.map(t => ({ ...t, count: counts[t.key], alert: t.key === 'credentials' && (expired || soon) > 0 ? (expired ? 'danger' : 'warning') : null }))}
+        />
 
         {tab === 'profile' && (
-          <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 360px', gap: 18, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 360px', gap: 20, alignItems: 'start' }}>
             <ProfileDetails profile={profile} onUpdated={setProfile} isMobile={isMobile} />
             <AdminManagedCard profile={profile} />
           </div>

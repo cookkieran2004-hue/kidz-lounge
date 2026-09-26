@@ -3,7 +3,8 @@ import { useIsMobile } from '../useIsMobile';
 import { usePendingTimeOff } from '../PendingTimeOffContext';
 import StaffDirectory from './admin/StaffDirectory';
 import { TimeOffManageTab, OfficeHoursTab, BRAND, BRAND_SERIF } from './StaffPage';
-import { Card, INK, MUTED, PAGE_BG, FONT } from '../dashboardUi';
+import { Card } from '../dashboardUi';
+import { INK, MUTED, PAGE_BG, FONT } from '../uiTokens';
 
 // ADMIN area. Staff (the default tab) is the people-first directory; each
 // card opens /admin/staff/:username, where providers are managed too (a
