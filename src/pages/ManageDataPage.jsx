@@ -6,6 +6,7 @@ import { Avatar } from '../Avatar';
 import { WarningIcon, SyringeIcon, refreshPatientAlerts } from '../patientAlerts';
 import { DateField, TimeField } from './SchedulePage';
 import { timeTypeStyle, monthlyAccrual } from '../timeTypes';
+import { useIsMobile } from '../useIsMobile';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -1640,7 +1641,7 @@ function cellValueToPayloadValue(key, rawValue) {
   return rawValue;
 }
 
-function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory }) {
+function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory, isMobile }) {
   const [localValue, setLocalValue] = useState(value);
   const [status, setStatus] = useState('idle'); // idle | saving | saved | error
   const [dropdownPos, setDropdownPos] = useState(null); // only used by multi-select cells
@@ -1664,7 +1665,7 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
 
   const cellStyle = {
     width: '100%', minWidth: 92, border: '1px solid transparent', outline: 'none',
-    padding: '4px 6px', fontSize: 11.5, borderRadius: 4, fontFamily: 'inherit', boxSizing: 'border-box',
+    padding: isMobile ? '8px 8px' : '4px 6px', fontSize: isMobile ? 16 : 11.5, borderRadius: 4, fontFamily: 'inherit', boxSizing: 'border-box',
     background: status === 'saving' ? '#FEF9C3' : status === 'error' ? '#FEF2F2' : status === 'saved' ? '#F0FDF4' : 'transparent',
   };
 
@@ -1738,7 +1739,9 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
           type="button"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+            // Kept on screen: the list is at least 240px wide, which runs off
+            // the right edge of a phone when the cell is near it.
+            setDropdownPos({ top: rect.bottom + 4, left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)) });
           }}
           style={{
             ...cellStyle, textAlign: 'left', cursor: 'pointer', display: 'flex', flexWrap: 'wrap',
@@ -2058,6 +2061,9 @@ export function printPatientTable({ rows, totalCount, searchText, filters, sortC
 
 export function DataTableOverlay({ patients, onClose, onPatientsChanged, initialPassword }) {
   const { user: currentUser } = useAuth();
+  // Phones: full screen, the top bar stacks, and cells are bigger to tap.
+  // The table itself scrolls sideways with the Name column pinned.
+  const isMobile = useIsMobile(768);
   const [rows, setRows] = useState(patients);
   const [globalError, setGlobalError] = useState(null);
   const [staffDirectory, setStaffDirectory] = useState([]);
@@ -2185,21 +2191,26 @@ export function DataTableOverlay({ patients, onClose, onPatientsChanged, initial
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 9989, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 0 : 16 }} onClick={onClose}>
       <div
-        style={{ background: 'white', borderRadius: 10, width: '100%', height: '100%', maxWidth: 1500, display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', overflow: 'hidden' }}
+        style={{ background: 'white', borderRadius: isMobile ? 0 : 10, width: '100%', height: '100%', maxWidth: 1500, display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', overflow: 'hidden' }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #e2e4e9', flexShrink: 0, gap: 12 }}>
-          <div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>All Patient Data ({displayedRows.length} of {rows.length} records)</span>
-            <span style={{ fontSize: 11.5, color: '#9ca3af', marginLeft: 10 }}>Click any cell to edit &middot; saves when you click away &middot; click a column header to sort</span>
+        <div style={{ display: 'flex', flexWrap: isMobile ? 'wrap' : 'nowrap', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '10px 12px' : '12px 16px', borderBottom: '1px solid #e2e4e9', flexShrink: 0, gap: isMobile ? 8 : 12 }}>
+          <div style={{ order: 0, flex: isMobile ? '1 1 0' : undefined, minWidth: 0 }}>
+            <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 700, color: '#111827' }}>All Patient Data ({displayedRows.length} of {rows.length}{isMobile ? '' : ' records'})</span>
+            {isMobile
+              ? <span style={{ display: 'block', fontSize: 11.5, color: '#9ca3af', marginTop: 2 }}>Tap a cell to edit &middot; swipe sideways for more columns</span>
+              : <span style={{ fontSize: 11.5, color: '#9ca3af', marginLeft: 10 }}>Click any cell to edit &middot; saves when you click away &middot; click a column header to sort</span>}
           </div>
+          {isMobile && <div aria-hidden="true" style={{ order: 2, flexBasis: '100%', height: 0 }} />}
           <input
+            type="search"
             placeholder="Search all fields..."
+            aria-label="Search all fields"
             value={tableSearchText}
             onChange={e => setTableSearchText(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e4e9', fontSize: 12.5, width: 200 }}
+            style={{ order: 3, padding: isMobile ? '8px 10px' : '6px 10px', borderRadius: 6, border: '1px solid #e2e4e9', fontSize: isMobile ? 16 : 12.5, width: isMobile ? 'auto' : 200, flex: isMobile ? '1 1 0' : undefined, minWidth: 0, boxSizing: 'border-box' }}
           />
           <button
             type="button"
@@ -2209,18 +2220,18 @@ export function DataTableOverlay({ patients, onClose, onPatientsChanged, initial
             })}
             disabled={displayedRows.length === 0}
             title={displayedRows.length === 0 ? 'Nothing to print with the current filters' : 'Print the table exactly as it\u2019s filtered and sorted now'}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: displayedRows.length === 0 ? 'default' : 'pointer', border: '1px solid #e2e4e9', background: 'white', color: displayedRows.length === 0 ? '#9ca3af' : '#374151', flexShrink: 0, marginLeft: 'auto' }}
+            style={{ order: 4, display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '8px 12px' : '5px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: displayedRows.length === 0 ? 'default' : 'pointer', border: '1px solid #e2e4e9', background: 'white', color: displayedRows.length === 0 ? '#9ca3af' : '#374151', flexShrink: 0, marginLeft: 'auto' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
             </svg>
             Print
           </button>
-          <button onClick={onClose} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', border: '1px solid #e2e4e9', background: 'white', color: '#374151', flexShrink: 0 }}>
+          <button onClick={onClose} style={{ order: 1, padding: isMobile ? '8px 12px' : '5px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', border: '1px solid #e2e4e9', background: 'white', color: '#374151', flexShrink: 0 }}>
             Close
           </button>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid #e2e4e9', flexShrink: 0, background: '#fafafa' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: isMobile ? '8px 12px' : '10px 16px', borderBottom: '1px solid #e2e4e9', flexShrink: 0, background: '#fafafa' }}>
           <PatientFilterBuilder filters={activeFilters} onChange={setActiveFilters} patients={rows} staffDirectory={staffDirectory} />
           {(activeFilters.length > 0 || tableSearchText) && (
             <button onClick={clearAllFilters} style={{ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: 'none', background: 'none', color: '#991B1B', cursor: 'pointer' }}>
@@ -2242,8 +2253,8 @@ export function DataTableOverlay({ patients, onClose, onPatientsChanged, initial
             onCancel={() => setPendingCommit(null)}
           />
         )}
-        <div style={{ overflow: 'auto', flex: 1 }}>
-          <table style={{ borderCollapse: 'collapse', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+        <div style={{ overflow: 'auto', flex: 1, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: isMobile ? 13 : 11.5, whiteSpace: 'nowrap' }}>
             <thead>
               <tr>
                 <th
@@ -2266,8 +2277,8 @@ export function DataTableOverlay({ patients, onClose, onPatientsChanged, initial
             <tbody>
               {displayedRows.map(p => (
                 <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ position: 'sticky', left: 0, background: 'white', padding: '2px 4px', borderRight: '1px solid #e2e4e9', fontWeight: 600, minWidth: 140 }}>
-                    <EditableTableCell patient={p} columnKey="Name" value={p.Name || ''} onCommit={handleCommit} />
+                  <td style={{ position: 'sticky', left: 0, zIndex: 1, background: 'white', padding: '2px 4px', borderRight: '1px solid #e2e4e9', fontWeight: 600, minWidth: isMobile ? 130 : 140, maxWidth: isMobile ? 150 : undefined, boxShadow: isMobile ? '2px 0 4px rgba(15,23,42,0.06)' : 'none' }}>
+                    <EditableTableCell patient={p} columnKey="Name" value={p.Name || ''} onCommit={handleCommit} isMobile={isMobile} />
                   </td>
                   {PATIENT_FILTER_COLUMNS.filter(c => c.key !== 'Name').map(col => (
                     <td key={col.key} style={{ padding: '2px 4px' }}>
@@ -2277,6 +2288,7 @@ export function DataTableOverlay({ patients, onClose, onPatientsChanged, initial
                         value={col.key === 'Case_Manager' ? (p.case_manager_username || (p.Case_Manager === 'Not Needed' ? '__NOT_NEEDED__' : '')) : formatCellValue(p, col.key)}
                         onCommit={handleCommit}
                         staffDirectory={staffDirectory}
+                        isMobile={isMobile}
                       />
                     </td>
                   ))}
