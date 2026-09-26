@@ -960,7 +960,9 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
         position: 'fixed', top, left, zIndex: 9999,
         background: 'white', border: '1px solid #e2e4e9', borderRadius: 8, boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
         minWidth: offsiteMode ? 240 : 150, maxHeight: offsiteMode ? 'none' : 260, overflowY: offsiteMode ? 'visible' : 'auto', padding: 4,
+        overscrollBehavior: 'contain',
       }}
+      data-kl-dropdown=""
       onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
     >
       {!offsiteMode ? (
@@ -1285,7 +1287,13 @@ function ScheduleApp() {
   const [pinnedUnassignedKeys, setPinnedUnassignedKeys] = useState(() => new Set());
 
   useEffect(() => {
-    const closeDropdowns = () => { setRoomDropdown(null); setStatusDropdown(null); setProviderDropdown(null); };
+    // Closes the quick-edit menus when the page scrolls (they're pinned to
+    // the card that opened them) -- but not when the scroll is inside a
+    // menu itself, like scrolling down the room list.
+    const closeDropdowns = (e) => {
+      if (e.target instanceof Element && e.target.closest('[data-kl-dropdown]')) return;
+      setRoomDropdown(null); setStatusDropdown(null); setProviderDropdown(null);
+    };
     document.addEventListener('scroll', closeDropdowns, true);
     return () => document.removeEventListener('scroll', closeDropdowns, true);
   }, []);
@@ -2048,10 +2056,10 @@ function ScheduleApp() {
       {providerDropdown && createPortal(
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setProviderDropdown(null)} />
-          <div style={{
+          <div data-kl-dropdown="" style={{
             position: 'fixed', top: providerDropdown.top, left: providerDropdown.left, zIndex: 9999,
             background: 'white', border: '1px solid #e2e4e9', borderRadius: 8, boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-            minWidth: 160, maxHeight: 220, overflowY: 'auto', padding: 4,
+            minWidth: 160, maxHeight: 220, overflowY: 'auto', padding: 4, overscrollBehavior: 'contain',
           }}>
             {providers.map(p => (
               <div
@@ -2076,10 +2084,10 @@ function ScheduleApp() {
       {statusDropdown && createPortal(
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setStatusDropdown(null)} />
-          <div style={{
+          <div data-kl-dropdown="" style={{
             position: 'fixed', top: statusDropdown.top, left: statusDropdown.left, zIndex: 9999,
             background: 'white', border: '1px solid #e2e4e9', borderRadius: 8, boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-            minWidth: 150, maxHeight: 260, overflowY: 'auto', padding: 4,
+            minWidth: 150, maxHeight: 260, overflowY: 'auto', padding: 4, overscrollBehavior: 'contain',
           }}>
             {STATUS_OPTIONS.map(status => {
               const c = statusColor(status);
