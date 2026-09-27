@@ -299,6 +299,25 @@ function EntryModal({ existing, patients, providers, onPatientCreated, onClose, 
 // ---------------------------------------------------------------------------
 // The list
 // ---------------------------------------------------------------------------
+// The status tag doubles as a menu: click it to change the status.
+// Scheduled or Removed moves the entry to History.
+function StatusSelect({ entry, onChange }) {
+  const t = TONES[STATUS_TAG[entry.status].tone];
+  const chevron = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='${t.fg.replace('#', '%23')}'/%3E%3C/svg%3E")`;
+  return (
+    <select
+      aria-label={`Status for ${entry.patient_name}, ${entry.specialty}`} value={entry.status} onChange={e => onChange(entry, e.target.value)}
+      style={{
+        appearance: 'none', WebkitAppearance: 'none', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit',
+        fontSize: 11.5, fontWeight: 500, lineHeight: 1.5, padding: '1px 20px 1px 7px', color: t.fg,
+        background: `${t.bg} ${chevron} no-repeat right 7px center`,
+      }}
+    >
+      {Object.entries(STATUS_TAG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+    </select>
+  );
+}
+
 function EntryActions({ entry, onSchedule, onEdit, isMobile }) {
   return (
     <div style={{ display: 'flex', gap: 6, justifyContent: isMobile ? 'flex-start' : 'flex-end', flexWrap: 'wrap' }}>
@@ -308,13 +327,12 @@ function EntryActions({ entry, onSchedule, onEdit, isMobile }) {
   );
 }
 
-function ActiveList({ entries, isMobile, onSchedule, onEdit }) {
+function ActiveList({ entries, isMobile, onSchedule, onEdit, onStatus }) {
   const today = todayStr();
   if (isMobile) {
     return (
       <div>
         {entries.map(e => {
-          const s = STATUS_TAG[e.status];
           return (
             <div key={e.id} style={{ padding: '12px 0', borderBottom: `1px solid ${HAIRLINE}` }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -323,7 +341,7 @@ function ActiveList({ entries, isMobile, onSchedule, onEdit }) {
               </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '4px 0', flexWrap: 'wrap' }}>
                 <Tag>{e.specialty}</Tag>
-                <Tag tone={s.tone}>{s.label}</Tag>
+                <StatusSelect entry={e} onChange={onStatus} />
                 <span style={{ fontSize: 12.5, color: MUTED }}>{e.preferred_provider || 'Any provider'}</span>
               </div>
               <div style={{ fontSize: 12.5, color: MUTED }}>{availabilityText(e)}</div>
@@ -344,7 +362,6 @@ function ActiveList({ entries, isMobile, onSchedule, onEdit }) {
         <span style={head}>Availability</span><span style={head}>Waiting</span><span style={head}>Status</span><span />
       </div>
       {entries.map(e => {
-        const s = STATUS_TAG[e.status];
         return (
           <div key={e.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: 14, padding: '11px 0', borderBottom: `1px solid ${HAIRLINE}`, alignItems: 'start' }}>
             <div style={{ minWidth: 0 }}>
@@ -355,12 +372,9 @@ function ActiveList({ entries, isMobile, onSchedule, onEdit }) {
             <span><Tag title={DISCIPLINE_NAMES[e.specialty]}>{e.specialty}</Tag></span>
             <span style={{ fontSize: 13, color: e.preferred_provider ? INK : SUBTLE }}>{e.preferred_provider || 'Any'}</span>
             <span style={{ fontSize: 13, color: INK }}>{availabilityText(e)}</span>
-            <span style={{ ...NUMERIC }}>
-              <span style={{ display: 'block', fontSize: 13, color: INK }}>{waitText(daysBetween(e.referral_date, today))}</span>
-              <span style={{ display: 'block', fontSize: 12, color: MUTED }}>since {shortDate(e.referral_date)}</span>
-            </span>
+            <span style={{ fontSize: 13, color: INK, ...NUMERIC }} title={`Referred ${shortDate(e.referral_date)}`}>{waitText(daysBetween(e.referral_date, today))}</span>
             <span>
-              <Tag tone={s.tone}>{s.label}</Tag>
+              <StatusSelect entry={e} onChange={onStatus} />
               {e.status === 'contacted' && e.contacted_at && <span style={{ display: 'block', fontSize: 12, color: MUTED, marginTop: 2 }}>{shortDate(dateToInputValue(new Date(e.contacted_at)))}</span>}
             </span>
             <EntryActions entry={e} onSchedule={onSchedule} onEdit={onEdit} />
@@ -419,7 +433,8 @@ function HistoryList({ entries, isMobile, onRestore, onDelete }) {
 export default function WaitlistPage() {
   const isMobile = useIsMobile(900);
   const [view, setView] = useState('active');
-  const [data, setData] = useState({ key: null, entries: null, setupNeeded: false });
+  const [active, setActive] = useState({ entries: null, setupNeeded: false });
+  const [history, setHistory] = useState(null);
   const [version, setVersion] = useState(0);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -432,23 +447,44 @@ export default function WaitlistPage() {
   const [booking, setBooking] = useState(null);  // the entry being scheduled
 
   const reload = useCallback(() => setVersion(v => v + 1), []);
-  const loadKey = `${view}:${version}`;
+  // The active list is always loaded (the average wait uses it, even on
+  // History); History only when it's open. A reload after a change keeps
+  // showing the current rows meanwhile.
   useEffect(() => {
     let alive = true;
-    api.getWaitlist(view)
-      .then(r => { if (alive) { setData({ key: loadKey, entries: r?.entries || [], setupNeeded: !!r?.setup_needed }); setError(null); } })
-      .catch(err => { if (alive) { setData({ key: loadKey, entries: [], setupNeeded: false }); setError(err.message); } });
+    api.getWaitlist('active')
+      .then(r => { if (alive) { setActive({ entries: r?.entries || [], setupNeeded: !!r?.setup_needed }); setError(null); } })
+      .catch(err => { if (alive) { setActive(a => ({ ...a, entries: a.entries || [] })); setError(err.message); } });
     return () => { alive = false; };
-  }, [view, loadKey]);
+  }, [version]);
+  useEffect(() => {
+    if (view !== 'history') return undefined;
+    let alive = true;
+    api.getWaitlist('history')
+      .then(r => { if (alive) setHistory(r?.entries || []); })
+      .catch(err => { if (alive) { setHistory(h => h || []); setError(err.message); } });
+    return () => { alive = false; };
+  }, [view, version]);
   useEffect(() => {
     api.getPatients().then(list => setPatients(list || [])).catch(() => {});
     api.getProviders().then(list => setProviders(list || [])).catch(() => {});
   }, []);
 
-  const entries = data.entries;
-  // Switching between the list and History waits for the right data; a
-  // reload after a change keeps showing the current rows meanwhile.
-  const loading = entries === null || data.key?.split(':')[0] !== view;
+  const entries = view === 'active' ? active.entries : history;
+  const loading = entries === null;
+  // Average wait per patient on the list (a child waiting for two
+  // specialties counts once, by their oldest referral).
+  const averageWait = useMemo(() => {
+    const oldest = new Map();
+    for (const e of active.entries || []) {
+      const ref = String(e.referral_date).slice(0, 10);
+      if (!oldest.has(e.patient_id) || ref < oldest.get(e.patient_id)) oldest.set(e.patient_id, ref);
+    }
+    if (!oldest.size) return null;
+    const today = todayStr();
+    const total = [...oldest.values()].reduce((sum, ref) => sum + daysBetween(ref, today), 0);
+    return { days: Math.round(total / oldest.size), patients: oldest.size };
+  }, [active.entries]);
   const counts = useMemo(() => {
     const c = { all: (entries || []).length };
     for (const d of DISCIPLINES) c[d] = (entries || []).filter(e => e.specialty === d).length;
@@ -465,7 +501,7 @@ export default function WaitlistPage() {
 
   const act = async (fn, message) => {
     setError(null); setNotice(null);
-    try { await fn(); setNotice(message); reload(); } catch (err) { setError(err.message); }
+    try { await fn(); if (message) setNotice(message); reload(); } catch (err) { setError(err.message); }
   };
 
   // Appointment saved from the waitlist: mark the entry Scheduled.
@@ -474,6 +510,12 @@ export default function WaitlistPage() {
     setBooking(null);
     await act(() => api.updateWaitlistEntry(entry.id, { status: 'scheduled' }), `${entry.patient_name} is scheduled and has moved to History.`);
   };
+
+  const changeStatus = (e, status) => act(
+    () => api.updateWaitlistEntry(e.id, { status }),
+    ['scheduled', 'removed'].includes(status) ? `${e.patient_name} (${e.specialty}) is marked ${STATUS_TAG[status].label} and has moved to History.` : null,
+  );
+  const openAdd = () => { setNotice(null); setModal({ existing: null }); };
 
   const tabs = [
     { key: 'all', label: 'All', count: view === 'active' ? counts.all : undefined },
@@ -487,10 +529,20 @@ export default function WaitlistPage() {
           title="Waitlist"
           subtitle={view === 'active' ? 'Patients waiting to start services, longest wait first.' : 'Entries that were scheduled or removed, most recent first.'}
           isMobile={isMobile}
-          actions={<button type="button" onClick={() => { setNotice(null); setModal({ existing: null }); }} disabled={data.setupNeeded} style={buttonStyle('primary', isMobile ? { width: '100%' } : {})}>Add to waitlist</button>}
+          actions={(
+            <div style={{ textAlign: isMobile ? 'left' : 'right', ...NUMERIC }}>
+              <div style={{ fontSize: 12.5, color: MUTED }}>Average wait</div>
+              <div style={{ fontSize: 22, fontWeight: 600, color: INK, lineHeight: 1.25 }}>
+                {averageWait ? (averageWait.days < 1 ? 'Under a day' : waitText(averageWait.days)) : '–'}
+              </div>
+              <div style={{ fontSize: 12, color: MUTED }}>
+                {averageWait ? `across ${averageWait.patients} patient${averageWait.patients === 1 ? '' : 's'} on the list` : 'Nobody on the list'}
+              </div>
+            </div>
+          )}
         />
 
-        {data.setupNeeded && (
+        {active.setupNeeded && (
           <p style={{ fontSize: 13.5, color: TONES.warning.fg, background: TONES.warning.bg, borderRadius: 6, padding: '10px 12px', margin: '0 0 16px' }}>
             The waitlist isn't set up yet. It needs migrations/2026-10-08_waitlist.sql to be run on the database.
           </p>
@@ -501,10 +553,8 @@ export default function WaitlistPage() {
         <Card pad={isMobile ? 14 : 20}>
           <div style={{ display: 'flex', alignItems: isMobile ? 'stretch' : 'flex-end', gap: 12, flexDirection: isMobile ? 'column' : 'row' }}>
             <UnderlineTabs label="Specialty" active={specialty} onPick={setSpecialty} tabs={tabs} style={{ flex: 1 }} />
-            <div style={{ display: 'flex', gap: 4, paddingBottom: isMobile ? 0 : 6 }} role="group" aria-label="Show">
-              {[['active', 'On the list'], ['history', 'History']].map(([k, l]) => (
-                <button key={k} type="button" aria-pressed={view === k} onClick={() => { setView(k); setNotice(null); }} style={chip(view === k)}>{l}</button>
-              ))}
+            <div style={{ paddingBottom: isMobile ? 0 : 6 }}>
+              <button type="button" onClick={openAdd} disabled={active.setupNeeded} style={buttonStyle('primary', isMobile ? { width: '100%' } : {})}>Add to waitlist</button>
             </div>
           </div>
 
@@ -518,6 +568,11 @@ export default function WaitlistPage() {
                 ))}
               </div>
             )}
+            <div style={{ display: 'flex', gap: 4, marginLeft: isMobile ? 0 : 'auto' }} role="group" aria-label="Show">
+              {[['active', 'On the list'], ['history', 'History']].map(([k, l]) => (
+                <button key={k} type="button" aria-pressed={view === k} onClick={() => { setView(k); setNotice(null); }} style={chip(view === k)}>{l}</button>
+              ))}
+            </div>
           </div>
 
           {loading && <p style={{ fontSize: 13.5, color: MUTED, margin: '14px 0 0' }}>Loading...</p>}
@@ -529,7 +584,7 @@ export default function WaitlistPage() {
             </p>
           )}
           {!loading && shown.length > 0 && (view === 'active' ? (
-            <ActiveList entries={shown} isMobile={isMobile} onEdit={(e) => { setNotice(null); setModal({ existing: e }); }} onSchedule={(e) => { setNotice(null); setBooking(e); }} />
+            <ActiveList entries={shown} isMobile={isMobile} onStatus={changeStatus} onEdit={(e) => { setNotice(null); setModal({ existing: e }); }} onSchedule={(e) => { setNotice(null); setBooking(e); }} />
           ) : (
             <HistoryList
               entries={shown} isMobile={isMobile}
