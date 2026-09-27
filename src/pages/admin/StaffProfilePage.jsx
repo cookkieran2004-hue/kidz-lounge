@@ -18,6 +18,7 @@ import {
   displayName, legalName, formatLongDate, dateOnly, staffSavePayload, scheduleNameFor,
 } from './adminUi';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, roleLabel } from '../../roles';
+import SpecialtyPicker from '../../SpecialtyPicker';
 
 const SECTIONS = [
   { key: 'account', label: 'Account and role' },
@@ -373,7 +374,7 @@ function ProviderSection({ staff, providers, allStaff, isMobile, onChanged }) {
       {mode === 'details' && (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: twoCol, gap: 12 }}>
-            <label style={{ display: 'block' }}><span style={labelStyle()}>Specialty</span><input style={inputStyle()} value={details.specialty} onChange={e => setDetails(d => ({ ...d, specialty: e.target.value }))} placeholder="Speech-language pathology" /></label>
+            <div><span style={labelStyle()}>Specialty</span><SpecialtyPicker style={inputStyle()} value={details.specialty} onChange={v => setDetails(d => ({ ...d, specialty: v }))} /></div>
             <label style={{ display: 'block' }}><span style={labelStyle()}>Credentials</span><input style={inputStyle()} value={details.credentials} onChange={e => setDetails(d => ({ ...d, credentials: e.target.value }))} placeholder="MS, CCC-SLP" /></label>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
@@ -411,7 +412,7 @@ function ProviderSection({ staff, providers, allStaff, isMobile, onChanged }) {
             On the schedule as <strong style={{ fontFamily: BRAND_SERIF, fontSize: 15, color: INK }}>{want}</strong>
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: twoCol, gap: 12 }}>
-            <label style={{ display: 'block' }}><span style={labelStyle()}>Specialty</span><input style={inputStyle()} value={newProv.specialty} onChange={e => setNewProv(p => ({ ...p, specialty: e.target.value }))} placeholder="Speech-language pathology" /></label>
+            <div><span style={labelStyle()}>Specialty</span><SpecialtyPicker style={inputStyle()} value={newProv.specialty} onChange={v => setNewProv(p => ({ ...p, specialty: v }))} /></div>
             <label style={{ display: 'block' }}><span style={labelStyle()}>Credentials</span><input style={inputStyle()} value={newProv.credentials} onChange={e => setNewProv(p => ({ ...p, credentials: e.target.value }))} placeholder="MS, CCC-SLP" /></label>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>

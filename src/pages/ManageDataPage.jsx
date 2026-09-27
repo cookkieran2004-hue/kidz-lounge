@@ -8,6 +8,7 @@ import { DateField, TimeField } from './SchedulePage';
 import { timeTypeStyle, monthlyAccrual } from '../timeTypes';
 import { useIsMobile } from '../useIsMobile';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoices } from '../roles';
+import SpecialtyPicker from '../SpecialtyPicker';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -584,7 +585,7 @@ export function ProviderModal({ existing, onClose, onSaved }) {
         )}
 
         <label style={labelStyle()}>Specialty</label>
-        <input style={inputStyle()} value={specialty} onChange={e => setSpecialty(e.target.value)} placeholder="e.g. Speech-Language Pathology" />
+        <div style={{ marginBottom: 12 }}><SpecialtyPicker style={{ ...inputStyle(), marginBottom: 0 }} value={specialty} onChange={setSpecialty} /></div>
 
         <label style={labelStyle()}>Credentials</label>
         <input style={inputStyle()} value={credentials} onChange={e => setCredentials(e.target.value)} placeholder="e.g. MS, CCC-SLP" />

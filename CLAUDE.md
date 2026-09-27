@@ -20,7 +20,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - A layout change once had to be reverted, so don't hand over UI you haven't looked at.
 - **Verify UI before handing it over.** No login to the real app is available. Instead:
   - Run a throwaway mock API (a Node `http` server in the session scratchpad serving the endpoints the page needs) and start Vite against it: `VITE_API_URL=http://localhost:8787 npx vite --port 5199`.
-  - Put a temporary `__mytime_preview.html` in the project root. It sets `sessionStorage.kidz_lounge_token`, loads the route in an `<iframe>`, and injects a style hiding the auto-opening task drawer (`[style*="z-index: 9990"],[style*="z-index: 9991"]{display:none!important}`).
+  - Put a temporary `__mytime_preview.html` in the project root (it's in `.gitignore`: one was once committed by accident). It sets `sessionStorage.kidz_lounge_token`, loads the route in an `<iframe>`, and injects a style hiding the auto-opening task drawer (`[style*="z-index: 9990"],[style*="z-index: 9991"]{display:none!important}`).
   - Screenshot with headless Chrome (`--headless=new --screenshot --virtual-time-budget=...`), or `--dump-dom` with a script that clicks and prints results.
   - For phone width, size the iframe to 390px: headless Chrome's window has a minimum width.
   - **Delete the preview file and stop the servers afterwards.**
@@ -76,6 +76,8 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - Add new endpoints here, grouped under the existing `// ---- Section ----` comments.
 - `src/App.jsx`: routes. Wrap pages in `RequireAuth` or `RequireAdmin` (Admin and Developer) from `ProtectedRoute.jsx`. `/support` is public. The global providers are `AuthProvider`, `PendingTimeOffProvider`, `TasksProvider` and `ChatProvider`.
 - `src/pages/`: one file per page, and some are very large (`SchedulePage.jsx` has about 3.4k lines, `ManageDataPage.jsx` about 2.6k). Search inside them before adding new files. Other pages import shared pieces from them: `DateField`, `TimeField`, `AppointmentModal`, `OOOModal`, `formatSlotLabel` and `dateToInputValue` from `SchedulePage.jsx`, and `TimeOffTab` and `BRAND` from `StaffPage.jsx`.
+- **Provider specialty** is picked with `src/SpecialtyPicker.jsx` (ST / OT / PT / SI from `src/disciplines.js`, several allowed, saved as "ST/OT"). Never a free-text input.
+- **The HOLD placeholder patient** (`isHoldPatient`) can be booked with several providers at once, so it's never a "same patient" conflict. Provider and room conflicts still apply.
 - **Schedule** (`SchedulePage.jsx`, `WeeklySchedulePage.jsx`):
   - The daily Provider grid has discipline filter chips (All / ST / OT / PT / SI), parsed from each provider's `specialty` and remembered in `localStorage` per user (`kl.schedule.providerFilter.<username>`).
   - Room-less sessions show a "Set room" pill (`AppointmentCard`'s `setRoom` prop).

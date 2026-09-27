@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Claude's temporary local preview page (never commit)
+__mytime_preview.html

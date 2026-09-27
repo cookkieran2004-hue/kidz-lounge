@@ -8,6 +8,7 @@ import {
   cardStyle, btn, inputStyle, labelStyle, hintStyle, overlayStyle, scheduleNameFor,
 } from './adminUi';
 import { ROLES, ROLE_LABELS, ROLE_HINTS } from '../../roles';
+import SpecialtyPicker from '../../SpecialtyPicker';
 
 // ---------------------------------------------------------------------------
 // Shown once after creating an account or resetting a password. Only the
@@ -303,7 +304,8 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
               <div style={{ ...cardStyle({ padding: 16, marginTop: 12, background: '#FCFBFE' }) }}>
                 <ScheduleNameLine name={scheduleName} clash={nameClash} />
                 <div style={{ display: 'grid', gridTemplateColumns: twoCol, gap: 12, marginTop: 14 }}>
-                  <Field label="Specialty"><input style={inputStyle()} value={prov.specialty} onChange={e => setProv(p => ({ ...p, specialty: e.target.value }))} placeholder="Speech-language pathology" /></Field>
+                  {/* Not <Field>: its <label> would turn clicks on the options into clicks on the dropdown button. */}
+                  <div><span style={labelStyle()}>Specialty</span><SpecialtyPicker style={inputStyle()} value={prov.specialty} onChange={v => setProv(p => ({ ...p, specialty: v }))} /></div>
                   <Field label="Credentials"><input style={inputStyle()} value={prov.credentials} onChange={e => setProv(p => ({ ...p, credentials: e.target.value }))} placeholder="MS, CCC-SLP" /></Field>
                 </div>
                 <div style={{ marginTop: 14 }}>

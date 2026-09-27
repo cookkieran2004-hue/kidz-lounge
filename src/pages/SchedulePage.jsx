@@ -8,7 +8,7 @@ import { MeetingAgendaEditor, MeetingAgendaPlaceholder } from '../MeetingAgenda'
 import { useStaffNames } from '../staffDirectory';
 import { usePatientAlerts, alertsFor, AlertSymbol, PatientAlertsInline } from '../patientAlerts';
 import { canManage } from '../roles';
-import { DISCIPLINES, disciplinesOf } from '../disciplines';
+import { DISCIPLINES, DISCIPLINE_NAMES, disciplinesOf } from '../disciplines';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -240,7 +240,9 @@ export function computeConflicts(appointments, oooRecords, contractedGaps = [], 
       const types = [];
       if (a.provider && a.provider === b.provider) types.push('provider');
       if (a.treatment_area && !isOffsite(a.treatment_area) && a.treatment_area === b.treatment_area) types.push('room');
-      if (a.patient_name && a.patient_name === b.patient_name) types.push('patient');
+      // The HOLD placeholder isn't a real child: it can be booked with
+      // several providers at once. Provider and room clashes still count.
+      if (a.patient_name && a.patient_name === b.patient_name && !isHoldPatient(a.patient_name)) types.push('patient');
 
       if (types.length > 0) {
         list.push({ kind: 'pair', a, b, types });
@@ -1285,7 +1287,7 @@ function ProviderFilterBar({ prefs, onChange, counts, totalShown }) {
         const active = prefs.disciplines.includes(d);
         const n = d === 'Other' ? counts.other : counts[d];
         return (
-          <button key={d} type="button" aria-pressed={active} onClick={() => toggle(d)} style={chip(active, n === 0 && !active ? { color: '#b0b4bb' } : {})} title={d === 'SI' ? 'Sensory integration' : undefined}>
+          <button key={d} type="button" aria-pressed={active} onClick={() => toggle(d)} style={chip(active, n === 0 && !active ? { color: '#b0b4bb' } : {})} title={DISCIPLINE_NAMES[d]}>
             {d} {count(n, active)}
           </button>
         );
@@ -2380,7 +2382,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           const range = getAppointmentTimeRange(apt);
           const overlaps = draftRange.start < range.end && range.start < draftRange.end;
           if (!overlaps) return;
-          if (patientConfirmed && patientSearch && apt.patient_name === patientSearch) {
+          if (patientConfirmed && patientSearch && apt.patient_name === patientSearch && !isHoldPatient(patientSearch)) {
             found.push({ type: 'patient', apt });
           }
           if (treatmentArea && !isOffsite(treatmentArea) && apt.treatment_area === treatmentArea) {
