@@ -9,6 +9,7 @@ import TaskDetailModal from '../../TaskDetailModal';
 import { PasswordConfirmModal, UsualScheduleEditor, ScheduleChangesEditor, TimeOffBalanceEditor, generateTempPassword } from '../ManageDataPage';
 import { TimeOffManageTab, calculateTenure } from '../StaffPage';
 import TimeOffHistory from '../../TimeOffHistory';
+import { UnderlineTabs } from '../../dashboardUi';
 import { CredentialsCard } from './NewStaffModal';
 import { roomDisplayText, DateField } from '../SchedulePage';
 import {
@@ -467,21 +468,34 @@ function ScheduleSection({ staff, providerExists, goTo }) {
 // Time off
 // ---------------------------------------------------------------------------
 function TimeOffSection({ staff, isMobile, onChanged }) {
-  // Bumped after time off is added here, so the balances above re-load
-  // and show the hours that just came off.
+  // Two tabs: their requests, and their balances (with the history).
+  // Bumped after time off is added, so the balances re-load and show the
+  // hours that just came off.
+  const [view, setView] = useState('requests');
   const [balanceVersion, setBalanceVersion] = useState(0);
   const [historyVersion, setHistoryVersion] = useState(0);
   return (
-    <SectionCard title="Time off" hint="Balances, and every request. Use Adjust to correct a balance directly, for example to give someone their real starting balance.">
-      <TimeOffBalanceEditor key={`${staff.username}:${balanceVersion}`} username={staff.username} embedded onSaved={() => setHistoryVersion(v => v + 1)} />
-      <div style={{ marginTop: 22 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Balance history</h3>
-        <TimeOffHistory username={staff.username} refreshKey={balanceVersion + historyVersion} limit={8} onChanged={() => setBalanceVersion(v => v + 1)} />
-      </div>
-      <div style={{ marginTop: 22 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Time off and requests</h3>
+    <SectionCard
+      title="Time off"
+      hint={view === 'requests'
+        ? 'Every request, and time off added for them.'
+        : 'Use Adjust to correct a balance directly, for example to give someone their real starting balance.'}
+    >
+      <UnderlineTabs
+        label="Time off" active={view} onPick={setView} style={{ marginBottom: 16 }}
+        tabs={[{ key: 'requests', label: 'Requests' }, { key: 'balances', label: 'Balances' }]}
+      />
+      {view === 'requests' ? (
         <TimeOffManageTab isMobile={isMobile} embedded forUsername={staff.username} onChanged={onChanged} onAdded={() => setBalanceVersion(v => v + 1)} />
-      </div>
+      ) : (
+        <>
+          <TimeOffBalanceEditor key={`${staff.username}:${balanceVersion}`} username={staff.username} embedded onSaved={() => setHistoryVersion(v => v + 1)} />
+          <div style={{ marginTop: 22 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Balance history</h3>
+            <TimeOffHistory username={staff.username} refreshKey={balanceVersion + historyVersion} limit={8} onChanged={() => setBalanceVersion(v => v + 1)} />
+          </div>
+        </>
+      )}
     </SectionCard>
   );
 }
