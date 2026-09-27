@@ -290,8 +290,13 @@ export default function ChatWidget() {
   return (
     <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9985, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       {widgetOpen && (
+        // Never taller or wider than the window: 480 x 340 when there's room,
+        // otherwise whatever is left above the chat button (20px margin +
+        // 56px button + 12px gap below, 20px clear at the top). Messages
+        // scroll inside the panel, so the page itself never has to.
         <div style={{
-          width: 340, height: 480, background: 'white', borderRadius: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
+          width: 'min(340px, calc(100vw - 40px))', height: 'min(480px, calc(100dvh - 108px))', minHeight: 260,
+          background: 'white', borderRadius: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
           marginBottom: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', border: `1px solid ${BORDER}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: BRAND_PURPLE, color: 'white' }}>
