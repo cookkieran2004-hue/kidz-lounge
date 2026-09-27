@@ -77,7 +77,10 @@ export function Stat({ label, value, sub, children, first, isMobile, valueColor 
 // filled circle of that color to draw attention to the tab.
 export function UnderlineTabs({ tabs, active, onPick, label, style }) {
   return (
-    <div role="tablist" aria-label={label} style={{ display: 'flex', gap: 20, borderBottom: `1px solid ${HAIRLINE}`, overflowX: 'auto', ...style }}>
+    // Wraps rather than scrolls: a scroll box here drew a scrollbar under the
+    // tabs (the selected tab's underline sits 1px below the bar), and on
+    // phones it hid the last tabs off to the side.
+    <div role="tablist" aria-label={label} style={{ display: 'flex', flexWrap: 'wrap', columnGap: 20, rowGap: 2, borderBottom: `1px solid ${HAIRLINE}`, ...style }}>
       {tabs.map(t => {
         const on = t.key === active;
         return (
