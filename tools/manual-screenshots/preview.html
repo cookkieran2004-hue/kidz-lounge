@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html><body style="margin:0;background:white">
+<!-- User-manual screenshot page (see shot.sh). Copy to the repo root as
+     __mytime_preview.html (gitignored) while Vite runs against mock-api.cjs.
+     Address: #role|route|width|height|action[,action...] -->
+<script>
+const [role, route, w, h, action] = decodeURIComponent(location.hash.slice(1)).split('|');
+if (role !== 'none') sessionStorage.setItem('kidz_lounge_token', role); else sessionStorage.removeItem('kidz_lounge_token');
+</script>
+<iframe id="f" style="border:0;display:block"></iframe>
+<script>
+const f = document.getElementById('f');
+f.style.width = w + 'px'; f.style.height = h + 'px';
+f.src = route;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const $$ = (sel) => [...f.contentDocument.querySelectorAll(sel)];
+// Only inside the page itself (not the hidden task drawer or chat).
+const $$m = (sel) => [...(f.contentDocument.querySelector('main') || f.contentDocument).querySelectorAll(sel)];
+const btn = (t) => $$('button').find(b => (typeof t === 'string' ? b.textContent.trim() === t : t.test(b.textContent.trim())));
+const type = (el, v) => { const s = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); };
+// The mock's appointments are on weekdays; the schedule opens on today, so
+// step to the next weekday (the mock's week starts Mon Sep 28, 2026).
+const nextDay = async () => {
+  const d = $$('button').find(b => /day, [A-Z][a-z]+ \d+, \d{4}/.test(b.textContent));
+  const next = d.parentElement.nextElementSibling;
+  for (let i = 0; i < 7 && /Saturday|Sunday/.test(d.textContent); i++) { next.click(); await sleep(400); }
+  await sleep(1200);
+};
+const chatBubble = () => $$('button').find(b => b.style.width === '56px' && b.style.height === '56px');
+const ACTIONS = {
+  none: async () => {},
+  nextDay,
+  room: async () => { await nextDay(); btn(/Room/).click(); await sleep(600); },
+  unassigned: async () => { await nextDay(); btn(/Unassigned/).click(); await sleep(600); },
+  newAppt: async () => {
+    await nextDay(); btn(/Create Appointment/).click(); await sleep(500);
+    const pin = $$('input').find(i => /patient/i.test(i.placeholder || '')); pin.focus(); type(pin, 'Mia'); await sleep(900);
+    const opt = $$('div').find(d => d.textContent.trim() === 'Mia Chen' && d.style.cursor === 'pointer'); opt && opt.click(); await sleep(500);
+  },
+  newApptClean: async () => {
+    await nextDay(); btn(/Create Appointment/).click(); await sleep(500);
+    const pin = $$('input').find(i => /patient/i.test(i.placeholder || '')); pin.focus(); type(pin, 'Ethan'); await sleep(900);
+    const opt = $$('div').find(d => d.textContent.trim() === 'Ethan Cruz' && d.style.cursor === 'pointer'); opt && opt.click(); await sleep(700);
+  },
+  openAppt: async () => { await nextDay(); const c = $$m('div').find(d => d.style.cursor === 'pointer' && /Mia Chen/.test(d.textContent) && d.textContent.length < 90); c && c.click(); await sleep(1200); },
+  openOOO: async () => { await nextDay(); const c = $$m('div').find(d => d.style.position === 'absolute' && d.onclick !== null && /Meeting/.test(d.textContent) && d.textContent.length < 60); c && c.click(); await sleep(1500); },
+  userMenu: async () => { const u = $$('button').find(b => /^(AL|CM|DW)\s*(alee|cmorgan|dwhitfield)/.test(b.textContent.trim())); if (!u) { document.title = 'ERR no menu'; return; } u.click(); await sleep(500); },
+  chat: async () => { chatBubble().click(); await sleep(900); },
+  chatConv: async () => { chatBubble().click(); await sleep(900); const c = $$('div').find(d => d.style.cursor === 'pointer' && /Front desk/.test(d.textContent) && d.textContent.length < 140); c && c.click(); await sleep(1200); },
+  waitAdd: async () => { btn('Add to waitlist').click(); await sleep(400); btn('ST').click(); $$('[aria-label="Available days"] button')[0].click(); await sleep(300); },
+  waitHistory: async () => { btn('History').click(); await sleep(800); },
+  newRequest: async () => { btn('New request').click(); await sleep(900); },
+  weekDetails: async () => { const d = $$('button').find(b => b.textContent.trim() === 'Details'); d.scrollIntoView(); d.click(); await sleep(500); d.closest('li').scrollIntoView(); await sleep(300); },
+  editHours: async () => { const d = $$('button').find(b => b.textContent.trim() === 'Details'); d.click(); await sleep(400); btn('Edit hours').click(); await sleep(300); d.closest('li').scrollIntoView(); await sleep(300); },
+  taskBoard: async () => { btn('Task Board').click(); await sleep(900); },
+  openTask: async () => { const t = $$m('div').find(d => d.style.cursor === 'pointer' && /Send progress report/.test(d.textContent) && d.textContent.length < 200); t && t.click(); await sleep(900); },
+  dataTable: async () => { btn(/Data table/i).click(); await sleep(500); },
+  pending: async () => { btn(/^Pending/).click(); await sleep(600); },
+  balances: async () => { btn(/^Balances/).click(); await sleep(900); },
+  balanceEdit: async () => { btn(/^Balances/).click(); await sleep(900); const b = $$('button').find(x => /^PTO 31/.test(x.getAttribute('aria-label') || '')); b && b.click(); await sleep(300); },
+  newStaff: async () => { btn(/Add staff/i).click(); await sleep(800); },
+  profBalances: async () => { const t = $$('button[role=tab]').find(b => b.textContent.trim() === 'Balances'); t && t.click(); await sleep(900); },
+};
+f.addEventListener('load', async () => {
+  const doc = f.contentDocument;
+  const st = doc.createElement('style');
+  st.textContent = '[style*="z-index: 9990"],[style*="z-index: 9991"]{display:none!important} *{scrollbar-width:none} ::-webkit-scrollbar{display:none}';
+  doc.head.appendChild(st);
+  await sleep(3500);
+  if (!/^chat/.test(action || 'none')) { const b = chatBubble(); if (b) b.parentElement.style.display = 'none'; }
+  try { for (const a of (action || 'none').split(',')) await ACTIONS[a](); } catch (e) { document.title = 'ERR ' + e.message; }
+  await sleep(600);
+  if (!document.title.startsWith('ERR')) document.title = 'DONE';
+});
+</script>
+</body></html>

@@ -18,6 +18,7 @@ import TasksPage from './pages/TasksPage';
 import MyProfilePage from './pages/MyProfilePage';
 import MyTimePage from './pages/MyTimePage';
 import WaitlistPage from './pages/WaitlistPage';
+import ManualPage from './pages/ManualPage';
 import AdminPage from './pages/AdminPage';
 import StaffProfilePage from './pages/admin/StaffProfilePage';
 import SupportPage from './pages/SupportPage';
@@ -51,6 +52,7 @@ function AppShell() {
           <Route path="/admin/staff/:username" element={<RequireAdmin><StaffProfilePage /></RequireAdmin>} />
             {/* Help & Support: open to everyone, signed in or not */}
             <Route path="/support" element={<SupportPage />} />
+            <Route path="/manual" element={<ManualPage />} />
             <Route path="/support/tickets" element={<RequireAuth><SupportTicketsPage /></RequireAuth>} />
             {/* Old address for the single "My Page" -- keeps bookmarks working */}
             <Route path="/me" element={<Navigate to="/profile" replace />} />
