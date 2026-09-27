@@ -225,8 +225,11 @@ export const api = {
   // Scheduled hours a PTO/UPTO span would cost ({ hours }).
   getTimeOffEstimate: (record, username) => request(`/time-off/estimate?${new URLSearchParams({ start_date: record.start_date, end_date: record.end_date, start_time: record.start_time, end_time: record.end_time, ...(username ? { username } : {}) })}`),
   getTimeOffPolicy: (username) => request(`/time-off/policy${username ? `?username=${encodeURIComponent(username)}` : ''}`),
-  setTimeOffBalance: (username, balanceType, balanceHours) =>
-    request('/time-off/balances', { method: 'PUT', body: JSON.stringify({ username, balance_type: balanceType, balance_hours: balanceHours }) }),
+  // note: optional reason, shown in their Balance history.
+  setTimeOffBalance: (username, balanceType, balanceHours, note) =>
+    request('/time-off/balances', { method: 'PUT', body: JSON.stringify({ username, balance_type: balanceType, balance_hours: balanceHours, ...(note ? { note } : {}) }) }),
+  // Admin: every active employee's PTO / UPTO, pending hours and weekly accrual.
+  getAllTimeOffBalances: () => request('/time-off/balances/all'),
 
   getMyProfile: () => request('/staff/me'),
   updateMyProfile: (record) => request('/staff/me', { method: 'PUT', body: JSON.stringify(record) }),

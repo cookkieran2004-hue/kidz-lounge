@@ -10,6 +10,7 @@ import { timeTypeStyle } from '../timeTypes';
 import { Tag, UnderlineTabs } from '../dashboardUi';
 import { INK as UI_INK, MUTED as UI_MUTED, HAIRLINE as UI_HAIRLINE, NUMERIC, buttonStyle } from '../uiTokens';
 import { canAdminister } from '../roles';
+import TimeOffBalancesBoard from '../TimeOffBalancesBoard';
 
 // Building blocks for the pages under the username menu (My profile,
 // My time, ADMIN). This file used to be the single "/me" page; the pages
@@ -1015,6 +1016,8 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
     { key: 'upcoming', label: 'Upcoming' },
     { key: 'past', label: 'Past' },
     { key: 'denied', label: 'Denied' },
+    // Everyone's PTO / UPTO totals (the Admin page's board, not a profile's).
+    ...(forUsername ? [] : [{ key: 'balances', label: 'Balances' }]),
   ];
   const tab = picked || (requests && groups.pending.length === 0 ? 'upcoming' : 'pending');
   const EMPTY = {
@@ -1044,7 +1047,7 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
       )}
 
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-        <CountTabs tabs={TABS} active={tab} onPick={setPicked} label="Time off" counts={Object.fromEntries(TABS.map(t => [t.key, groups[t.key].length]))} />
+        <CountTabs tabs={TABS} active={tab} onPick={setPicked} label="Time off" counts={Object.fromEntries(TABS.map(t => [t.key, groups[t.key]?.length]))} />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto', marginBottom: 6 }}>
           {!forUsername && (
             <input type="search" value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="Filter by name" aria-label="Filter by name" style={{ ...inputBox, width: isMobile ? '100%' : 180 }} />
@@ -1064,7 +1067,9 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
         </p>
       )}
 
-      {requests === null ? (
+      {tab === 'balances' ? (
+        <TimeOffBalancesBoard nameQuery={nameQuery} isMobile={isMobile} onChanged={load} />
+      ) : requests === null ? (
         <p style={{ fontSize: 13, color: BRAND.muted }}>Loading time off...</p>
       ) : (
         <div role="tabpanel">

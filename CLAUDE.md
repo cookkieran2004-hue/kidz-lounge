@@ -89,7 +89,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - the request list (`TimeOffTab` in `compact` mode, with card rows)
 - **Admin** time off (`TimeOffManageTab` in `StaffPage.jsx`):
   - request cards with Approve/Deny and the effect on the balance
-  - tabs Pending/Upcoming/Past/Denied, and a name filter
+  - tabs Pending/Upcoming/Past/Denied/Balances, and a name filter. Balances (`src/TimeOffBalancesBoard.jsx`, `GET /time-off/balances/all`) lists every active employee's PTO/UPTO, pending hours and weekly accrual; click a balance to set a new total with an optional reason (recorded as an adjustment)
   - staff profiles have balance cards with an in-place Adjust
 - **Live updates use polling, not sockets.** Tasks poll every 60s, chat conversations every 15s, open chat messages every 5s, support counts every 60s, patient alerts every 5 min, and the schedule every 30s.
 - Patients are routed and fetched **by name** (`/patients/:name`, `api.getPatient(name)`) but updated and deleted by id. Always `encodeURIComponent` names.
