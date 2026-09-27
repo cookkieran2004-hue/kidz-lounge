@@ -3288,12 +3288,9 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced, request
     }
   });
 
-  const detailRow = (label, value) => (
-    <div style={{ display: 'flex', gap: 10, fontSize: 13.5, padding: '5px 0', borderBottom: '1px solid #f3f1f8' }}>
-      <span style={{ width: 70, flexShrink: 0, color: BRAND.muted, fontSize: 12, fontWeight: 600, paddingTop: 1 }}>{label}</span>
-      <span style={{ color: '#241A33' }}>{value}</span>
-    </div>
-  );
+  const repeats = !!(seriesId || (requestOnly && link.request?.is_recurring));
+  const withNames = isMeeting && attendees.length > 0 ? attendees.map(nameFor).join(', ') : null;
+  const organizer = isMeeting && attendees.length > 0 ? nameFor(owner) : null;
 
   return (
     <div style={modalOverlayStyle()} onClick={onClose}>
@@ -3303,21 +3300,29 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced, request
         style={{ ...modalBoxStyle(), maxWidth: isMeeting && link.request?.is_recurring ? 640 : 460 }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <h2 style={{ fontFamily: BRAND_SERIF, fontSize: 20, fontWeight: 700, margin: 0, color: '#241A33' }}>Out of Office</h2>
-          <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: colors.background, color: colors.text, border: `1px solid ${colors.border}` }}>
-            {existing.type}
-          </span>
-        </div>
-
+        {/* Compact header: what it is, who, then when on one line. */}
         <div style={{ marginBottom: 14 }}>
-          {detailRow('Who', existing.provider)}
-          {detailRow('Date', dateLabel)}
-          {detailRow('Time', timeLabel)}
-          {(seriesId || (requestOnly && link.request?.is_recurring)) && detailRow('Repeats', 'Weekly')}
-          {isMeeting && attendees.length > 0 && detailRow('Organizer', nameFor(owner))}
-          {isMeeting && attendees.length > 0 && detailRow('With', attendees.map(nameFor).join(', '))}
-          {notes && detailRow(existing.type === 'Other' ? 'Details' : 'Notes', <span style={{ whiteSpace: 'pre-wrap' }}>{notes}</span>)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 600, padding: '1px 7px', borderRadius: 4, background: colors.background, color: colors.text, border: `1px solid ${colors.border}` }}>
+              {existing.type}
+            </span>
+            <span style={{ fontSize: 12, color: '#71717A' }}>Out of office</span>
+          </div>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#18181B', lineHeight: 1.3 }}>{existing.provider}</h2>
+          <p style={{ fontSize: 13.5, color: '#3F3F46', margin: '3px 0 0' }}>
+            {dateLabel} · {timeLabel}{repeats ? ' · Weekly' : ''}
+          </p>
+          {withNames && (
+            <p style={{ fontSize: 13, color: '#71717A', margin: '3px 0 0' }}>
+              {organizer && organizer !== nameFor(existing.provider) ? `Organized by ${organizer} · with ${withNames}` : `With ${withNames}`}
+            </p>
+          )}
+          {notes && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #E4E4E7' }}>
+              <div style={{ fontSize: 12, color: '#71717A', marginBottom: 2 }}>{existing.type === 'Other' ? 'Details' : 'Notes'}</div>
+              <div style={{ fontSize: 13.5, color: '#18181B', whiteSpace: 'pre-wrap' }}>{notes}</div>
+            </div>
+          )}
         </div>
 
         {existing.type === 'Meeting' && (
