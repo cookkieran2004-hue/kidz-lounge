@@ -65,10 +65,11 @@ export const api = {
   // ---- Help & Support ----
   // Submitting works signed in or not (the server lets this one through).
   submitSupportTicket: (record) => request('/support/tickets', { method: 'POST', body: JSON.stringify(record) }),
-  // Inbox: the support owner (KJC135) only.
+  // Inbox: Developers only.
   getSupportOpenCount: () => request('/support/tickets/open-count'),
   getSupportTickets: (status) => request(`/support/tickets${status ? `?status=${status}` : ''}`),
   updateSupportTicket: (id, record) => request(`/support/tickets/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
+  deleteSupportTicket: (id) => request(`/support/tickets/${id}`, { method: 'DELETE' }),
   // "Your ticket was resolved" popups for the signed-in sender.
   getMySupportNotices: () => request('/support/my-notices'),
   markSupportNoticeSeen: (id) => request(`/support/my-notices/${id}/seen`, { method: 'PUT' }),
