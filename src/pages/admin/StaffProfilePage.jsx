@@ -476,7 +476,7 @@ function TimeOffSection({ staff, isMobile, onChanged }) {
       <TimeOffBalanceEditor key={`${staff.username}:${balanceVersion}`} username={staff.username} embedded onSaved={() => setHistoryVersion(v => v + 1)} />
       <div style={{ marginTop: 22 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Balance history</h3>
-        <TimeOffHistory username={staff.username} refreshKey={balanceVersion + historyVersion} limit={8} />
+        <TimeOffHistory username={staff.username} refreshKey={balanceVersion + historyVersion} limit={8} onChanged={() => setBalanceVersion(v => v + 1)} />
       </div>
       <div style={{ marginTop: 22 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Time off and requests</h3>

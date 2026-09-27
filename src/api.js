@@ -209,6 +209,8 @@ export const api = {
   getTimeOffBalancesFor: (username) => request(`/time-off/balances?username=${encodeURIComponent(username)}`),
   // Balance history (newest first) and the accrual rules for someone.
   // Without a username: your own. With one: admins only.
+  // An admin correcting a week's hours worked: days = [{ date, worked }].
+  editTimeOffWeekHours: (entryId, { username, days, reason }) => request(`/time-off/ledger/${encodeURIComponent(entryId)}/hours`, { method: 'PUT', body: JSON.stringify({ username, days, reason }) }),
   getTimeOffLedger: (username, type) => request(`/time-off/ledger?${new URLSearchParams({ ...(username ? { username } : {}), ...(type ? { type } : {}) })}`),
   // Scheduled hours a PTO/UPTO span would cost ({ hours }).
   getTimeOffEstimate: (record, username) => request(`/time-off/estimate?${new URLSearchParams({ start_date: record.start_date, end_date: record.end_date, start_time: record.start_time, end_time: record.end_time, ...(username ? { username } : {}) })}`),

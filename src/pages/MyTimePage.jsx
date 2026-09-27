@@ -676,7 +676,7 @@ export default function MyTimePage() {
 
         {data && (
           <Card title="Balance history" subtitle="PTO is credited each Sunday for the hours worked Monday to Friday. Select a week to see the calculation.">
-            <TimeOffHistory refreshKey={historyKey} />
+            <TimeOffHistory refreshKey={historyKey} onChanged={loadBase} />
           </Card>
         )}
 
