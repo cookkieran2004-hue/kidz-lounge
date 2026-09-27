@@ -17,12 +17,22 @@ import {
 import { canManage } from '../roles';
 
 function startOfWeek(date) {
-  // Monday as the start of the work week.
+  // The Monday of the date's week, where weeks run Sunday to Saturday: on
+  // a Sunday that's the next day, so the view is already on the week
+  // ahead. Only Monday-Friday are shown (the office is closed weekends).
   const d = new Date(date);
   const day = d.getDay(); // 0 = Sunday
-  const diff = day === 0 ? -6 : 1 - day;
+  const diff = day === 0 ? 1 : 1 - day;
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// Phones show one day at a time: a Saturday or Sunday becomes the next
+// Monday, and stepping a day skips the weekend.
+function workday(date, step = 1) {
+  let d = new Date(date);
+  while (d.getDay() === 0 || d.getDay() === 6) d = addDays(d, step);
   return d;
 }
 
@@ -46,7 +56,7 @@ export default function WeeklySchedulePage() {
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState(lockedProvider || '');
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
-  const [mobileDay, setMobileDay] = useState(() => new Date());
+  const [mobileDay, setMobileDay] = useState(() => workday(new Date()));
   const [appointments, setAppointments] = useState([]);
   const [oooRecords, setOooRecords] = useState([]);
   // Non-contracted hours per date for the active provider -- computed live
@@ -226,15 +236,15 @@ export default function WeeklySchedulePage() {
   const goNextWeek = () => setWeekAnchor(prev => addDays(prev, 7));
   const goThisWeek = () => setWeekAnchor(startOfWeek(new Date()));
 
-  const goPrevDay = () => setMobileDay(prev => addDays(prev, -1));
-  const goNextDay = () => setMobileDay(prev => addDays(prev, 1));
-  const goToday = () => setMobileDay(new Date());
+  const goPrevDay = () => setMobileDay(prev => workday(addDays(prev, -1), -1));
+  const goNextDay = () => setMobileDay(prev => workday(addDays(prev, 1)));
+  const goToday = () => setMobileDay(workday(new Date()));
 
   // Jumping to an arbitrary date via the calendar picker: land on that day
   // in mobile mode, or on the week containing it in desktop mode.
   const handleDateJump = (dateStr) => {
     const picked = new Date(dateStr + 'T00:00:00');
-    if (isMobile) setMobileDay(picked);
+    if (isMobile) setMobileDay(workday(picked));
     else setWeekAnchor(startOfWeek(picked));
     setShowDatePicker(false);
   };
