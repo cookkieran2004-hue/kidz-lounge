@@ -103,7 +103,8 @@ export const api = {
 
   // ---- Waitlist ----
   // view: 'active' (waiting / contacted) or 'history' (scheduled / removed).
-  getWaitlist: (view = 'active') => request(`/waitlist?view=${view}`),
+  // patient: one patient's active entries (by name, like appointments).
+  getWaitlist: (view = 'active', patient) => request(`/waitlist?${new URLSearchParams({ view, ...(patient ? { patient } : {}) })}`),
   // One entry per specialty: { patient_id, specialties, providers: { ST: name }, ... }.
   createWaitlistEntries: (record) => request('/waitlist', { method: 'POST', body: JSON.stringify(record) }),
   updateWaitlistEntry: (id, record) => request(`/waitlist/${id}`, { method: 'PUT', body: JSON.stringify(record) }),

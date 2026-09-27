@@ -2336,6 +2336,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const [localComments, setLocalComments] = useState(existing ? (existing.comments || '') : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  // Set after a new appointment is created for someone on the waitlist:
+  // { entries, picked: [ids], busy, error } -- see finishNewAppointment.
+  const [waitlistPrompt, setWaitlistPrompt] = useState(null);
   // Tracks whether a virtual occurrence has been turned into a real row
   // during this modal session (e.g. by adding the first comment to it) --
   // existing itself is a prop and can't be mutated, so this is what
@@ -2424,6 +2427,36 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
     }, 300);
     return () => clearTimeout(timeout);
   }, [patientSearch, patientConfirmed]);
+
+  // After a NEW appointment is saved: if the patient is on the waitlist for
+  // a specialty this provider practices (any of their entries, if the
+  // provider's specialty isn't recognised), ask whether to mark it
+  // Scheduled -- which takes it off the list and sets the patient On
+  // Program (kidz-lounge-api/routes/waitlist.js). Not for bookings made
+  // from the Waitlist page (it does this itself) or created as Canceled.
+  const finishNewAppointment = async (createdStatus) => {
+    if (prefill?.fromWaitlist || createdStatus === 'Canceled') { onSaved(); return; }
+    let matches = [];
+    try {
+      const r = await api.getWaitlist('active', patientSearch);
+      const chosen = providers.find(p => p.Name === provider);
+      const practiced = chosen ? disciplinesOf(chosen) : new Set();
+      matches = (r?.entries || []).filter(e => !practiced.size || practiced.has(e.specialty));
+    } catch {
+      // Waitlist unavailable (e.g. not set up yet): nothing to offer.
+    }
+    if (!matches.length) { onSaved(); return; }
+    setWaitlistPrompt({ entries: matches, picked: matches.map(e => e.id), busy: false, error: null });
+  };
+  const applyWaitlistPrompt = async () => {
+    setWaitlistPrompt(w => ({ ...w, busy: true, error: null }));
+    try {
+      for (const id of waitlistPrompt.picked) await api.updateWaitlistEntry(id, { status: 'scheduled' });
+      onSaved();
+    } catch (err) {
+      setWaitlistPrompt(w => ({ ...w, busy: false, error: err.message }));
+    }
+  };
 
   const handleSave = async () => {
     if (!patientConfirmed || !appointmentDate || !appointmentTime || !provider) {
@@ -2552,7 +2585,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         return;
       }
       setSaving(false);
-      onSaved();
+      await finishNewAppointment('Scheduled');
       return;
     }
 
@@ -2591,7 +2624,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
     }
 
     setSaving(false);
-    onSaved();
+    await finishNewAppointment(status);
   };
 
   const getFutureSeriesMatches = async (apt) => {
@@ -2787,6 +2820,46 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   // This patient's allergy / immunization notes (shared cache, same as the cards).
   const headerAlertRaw = existing ? alertsFor(patientAlertsMap, patientSearch) : null;
   const headerAlert = headerAlertRaw && (headerAlertRaw.allergies || headerAlertRaw.immunizations) ? headerAlertRaw : null;
+
+  // The appointment is already saved; this only asks about the waitlist.
+  if (waitlistPrompt) {
+    const { entries, picked, busy, error: promptError } = waitlistPrompt;
+    const toggle = (id) => setWaitlistPrompt(w => ({ ...w, picked: w.picked.includes(id) ? w.picked.filter(x => x !== id) : [...w.picked, id] }));
+    const today = dateToInputValue(new Date());
+    const waited = (ref) => {
+      const days = Math.round((new Date(`${today}T00:00:00`) - new Date(`${String(ref).slice(0, 10)}T00:00:00`)) / 86400000);
+      return days < 1 ? 'added today' : days < 14 ? `waiting ${days} day${days === 1 ? '' : 's'}` : `waiting ${Math.floor(days / 7)} weeks`;
+    };
+    return (
+      <div style={modalOverlayStyle()}>
+        <div role="dialog" aria-modal="true" aria-labelledby="kl-wl-prompt-title" style={{ ...modalBoxStyle(), borderRadius: 8, boxShadow: 'none', maxWidth: 440 }}>
+          <h3 id="kl-wl-prompt-title" style={{ fontSize: 16, fontWeight: 600, color: '#18181B', margin: '0 0 4px' }}>Appointment created</h3>
+          <p style={{ fontSize: 13.5, color: '#52525B', margin: '0 0 12px', lineHeight: 1.5 }}>
+            {patientSearch} is on the waitlist. Mark {entries.length === 1 ? 'this entry' : 'these entries'} as scheduled and remove {entries.length === 1 ? 'it' : 'them'} from the waitlist?
+          </p>
+          <div style={{ border: '1px solid #E4E4E7', borderRadius: 6 }}>
+            {entries.map((e, i) => (
+              <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderTop: i ? '1px solid #E4E4E7' : 'none', cursor: 'pointer', fontSize: 13.5, color: '#18181B' }}>
+                <input type="checkbox" checked={picked.includes(e.id)} onChange={() => toggle(e.id)} disabled={busy} />
+                <span style={{ fontWeight: 600, minWidth: 24 }}>{e.specialty}</span>
+                <span style={{ color: '#71717A', fontSize: 12.5 }}>
+                  {waited(e.referral_date)}{e.preferred_provider ? ` · prefers ${e.preferred_provider}` : ''}{e.status === 'contacted' ? ' · contacted' : ''}
+                </span>
+              </label>
+            ))}
+          </div>
+          <p style={{ fontSize: 12.5, color: '#71717A', margin: '10px 0 0' }}>Their patient status will be set to On Program.</p>
+          {promptError && <p style={{ fontSize: 13, color: '#B42318', margin: '10px 0 0' }}>{promptError}</p>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <button type="button" onClick={onSaved} disabled={busy} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #E4E4E7', background: 'white', color: '#18181B', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Keep on waitlist</button>
+            <button type="button" onClick={applyWaitlistPrompt} disabled={busy || !picked.length} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #6D28D9', background: '#6D28D9', color: 'white', fontSize: 13, fontWeight: 500, cursor: busy || !picked.length ? 'default' : 'pointer', opacity: busy || !picked.length ? 0.6 : 1, fontFamily: 'inherit' }}>
+              {busy ? 'Saving...' : 'Remove from waitlist'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={modalOverlayStyle()} onClick={onClose}>

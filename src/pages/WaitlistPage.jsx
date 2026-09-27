@@ -508,12 +508,13 @@ export default function WaitlistPage() {
   const finishBooking = async () => {
     const entry = booking;
     setBooking(null);
-    await act(() => api.updateWaitlistEntry(entry.id, { status: 'scheduled' }), `${entry.patient_name} is scheduled and has moved to History.`);
+    await act(() => api.updateWaitlistEntry(entry.id, { status: 'scheduled' }), `${entry.patient_name} is scheduled, moved to History and set to On Program.`);
   };
 
   const changeStatus = (e, status) => act(
     () => api.updateWaitlistEntry(e.id, { status }),
-    ['scheduled', 'removed'].includes(status) ? `${e.patient_name} (${e.specialty}) is marked ${STATUS_TAG[status].label} and has moved to History.` : null,
+    status === 'scheduled' ? `${e.patient_name} (${e.specialty}) is marked Scheduled, moved to History and set to On Program.`
+      : status === 'removed' ? `${e.patient_name} (${e.specialty}) is marked Removed and has moved to History.` : null,
   );
   const openAdd = () => { setNotice(null); setModal({ existing: null }); };
 
@@ -609,6 +610,7 @@ export default function WaitlistPage() {
           defaultDate={new Date()}
           prefill={{
             patientName: booking.patient_name,
+            fromWaitlist: true, // this page marks the entry itself (finishBooking)
             provider: booking.preferred_provider || providers.find(p => disciplinesOf(p).has(booking.specialty))?.Name,
           }}
           onClose={() => setBooking(null)}
