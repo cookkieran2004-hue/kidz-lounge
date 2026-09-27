@@ -84,11 +84,11 @@ function NewChatView({ directory, onCreate, onCancel }) {
           style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: 13, boxSizing: 'border-box' }}
         />
       </div>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         {filtered.map(d => (
           <label key={d.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 13 }}>
             <input type="checkbox" checked={selected.includes(d.username)} onChange={() => toggle(d.username)} />
-            {d.display_name}
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{d.display_name}</span>
           </label>
         ))}
         {filtered.length === 0 && <p style={{ fontSize: 12.5, color: '#9ca3af', textAlign: 'center', marginTop: 20 }}>No matches</p>}
@@ -187,7 +187,7 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
       </div>
 
       {addingPerson && (
-        <div style={{ borderBottom: `1px solid ${BORDER}`, maxHeight: 140, overflowY: 'auto' }}>
+        <div style={{ borderBottom: `1px solid ${BORDER}`, maxHeight: 140, overflowY: 'auto', overflowX: 'hidden' }}>
           {notInConvo.length === 0 ? (
             <p style={{ fontSize: 12, color: '#9ca3af', padding: '8px 14px', margin: 0 }}>Everyone is already in this chat.</p>
           ) : (
@@ -195,7 +195,7 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
               <button
                 key={d.username}
                 onClick={() => addPerson(d.username)}
-                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 14px', border: 'none', background: 'white', cursor: 'pointer', fontSize: 12.5 }}
+                style={{ display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '7px 14px', border: 'none', background: 'white', cursor: 'pointer', fontSize: 12.5, overflowWrap: 'anywhere' }}
               >
                 {d.display_name}
               </button>
@@ -204,7 +204,8 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
         </div>
       )}
 
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* The chat never scrolls sideways: long words and links wrap inside their bubble. */}
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {messages.map(m => {
           const isOwn = m.sender_username === currentUser.username;
           return (
@@ -214,7 +215,7 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
               )}
               <div style={{
                 maxWidth: '80%', padding: '7px 11px', borderRadius: 12,
-                background: isOwn ? BRAND_PURPLE : '#f1f2f4', color: isOwn ? 'white' : '#111827', fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                background: isOwn ? BRAND_PURPLE : '#f1f2f4', color: isOwn ? 'white' : '#111827', fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0,
               }}>
                 {m.text}
               </div>
@@ -230,12 +231,12 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') send(); }}
           placeholder="Type a message..."
-          style={{ flex: 1, padding: '7px 10px', borderRadius: 16, border: `1px solid ${BORDER}`, fontSize: 13 }}
+          style={{ flex: 1, minWidth: 0, padding: '7px 10px', borderRadius: 16, border: `1px solid ${BORDER}`, fontSize: 13 }}
         />
         <button
           onClick={send}
           disabled={sending || !text.trim()}
-          style={{ padding: '7px 14px', borderRadius: 16, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer' }}
+          style={{ padding: '7px 14px', borderRadius: 16, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer', flexShrink: 0 }}
         >
           Send
         </button>
@@ -328,7 +329,7 @@ export default function ChatWidget() {
             ) : subView === 'new' ? (
               <NewChatView directory={directory} onCreate={handleCreateConversation} onCancel={() => setSubView('list')} />
             ) : (
-              <div style={{ height: '100%', overflowY: 'auto' }}>
+              <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
                 {conversations.length === 0 ? (
                   <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', marginTop: 30 }}>No conversations yet. Click "New" to start one.</p>
                 ) : (
@@ -336,16 +337,16 @@ export default function ChatWidget() {
                     <div
                       key={c.id}
                       onClick={() => setActiveConversationId(c.id)}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', borderBottom: '1px solid #f1f2f4', background: 'white', cursor: 'pointer', position: 'relative' }}
+                      style={{ display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '10px 14px', border: 'none', borderBottom: '1px solid #f1f2f4', background: 'white', cursor: 'pointer', position: 'relative' }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                        <span style={{ fontSize: 13, fontWeight: c.unread_count > 0 ? 700 : 500, color: '#111827' }}>
+                        <span style={{ fontSize: 13, fontWeight: c.unread_count > 0 ? 700 : 500, color: '#111827', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {conversationTitle(c, directoryMap, user)}
                         </span>
                         <span style={{ fontSize: 10.5, color: '#9ca3af', flexShrink: 0, marginLeft: 6 }}>{formatListTimestamp(c.last_message?.created_at || c.created_at)}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                        <span style={{ fontSize: 12, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 12, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
                           {c.last_message ? `${c.last_message.sender_username === user.username ? 'You: ' : ''}${c.last_message.text}` : 'No messages yet'}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 6 }}>

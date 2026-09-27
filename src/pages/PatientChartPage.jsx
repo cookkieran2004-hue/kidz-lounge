@@ -199,10 +199,8 @@ function PatientBanner({ patient, appointments }) {
   );
 }
 
-function Sidebar({ patient, activeTab, setActiveTab, onBack, onEdit }) {
+function Sidebar({ activeTab, setActiveTab, onBack, onEdit }) {
   const isMobile = useIsMobile(PATIENT_CHART_PHONE_BREAKPOINT);
-  const programValues = (patient.Program || '').split(',').map(s => s.trim()).filter(Boolean);
-
   if (isMobile) {
     // The name/MRN/program badges are already shown in PatientBanner right
     // above this, so repeating them here would just take up scarce vertical
@@ -247,37 +245,10 @@ function Sidebar({ patient, activeTab, setActiveTab, onBack, onEdit }) {
     );
   }
 
+  // Name, MRN, program and status are all on the banner above, so the
+  // sidebar is just Edit Patient and the tabs.
   return (
     <div style={{ width: 240, flexShrink: 0, borderRight: `1.5px solid ${BRAND.box}`, padding: '24px 18px', boxSizing: 'border-box' }}>
-      <button
-        onClick={onBack}
-        style={{ fontSize: 12.5, color: BRAND.muted, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 4 }}
-      >
-        &larr; Back
-      </button>
-
-      <div style={{ fontFamily: BRAND_SERIF, fontSize: 22, fontWeight: 700, color: '#241A33', lineHeight: 1.2, marginBottom: 6 }}>
-        {patient.Name}
-      </div>
-      {patient.mrn && (
-        <div style={{ fontFamily: 'monospace', fontSize: 11, color: BRAND.muted, marginBottom: 10 }}>MRN {patient.mrn}</div>
-      )}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 14 }}>
-        {programValues.map(prog => (
-          <span key={prog} style={{
-            fontSize: 10, fontWeight: 700, borderRadius: 3, padding: '2px 8px', letterSpacing: '0.02em', textTransform: 'uppercase',
-            background: `color-mix(in srgb, ${programColor(prog)} 14%, white)`, color: programColor(prog),
-          }}>
-            {prog}
-          </span>
-        ))}
-        {patient.Status && (
-          <span style={{ fontSize: 10, color: BRAND.brassText, fontWeight: 700, border: `1.5px solid ${BRAND.brass}`, borderRadius: 20, padding: '2px 8px' }}>
-            {patient.Status}
-          </span>
-        )}
-      </div>
-
       <button
         onClick={onEdit}
         style={{
@@ -1003,7 +974,7 @@ export default function PatientChartPage() {
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
       <PatientBanner patient={patient} appointments={appointments} />
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-        <Sidebar patient={patient} activeTab={activeTab} setActiveTab={setActiveTab} onBack={() => navigate(-1)} onEdit={() => setEditingPatient(true)} />
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onBack={() => navigate(-1)} onEdit={() => setEditingPatient(true)} />
         <div style={{
           flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
           overflowY: activeTab === 'documents' ? 'hidden' : 'auto',
