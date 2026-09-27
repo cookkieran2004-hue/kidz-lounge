@@ -15,10 +15,9 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - **API:** GitHub Actions to Lambda.
   - When both change, push the **API first**.
   - End commit messages with the `Co-Authored-By` trailer.
-- **When to ship without asking:**
-  - Small, specific requests ("change the color", "get rid of X", "fix Y"): build, verify, then ship and report.
-  - New features or bigger UI changes: build and verify, describe what changed, then **ask** before shipping. He says "ship it" / "push".
-  - A layout change once had to be reverted, so don't ship UI you haven't looked at.
+- **Kieran pushes, not Claude** (since Sept 27 2026). Build and verify, report what changed, and list the changed files (flag new untracked files, say when the API must go first, and give any migration command). Don't commit or push, and don't offer to. Push only when he explicitly asks.
+  - When he says something "isn't working" right after pushing, check the deploy status first and remind him to reload: an open tab keeps the old bundle.
+  - A layout change once had to be reverted, so don't hand over UI you haven't looked at.
 - **Verify UI before handing it over.** No login to the real app is available. Instead:
   - Run a throwaway mock API (a Node `http` server in the session scratchpad serving the endpoints the page needs) and start Vite against it: `VITE_API_URL=http://localhost:8787 npx vite --port 5199`.
   - Put a temporary `__mytime_preview.html` in the project root. It sets `sessionStorage.kidz_lounge_token`, loads the route in an `<iframe>`, and injects a style hiding the auto-opening task drawer (`[style*="z-index: 9990"],[style*="z-index: 9991"]{display:none!important}`).
