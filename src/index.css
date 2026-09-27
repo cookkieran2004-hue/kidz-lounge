@@ -7,6 +7,30 @@ body {
   min-height: 100vh;
 }
 
+/* App layout (App.jsx): nav, the page, then the footer -- at least the
+   window's height, so a short page still has the footer at the bottom.
+   Each page grows to fill the space (so a grey page background reaches the
+   footer); width: stretch keeps pages that centre themselves with auto
+   margins (maxWidth + margin: 0 auto) exactly as wide as before, where a
+   plain flex item would shrink to fit its content. */
+.kl-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.kl-main {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.kl-main > * {
+  flex: 1 0 auto;
+  width: -webkit-fill-available;
+  width: -moz-available;
+  width: stretch;
+}
+
 /* Username dropdown items (NavBar.jsx) */
 .kl-menu-item { background: transparent; }
 .kl-menu-item:hover, .kl-menu-item:focus-visible { background: #F5F3FF; outline: none; }

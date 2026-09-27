@@ -30,9 +30,13 @@ function AppShell() {
     <PendingTimeOffProvider>
       <TasksProvider>
         <ChatProvider>
+          {/* Fills the window, so on a short page the footer still sits at
+              the bottom of the screen (index.css .kl-shell / .kl-main). */}
+          <div className="kl-shell">
           <NavBar />
           <TaskDrawer />
           <ChatWidget />
+          <main className="kl-main">
           <Routes>
             <Route path="/" element={<RequireAuth><SchedulePage /></RequireAuth>} />
             <Route path="/weekly" element={<RequireAuth><WeeklySchedulePage /></RequireAuth>} />
@@ -51,7 +55,9 @@ function AppShell() {
             {/* Old address for the single "My Page" -- keeps bookmarks working */}
             <Route path="/me" element={<Navigate to="/profile" replace />} />
           </Routes>
+          </main>
           <Footer />
+          </div>
           <SupportNotifier />
         </ChatProvider>
       </TasksProvider>
