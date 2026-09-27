@@ -17,6 +17,7 @@ import WeeklySchedulePage from './pages/WeeklySchedulePage';
 import TasksPage from './pages/TasksPage';
 import MyProfilePage from './pages/MyProfilePage';
 import MyTimePage from './pages/MyTimePage';
+import WaitlistPage from './pages/WaitlistPage';
 import AdminPage from './pages/AdminPage';
 import StaffProfilePage from './pages/admin/StaffProfilePage';
 import SupportPage from './pages/SupportPage';
@@ -36,6 +37,7 @@ function AppShell() {
             <Route path="/" element={<RequireAuth><SchedulePage /></RequireAuth>} />
             <Route path="/weekly" element={<RequireAuth><WeeklySchedulePage /></RequireAuth>} />
             <Route path="/patients" element={<RequireAuth><PatientsPage /></RequireAuth>} />
+            <Route path="/waitlist" element={<RequireAuth><WaitlistPage /></RequireAuth>} />
             <Route path="/patients/:name" element={<RequireAuth><PatientChartPage /></RequireAuth>} />
             {/* Pages under the username menu */}
             <Route path="/profile" element={<RequireAuth><MyProfilePage /></RequireAuth>} />

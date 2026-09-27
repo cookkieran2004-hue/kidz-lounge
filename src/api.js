@@ -100,6 +100,14 @@ export const api = {
   updatePatient: (id, record) => request(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
   deletePatient: (id, force = false) => request(`/patients/${id}${force ? '?force=true' : ''}`, { method: 'DELETE' }),
 
+  // ---- Waitlist ----
+  // view: 'active' (waiting / contacted) or 'history' (scheduled / removed).
+  getWaitlist: (view = 'active') => request(`/waitlist?view=${view}`),
+  // One entry per specialty: { patient_id, specialties, providers: { ST: name }, ... }.
+  createWaitlistEntries: (record) => request('/waitlist', { method: 'POST', body: JSON.stringify(record) }),
+  updateWaitlistEntry: (id, record) => request(`/waitlist/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
+  deleteWaitlistEntry: (id) => request(`/waitlist/${id}`, { method: 'DELETE' }),
+
   // ---- Patient Documents ----
   getPatientDocuments: (patientId) => request(`/patients/${patientId}/documents`),
   getDocumentUploadUrl: (patientId, filename, contentType) =>

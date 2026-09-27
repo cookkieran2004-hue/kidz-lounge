@@ -80,6 +80,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - The daily Provider grid has discipline filter chips (All / ST / OT / PT / SI), parsed from each provider's `specialty` and remembered in `localStorage` per user (`kl.schedule.providerFilter.<username>`).
   - Room-less sessions show a "Set room" pill (`AppointmentCard`'s `setRoom` prop).
   - Quick-edit menus close on page scroll but not on scrolling inside them (`data-kl-dropdown`).
+- **Waitlist** (`WaitlistPage.jsx`, `/waitlist`): specialty tabs, an "On the list / History" switch, search, and an "Available on" day filter. Adding uses a patient search with a New patient button (the shared `PatientModal`), and picking several specialties adds one entry each. "Schedule appointment" opens `AppointmentModal` with `prefill.patientName` and the preferred provider, and marks the entry Scheduled once it's saved. Disciplines come from `src/disciplines.js`, shared with the schedule's filter chips.
 - **My time** (`MyTimePage.jsx`):
   - balance cards with each person's weekly PTO rate, and a forecast
   - a week timeline whose blocks open the schedule's own popups: `AppointmentModal`, or `OOOModal`, which takes `requestOnly`/`onEdit` for request-only blocks

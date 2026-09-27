@@ -8,6 +8,7 @@ import { MeetingAgendaEditor, MeetingAgendaPlaceholder } from '../MeetingAgenda'
 import { useStaffNames } from '../staffDirectory';
 import { usePatientAlerts, alertsFor, AlertSymbol, PatientAlertsInline } from '../patientAlerts';
 import { canManage } from '../roles';
+import { DISCIPLINES, disciplinesOf } from '../disciplines';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -632,7 +633,7 @@ function generateCalendarDays(viewMonth) {
 // same. Options beyond the appointment form's needs:
 //   min / max      'YYYY-MM-DD' -- days outside are greyed out
 //   yearNav        adds previous/next-year arrows (birthdays, hire dates)
-//   clearable      an x to empty an optional date
+//   clearable      an x to empty an optional date or time
 //   floating       opens over the page instead of pushing content down --
 //                  for fields sitting inline in a row
 //   style          the trigger's look, so it matches the form's other inputs
@@ -811,12 +812,13 @@ export function DateField({ label, value, onChange, style, placeholder = 'Select
   );
 }
 
-export function TimeField({ label, value, onChange, style, placeholder = 'Select time', disabled, floating, id, ariaLabel }) {
+export function TimeField({ label, value, onChange, style, placeholder = 'Select time', disabled, floating, id, ariaLabel, clearable }) {
   const [open, setOpen] = useState(false);
   return (
     <PickerField
       label={label} id={id} ariaLabel={ariaLabel} style={style} disabled={disabled} floating={floating}
       open={open} setOpen={setOpen}
+      onClear={clearable && value ? () => { onChange(''); setOpen(false); } : null}
       icon={<ClockIcon size={13} color="#6b7280" />}
       text={value ? formatSlotLabel(value) : placeholder}
     >
@@ -1294,18 +1296,7 @@ function ProviderFilterBar({ prefs, onChange, counts, totalShown }) {
 }
 
 // ---- Daily grid: which provider columns show ----
-// Disciplines come from each provider's specialty (ST, OT, PT, SI -- "ST",
-// "ST/OT" or "Speech-Language Pathologist" all work).
-const DISCIPLINES = ['ST', 'OT', 'PT', 'SI'];
-const DISCIPLINE_WORDS = { SPEECH: 'ST', OCCUPATIONAL: 'OT', PHYSICAL: 'PT', SENSORY: 'SI' };
-function disciplinesOf(provider) {
-  const found = new Set();
-  for (const word of String(provider.specialty || '').toUpperCase().split(/[^A-Z]+/)) {
-    if (DISCIPLINES.includes(word)) found.add(word);
-    else if (DISCIPLINE_WORDS[word]) found.add(DISCIPLINE_WORDS[word]);
-  }
-  return found;
-}
+// Disciplines come from each provider's specialty (src/disciplines.js).
 // The chosen chips, remembered per person on this device.
 const viewPrefsKey = (username) => `kl.schedule.providerFilter.${username || 'anon'}`;
 function loadViewPrefs(username) {
@@ -2324,8 +2315,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const { user } = useAuth();
   const patientAlertsMap = usePatientAlerts();
   const navigate = useNavigate();
-  const [patientSearch, setPatientSearch] = useState(existing ? (existing.patient_name || '') : '');
-  const [patientConfirmed, setPatientConfirmed] = useState(!!existing);
+  // prefill.patientName: booking straight from the waitlist.
+  const [patientSearch, setPatientSearch] = useState(existing ? (existing.patient_name || '') : (prefill?.patientName || ''));
+  const [patientConfirmed, setPatientConfirmed] = useState(!!existing || !!prefill?.patientName);
   const [patientResults, setPatientResults] = useState([]);
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
 

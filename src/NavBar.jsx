@@ -14,6 +14,7 @@ const TABS = [
   { to: '/', label: 'Schedule', end: true },
   { to: '/weekly', label: 'Weekly View' },
   { to: '/patients', label: 'Patients' },
+  { to: '/waitlist', label: 'Waitlist' },
 ];
 
 const barStyle = {
