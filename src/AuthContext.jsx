@@ -44,6 +44,12 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  // Re-read who's signed in, e.g. after an admin changes their own role,
+  // so menus and page access follow without a reload.
+  const refreshUser = useCallback(async () => {
+    try { setUser(await api.me()); } catch { /* keep the current user */ }
+  }, []);
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -73,7 +79,7 @@ export function AuthProvider({ children }) {
   }, [user, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, checkedInitialAuth, login, logout, completePasswordReset }}>
+    <AuthContext.Provider value={{ user, checkedInitialAuth, login, logout, completePasswordReset, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

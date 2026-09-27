@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
-import { SUPPORT_OWNER, notifySupportTicketsChanged } from '../supportCount';
+import { canSeeSupportTickets, notifySupportTicketsChanged } from '../supportCount';
 import { useStaffNames } from '../staffDirectory';
 
 // The support owner's (KJC135) ticket inbox: open tickets first, most
@@ -29,7 +29,7 @@ export default function SupportTicketsPage() {
   }, [status]);
   useEffect(() => { load(); }, [load]);
 
-  if (user && user.username !== SUPPORT_OWNER) return <Navigate to="/" replace />;
+  if (user && !canSeeSupportTickets(user)) return <Navigate to="/" replace />;
 
   const setTicketStatus = async (t, next) => {
     try {

@@ -8,6 +8,7 @@ import {
   BRAND, BRAND_SERIF, INK, BODY, HAIRLINE, DANGER, FONT,
   cardStyle, btn, inputStyle, pill, displayName, scheduleNameFor,
 } from './adminUi';
+import { roleLabel } from '../../roles';
 
 function StaffCard({ s, pendingCount, onOpen }) {
   const [hover, setHover] = useState(false);
@@ -38,7 +39,7 @@ function StaffCard({ s, pendingCount, onOpen }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 'auto' }}>
-        <span style={pill(s.role === 'admin' ? 'brand' : 'neutral')}>{s.role === 'admin' ? 'Admin' : 'Staff'}</span>
+        <span style={pill(s.role === 'staff' || !s.role ? 'neutral' : 'brand')}>{roleLabel(s.role)}</span>
         {s.archived && <span style={pill('neutral')}>Archived</span>}
         {pendingCount > 0 && (
           <span style={pill('alert')}>

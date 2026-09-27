@@ -2,19 +2,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from './api';
 
-// Who receives every help desk ticket (matches routes/support.js on the server).
-export const SUPPORT_OWNER = 'KJC135';
+// Only Developers see the help desk tickets (matches routes/support.js).
+export const canSeeSupportTickets = (user) => user?.role === 'developer';
 
 // Tell the menu badge to re-count right away (e.g. after resolving one).
 export function notifySupportTicketsChanged() {
   window.dispatchEvent(new Event('kl-support-tickets-changed'));
 }
 
-// Open support tickets, for the green badge. Only the support owner ever
-// asks; checks on sign-in, every minute, on page changes, and whenever a
+// Open support tickets, for the green badge. Only people who can see the
+// tickets ask; checks on sign-in, every minute, on page changes, and whenever a
 // ticket is resolved or reopened.
 export function useSupportOpenCount(user) {
-  const isOwner = user?.username === SUPPORT_OWNER;
+  const isOwner = canSeeSupportTickets(user);
   const location = useLocation();
   const [count, setCount] = useState(0);
   const check = useCallback(() => {

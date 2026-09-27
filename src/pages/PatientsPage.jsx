@@ -9,10 +9,11 @@ import {
   PATIENT_PRESETS, PatientFilterBuilder, matchesPatientFilters,
   PatientModal, DataTableOverlay, PasswordConfirmModal,
 } from './ManageDataPage';
+import { canManage } from '../roles';
 
 export default function PatientsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = canManage(user);
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);

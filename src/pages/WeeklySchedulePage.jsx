@@ -14,6 +14,7 @@ import {
   Dot, iconBtnStyle, primaryBtnStyle, secondaryBtnStyle,
   thStyle, tdTimeStyle, tdCellStyle,
 } from './SchedulePage';
+import { canManage } from '../roles';
 
 function startOfWeek(date) {
   // Monday as the start of the work week.
@@ -38,7 +39,7 @@ function toDayInfo(d) {
 export default function WeeklySchedulePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = canManage(user);
   const lockedProvider = !isAdmin ? user?.providerName : null;
   const isMobile = useIsMobile();
 

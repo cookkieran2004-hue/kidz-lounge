@@ -3,6 +3,7 @@ import { api } from './api';
 import { useIsMobile } from './useIsMobile';
 import { useStaffNames } from './staffDirectory';
 import { DateField } from './pages/SchedulePage';
+import { canManage } from './roles';
 
 const BRAND_PURPLE = '#6D28D9';
 const BORDER = '#E2E4E9';
@@ -125,7 +126,7 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
 
   const due = formatDueDate(task.due_date);
   const comments = parseTaskComments(task.comments);
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = canManage(currentUser);
   const isAssignee = task.assigned_to === currentUser.username;
   const isAssigner = task.assigned_by === currentUser.username;
   const canEditContent = isAdmin || isAssigner;

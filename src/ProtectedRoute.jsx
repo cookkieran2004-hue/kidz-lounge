@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { canAdminister } from './roles';
 
 function LoadingScreen() {
   return (
@@ -40,7 +41,7 @@ export function RequireAdmin({ children }) {
   if (!checkedInitialAuth) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.mustResetPassword) return <Navigate to="/set-password" replace />;
-  if (user.role !== 'admin') return <Navigate to="/" replace />;
+  if (!canAdminister(user)) return <Navigate to="/" replace />;
   return children;
 }
 

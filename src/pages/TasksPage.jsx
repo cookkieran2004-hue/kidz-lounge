@@ -5,6 +5,7 @@ import { useTasks } from '../TasksContext';
 import { useIsMobile } from '../useIsMobile';
 import { CalendarPicker, DateField, dateToInputValue } from './SchedulePage';
 import TaskDetailModal, { taskHasComments } from '../TaskDetailModal';
+import { canManage } from '../roles';
 
 const BRAND_PURPLE = '#6D28D9';
 const BRAND_TINT = '#F5F3FF';
@@ -148,7 +149,7 @@ function NewTaskForm({ staffOptions, defaultAssignee, onCreate }) {
 export default function TasksPage() {
   const { user } = useAuth();
   const { tasks, refresh } = useTasks();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = canManage(user);
   const isMobile = useIsMobile();
   const [view, setView] = useState('mine'); // mine | board | log
   const [staff, setStaff] = useState([]);
@@ -216,7 +217,7 @@ export default function TasksPage() {
     if (view === 'board' || view === 'log') await loadBoard();
   };
 
-  const canDeleteInMine = (t) => user.role === 'admin' || t.assigned_by === user.username;
+  const canDeleteInMine = (t) => canManage(user) || t.assigned_by === user.username;
 
   const openMine = tasks.filter(t => t.status === 'open');
   const doneMine = tasks.filter(isRecentlyCompleted);

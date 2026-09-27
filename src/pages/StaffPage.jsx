@@ -9,6 +9,7 @@ import { Avatar } from '../Avatar';
 import { timeTypeStyle } from '../timeTypes';
 import { Tag, UnderlineTabs } from '../dashboardUi';
 import { INK as UI_INK, MUTED as UI_MUTED, HAIRLINE as UI_HAIRLINE, NUMERIC, buttonStyle } from '../uiTokens';
+import { canAdminister } from '../roles';
 
 // Building blocks for the pages under the username menu (My profile,
 // My time, ADMIN). This file used to be the single "/me" page; the pages
@@ -217,16 +218,17 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
   const estimateKey = isBalanceType && startDate && endDate && balanceStartTime && balanceEndTime
     ? [startDate, balanceStartTime, endDate, balanceEndTime, estimateFor || ''].join('|') : null;
   const [estimate, setEstimate] = useState({ key: null, hours: null });
+  const meAdministers = canAdminister(me);
   useEffect(() => {
     if (!estimateKey) return undefined;
     let alive = true;
     const timer = setTimeout(() => {
-      api.getTimeOffEstimate({ start_date: startDate, end_date: endDate, start_time: balanceStartTime, end_time: balanceEndTime }, me?.role === 'admin' ? estimateFor : undefined)
+      api.getTimeOffEstimate({ start_date: startDate, end_date: endDate, start_time: balanceStartTime, end_time: balanceEndTime }, meAdministers ? estimateFor : undefined)
         .then(r => { if (alive) setEstimate({ key: estimateKey, hours: Number(r.hours) }); })
         .catch(() => {});
     }, 250);
     return () => { alive = false; clearTimeout(timer); };
-  }, [estimateKey, startDate, endDate, balanceStartTime, balanceEndTime, estimateFor, me?.role]);
+  }, [estimateKey, startDate, endDate, balanceStartTime, balanceEndTime, estimateFor, meAdministers]);
   const estimatedHours = estimate.key === estimateKey ? estimate.hours : null;
   const [myBalances, setMyBalances] = useState(null);
   useEffect(() => {
@@ -647,11 +649,11 @@ export function TimeOffTab({ isMobile, compact, openFormToken, onChanged }) {
           key={editing.id}
           request={editing}
           isMobile={isMobile}
-          adminApplies={me?.role === 'admin'}
+          adminApplies={canAdminister(me)}
           initialDate={editDate}
           onDone={() => {
             closeEdit();
-            setNotice(me?.role === 'admin'
+            setNotice(canAdminister(me)
               ? 'Your change is saved and on the schedule.'
               : BALANCE_TYPES.includes(editing.request_type)
                 ? `Your original ${editing.request_type} was cancelled and its hours returned. The new request is waiting for approval.`

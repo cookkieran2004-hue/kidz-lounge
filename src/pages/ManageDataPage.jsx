@@ -7,6 +7,7 @@ import { WarningIcon, SyringeIcon, refreshPatientAlerts } from '../patientAlerts
 import { DateField, TimeField } from './SchedulePage';
 import { timeTypeStyle, monthlyAccrual } from '../timeTypes';
 import { useIsMobile } from '../useIsMobile';
+import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoices } from '../roles';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -983,7 +984,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
               >
                 <option value="">-- Not Assigned --</option>
                 <option value="__NOT_NEEDED__">Not Needed</option>
-                {staffDirectory.map(s => <option key={s.username} value={s.username}>{s.display_name}</option>)}
+                {caseManagerChoices(staffDirectory, form.case_manager_username).map(s => <option key={s.username} value={s.username}>{s.display_name}</option>)}
               </select>
             </div>
             <div>
@@ -1517,11 +1518,10 @@ export function StaffModal({ existing, providers, onClose, onSaved }) {
 
         <label style={labelStyle()}>Role</label>
         <select style={inputStyle()} value={role} onChange={e => setRole(e.target.value)}>
-          <option value="staff">Staff</option>
-          <option value="admin">Admin</option>
+          {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
         <p style={{ fontSize: 11.5, color: '#9ca3af', marginTop: 4, marginBottom: 0 }}>
-          Admins can create, edit, and archive staff accounts. Staff cannot.
+          {ROLE_HINTS[role] || ''}
         </p>
 
         <label style={labelStyle()}>Linked Provider</label>
@@ -1693,7 +1693,7 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
       >
         <option value="">-- none --</option>
         <option value="__NOT_NEEDED__">Not Needed</option>
-        {staffDirectory.map(s => <option key={s.username} value={s.username}>{s.display_name}</option>)}
+        {caseManagerChoices(staffDirectory, value).map(s => <option key={s.username} value={s.username}>{s.display_name}</option>)}
       </select>
     );
   }
@@ -2306,7 +2306,7 @@ export function DataTableOverlay({ patients, onClose, onPatientsChanged, initial
 
 export default function ManageDataPage({ section: sectionProp, onSectionChange } = {}) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = canManage(user);
   const isControlled = sectionProp !== undefined;
   const [internalSection, setInternalSection] = useState('providers');
   const section = isControlled ? sectionProp : internalSection;
@@ -2541,10 +2541,10 @@ export default function ManageDataPage({ section: sectionProp, onSectionChange }
                     </span>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                      background: s.role === 'admin' ? '#8b5cf620' : '#6b728020',
-                      color: s.role === 'admin' ? '#8b5cf6' : '#6b7280',
+                      background: s.role && s.role !== 'staff' ? '#8b5cf620' : '#6b728020',
+                      color: s.role && s.role !== 'staff' ? '#8b5cf6' : '#6b7280',
                     }}>
-                      {s.role}
+                      {roleLabel(s.role)}
                     </span>
                     {s.position && (
                       <span style={{ fontSize: 11.5, color: '#9ca3af' }}>{s.position}</span>

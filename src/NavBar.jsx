@@ -5,7 +5,8 @@ import { useIsMobile } from './useIsMobile';
 import { useTasks } from './TasksContext';
 import { Avatar } from './Avatar';
 import { usePendingTimeOff } from './PendingTimeOffContext';
-import { useSupportOpenCount, SUPPORT_OWNER } from './supportCount';
+import { useSupportOpenCount, canSeeSupportTickets } from './supportCount';
+import { canAdminister } from './roles';
 
 const BRAND_PURPLE = '#6D28D9';
 
@@ -72,7 +73,7 @@ function BellIcon() {
 }
 
 // Items in the username menu. `adminOnly` items are hidden from non-admins;
-// `supportOnly` is only for the support owner (KJC135).
+// `supportOnly` is only for Developers.
 const ACCOUNT_LINKS = [
   { to: '/profile', label: 'My profile' },
   { to: '/time', label: 'My time' },
@@ -228,8 +229,8 @@ export default function NavBar() {
   // No nav chrome on the login / set-password screens.
   if (!user) return null;
 
-  const isAdmin = user.role === 'admin';
-  const accountLinks = ACCOUNT_LINKS.filter(l => (!l.adminOnly || isAdmin) && (!l.supportOnly || user.username === SUPPORT_OWNER));
+  const isAdmin = canAdminister(user); // the Admin area: not reception
+  const accountLinks = ACCOUNT_LINKS.filter(l => (!l.adminOnly || isAdmin) && (!l.supportOnly || canSeeSupportTickets(user)));
   const badgeCount = isAdmin ? pendingCount : 0;
 
   if (!isMobile) {

@@ -16,6 +16,7 @@ import {
   cardStyle, btn, inputStyle, labelStyle, pill, hintStyle, sectionTitleStyle,
   displayName, legalName, formatLongDate, dateOnly, staffSavePayload, scheduleNameFor,
 } from './adminUi';
+import { ROLES, ROLE_LABELS, ROLE_HINTS, roleLabel } from '../../roles';
 
 const SECTIONS = [
   { key: 'account', label: 'Account and role' },
@@ -76,7 +77,7 @@ function Notice({ kind = 'success', children }) {
 // Account and role
 // ---------------------------------------------------------------------------
 function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [resetPw, setResetPw] = useState(null);       // temp password being prepared
@@ -116,6 +117,8 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
     if (pending === 'save') {
       await api.updateStaff(staff.id, staffSavePayload(staff, form, adminPassword));
       setEditing(false); setNotice('Account saved');
+      // Your own role may have changed: update the menus and page access now.
+      if (isSelf) refreshUser();
     } else if (pending === 'reset') {
       const updated = await api.updateStaff(staff.id, { ...staffSavePayload(staff, {}, adminPassword), reset_temporary_password: resetPw });
       setIssued({ username: updated?.username || staff.username, tempPassword: resetPw });
@@ -151,7 +154,7 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
           <Detail label="Preferred name" value={staff.preferred_name} />
           <Detail label="Position" value={staff.position} />
           <Detail label="Hire date" value={formatLongDate(staff.hire_date)} />
-          <Detail label="Role" value={staff.role === 'admin' ? 'Admin' : 'Staff'} />
+          <Detail label="Role" value={roleLabel(staff.role)} />
           <div>
             <p style={{ margin: 0, fontSize: 12, color: BRAND.muted }}>Username</p>
             <p style={{ margin: '2px 0 0', fontSize: 14, color: INK, fontFamily: 'ui-monospace, Menlo, monospace' }}>{staff.username}</p>
@@ -171,12 +174,14 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
             <div>
               <label style={{ display: 'block' }}>
                 <span style={labelStyle()}>Role</span>
-                <select style={inputStyle()} value={form.role} onChange={set('role')} disabled={isSelf}>
-                  <option value="staff">Staff</option>
-                  <option value="admin">Admin</option>
+                <select style={inputStyle()} value={form.role} onChange={set('role')}>
+                  {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                 </select>
               </label>
-              {isSelf && <p style={{ ...hintStyle(), fontSize: 11.5 }}>You can't change your own role.</p>}
+              <p style={{ ...hintStyle(), fontSize: 11.5 }}>
+                {ROLE_HINTS[form.role] || ''}
+                {isSelf && form.role !== staff.role && ' This is your own account: you\'ll have this access as soon as you save.'}
+              </p>
             </div>
           </div>
           {renames && (
@@ -700,7 +705,7 @@ export default function StaffProfilePage() {
 
   const providerExists = !!staff.provider_name && providers.some(p => p.Name === staff.provider_name);
   const tenure = calculateTenure(staff.hire_date);
-  const subtitle = [staff.position, staff.role === 'admin' ? 'Admin' : 'Staff', tenure && `With us for ${tenure}`].filter(Boolean).join(' · ');
+  const subtitle = [staff.position, roleLabel(staff.role), tenure && `With us for ${tenure}`].filter(Boolean).join(' · ');
 
   const nav = SECTIONS.map(s => {
     const active = s.key === section;

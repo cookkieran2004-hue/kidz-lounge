@@ -7,6 +7,7 @@ import { calculateTenure } from './StaffPage';
 import { DateField, dateToInputValue } from './SchedulePage';
 import { Card, Tag, PageHeader, StatStrip, Stat, UnderlineTabs } from '../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
+import { roleLabel } from '../roles';
 
 // My profile: who you are at the practice (a summary up top), the details
 // you can change yourself, and your licences/certifications. Position,
@@ -137,7 +138,7 @@ function ProfileDetails({ profile, onUpdated, isMobile }) {
 function AdminManagedCard({ profile }) {
   const rows = [
     ['Position', profile.position || 'Not set'],
-    ['Role', profile.role === 'admin' ? 'Admin' : 'Staff'],
+    ['Role', roleLabel(profile.role)],
     ['Linked provider', profile.provider_name || 'None'],
     ['Hire date', profile.hire_date ? longDate(profile.hire_date) : 'Not set'],
     ['Username', profile.username],
@@ -307,7 +308,7 @@ export default function MyProfilePage() {
   const soon = credentials.filter(c => credentialTone(c).key === 'soon').length;
   const counts = { profile: null, credentials: credentials.length };
 
-  const meta = [profile.position, profile.role === 'admin' ? 'Administrator' : 'Staff', profile.provider_name ? `Provider: ${profile.provider_name}` : null].filter(Boolean).join(' · ');
+  const meta = [profile.position, roleLabel(profile.role), profile.provider_name ? `Provider: ${profile.provider_name}` : null].filter(Boolean).join(' · ');
   return (
     <div style={{ background: PAGE_BG, fontFamily: FONT, minHeight: '100%' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>

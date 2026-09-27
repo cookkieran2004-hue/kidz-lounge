@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useLocation } from 'react-router-dom';
 import { api } from './api';
 import { useAuth } from './AuthContext';
+import { canAdminister } from './roles';
 
 // Holds the number of time-off requests waiting for an admin's decision.
 // The nav bar (next to the username + on the ADMIN menu item) and the
@@ -12,7 +13,7 @@ const PendingTimeOffContext = createContext({ pendingCount: 0, refreshPending: (
 export function PendingTimeOffProvider({ children }) {
   const { user } = useAuth();
   const location = useLocation();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = canAdminister(user); // time-off approvals are in the Admin area
   const [pendingCount, setPendingCount] = useState(0);
 
   const refreshPending = useCallback(async () => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
+import { canAdminister } from '../roles';
 
 const BRAND_PURPLE = '#6D28D9';
 const BRAND_TINT = '#F5F3FF';
@@ -246,17 +247,18 @@ export default function TimeOffPage() {
   const [denyingId, setDenyingId] = useState(null);
   const [denyNote, setDenyNote] = useState('');
 
+  const administers = canAdminister(user);
   const load = useCallback(async () => {
     setLoading(true);
     const [b, mine] = await Promise.all([api.getMyTimeOffBalances(), api.getMyTimeOffRequests()]);
     setBalances(b);
     setMyRequests(mine);
-    if (user.role === 'admin') {
+    if (administers) {
       const pending = await api.getAllTimeOffRequests('pending');
       setPendingRequests(pending);
     }
     setLoading(false);
-  }, [user.role]);
+  }, [administers]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -290,7 +292,7 @@ export default function TimeOffPage() {
         </button>
       )}
 
-      {user.role === 'admin' && (
+      {canAdminister(user) && (
         <div style={{ display: 'flex', gap: 4, marginBottom: 14, borderBottom: `1.5px solid ${BORDER}` }}>
           {[{ key: 'mine', label: 'My Requests' }, { key: 'pending', label: `Pending Approvals${pendingRequests.length ? ` (${pendingRequests.length})` : ''}` }].map(t => (
             <button
@@ -310,7 +312,7 @@ export default function TimeOffPage() {
         </div>
       )}
 
-      {tab === 'mine' || user.role !== 'admin' ? (
+      {tab === 'mine' || !canAdminister(user) ? (
         <RequestList requests={myRequests} isMobile={isMobile} />
       ) : (
         <RequestList

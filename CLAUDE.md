@@ -74,7 +74,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - GETs retry on 429/502/503/504 and network errors. Writes never retry.
   - Errors are thrown as `Error` with `.status` and `.data`. The message is the server's `error` string, written to be shown to users. A 409 with `data.negativeBalance` means "confirm and resend".
   - Add new endpoints here, grouped under the existing `// ---- Section ----` comments.
-- `src/App.jsx`: routes. Wrap pages in `RequireAuth` or `RequireAdmin` from `ProtectedRoute.jsx`. `/support` is public. The global providers are `AuthProvider`, `PendingTimeOffProvider`, `TasksProvider` and `ChatProvider`.
+- `src/App.jsx`: routes. Wrap pages in `RequireAuth` or `RequireAdmin` (Admin and Developer) from `ProtectedRoute.jsx`. `/support` is public. The global providers are `AuthProvider`, `PendingTimeOffProvider`, `TasksProvider` and `ChatProvider`.
 - `src/pages/`: one file per page, and some are very large (`SchedulePage.jsx` has about 3.4k lines, `ManageDataPage.jsx` about 2.6k). Search inside them before adding new files. Other pages import shared pieces from them: `DateField`, `TimeField`, `AppointmentModal`, `OOOModal`, `formatSlotLabel` and `dateToInputValue` from `SchedulePage.jsx`, and `TimeOffTab` and `BRAND` from `StaffPage.jsx`.
 - **Schedule** (`SchedulePage.jsx`, `WeeklySchedulePage.jsx`):
   - The daily Provider grid has discipline filter chips (All / ST / OT / PT / SI), parsed from each provider's `specialty` and remembered in `localStorage` per user (`kl.schedule.providerFilter.<username>`).
@@ -105,6 +105,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 ## Conventions & gotchas
 
 - Staff display names: preferred name, then first + last, then username.
-- The support inbox belongs to a single hardcoded user, `SUPPORT_OWNER = 'KJC135'` (`src/supportCount.js`, and mirrored in the API).
+- **Roles** (`src/roles.js`, mirroring the API's `lib/roles.js`): Staff, Reception, Admin, Developer. Use `canManage(user)` for admin-level work outside the Admin area (Reception included) and `canAdminister(user)` for the Admin area and time-off approvals. Never compare `user.role` to a string. Show roles with `roleLabel`. Case manager pickers use `caseManagerChoices` (no Developers).
+- The support inbox is for **Developers only** (`canSeeSupportTickets` in `src/supportCount.js`, mirrored in the API).
 - **Comments explain *why*,** often including the bug a line prevents. Keep that style.
 - `.env` is tracked in git despite being a secrets file. It currently holds only `VITE_API_URL`. Never add real secrets to it, since `VITE_*` values ship to the browser anyway.

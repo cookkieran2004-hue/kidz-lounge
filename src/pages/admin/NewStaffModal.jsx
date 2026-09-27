@@ -7,6 +7,7 @@ import {
   BRAND, BRAND_SERIF, INK, BODY, HAIRLINE, DANGER, FONT, WEEKDAYS,
   cardStyle, btn, inputStyle, labelStyle, hintStyle, overlayStyle, scheduleNameFor,
 } from './adminUi';
+import { ROLES, ROLE_LABELS, ROLE_HINTS } from '../../roles';
 
 // ---------------------------------------------------------------------------
 // Shown once after creating an account or resetting a password. Only the
@@ -268,10 +269,9 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
               <Field label="Preferred name"><input style={inputStyle()} value={person.preferred_name} onChange={setP('preferred_name')} placeholder="What they go by" /></Field>
               <Field label="Position" required><input style={inputStyle()} value={person.position} onChange={setP('position')} placeholder="Speech therapist" /></Field>
               <div><label htmlFor="kl-new-hire-date" style={{ display: 'block' }}><span style={labelStyle()}>Hire date</span></label><DateField id="kl-new-hire-date" yearNav clearable style={inputStyle()} value={person.hire_date} onChange={v => setPerson(p => ({ ...p, hire_date: v }))} /></div>
-              <Field label="Role" hint="Admins can manage staff accounts and approve time off.">
+              <Field label="Role" hint={ROLE_HINTS[person.role] || ''}>
                 <select style={inputStyle()} value={person.role} onChange={setP('role')}>
-                  <option value="staff">Staff</option>
-                  <option value="admin">Admin</option>
+                  {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                 </select>
               </Field>
             </div>

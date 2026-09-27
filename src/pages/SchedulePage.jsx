@@ -7,6 +7,7 @@ import { useIsMobile } from '../useIsMobile';
 import { MeetingAgendaEditor, MeetingAgendaPlaceholder } from '../MeetingAgenda';
 import { useStaffNames } from '../staffDirectory';
 import { usePatientAlerts, alertsFor, AlertSymbol, PatientAlertsInline } from '../patientAlerts';
+import { canManage } from '../roles';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -848,7 +849,7 @@ function CommentsThread({ table, recordId, comments, currentUser, onUpdated, isV
   const [error, setError] = useState(null);
 
   const commentsList = parseComments(comments);
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = canManage(currentUser);
 
   const handleSend = async () => {
     if (!newComment.trim()) return;
@@ -3143,7 +3144,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced, request
   const colors = oooBlockColors(existing.type);
   const dateLabel = new Date(existing.ooo_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const timeLabel = `${formatSlotLabel(existing.start_time.slice(0, 5))} \u2013 ${formatSlotLabel(existing.end_time.slice(0, 5))}`;
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = canManage(user);
   const owner = link.request?.username;
   const isOwner = !!owner && owner === user?.username;
   const isMeeting = existing.type === 'Meeting' && link.request?.request_type === 'Meeting';
