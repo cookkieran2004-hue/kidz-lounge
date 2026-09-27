@@ -363,7 +363,7 @@ function ActiveList({ entries, isMobile, onSchedule, onEdit, onStatus }) {
       </div>
       {entries.map(e => {
         return (
-          <div key={e.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: 14, padding: '11px 0', borderBottom: `1px solid ${HAIRLINE}`, alignItems: 'start' }}>
+          <div key={e.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: 14, padding: '11px 0', borderBottom: `1px solid ${HAIRLINE}`, alignItems: 'center' }}>
             <div style={{ minWidth: 0 }}>
               <Link to={`/patients/${encodeURIComponent(e.patient_name)}`} style={{ fontSize: 13.5, fontWeight: 500, color: INK, textDecoration: 'none' }}>{e.patient_name}</Link>
               {e.program && <span style={{ fontSize: 12, color: MUTED }}> · {e.program}</span>}
@@ -401,7 +401,7 @@ function HistoryList({ entries, isMobile, onRestore, onDelete }) {
         const s = STATUS_TAG[e.status];
         const closed = e.closed_at ? dateToInputValue(new Date(e.closed_at)) : null;
         return (
-          <div key={e.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: isMobile ? 4 : 14, padding: '11px 0', borderBottom: `1px solid ${HAIRLINE}`, alignItems: 'start' }}>
+          <div key={e.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: isMobile ? 4 : 14, padding: '11px 0', borderBottom: `1px solid ${HAIRLINE}`, alignItems: 'center' }}>
             <Link to={`/patients/${encodeURIComponent(e.patient_name)}`} style={{ fontSize: 13.5, fontWeight: 500, color: INK, textDecoration: 'none' }}>{e.patient_name}</Link>
             <span><Tag>{e.specialty}</Tag></span>
             <span style={{ fontSize: 13, color: MUTED }}>
