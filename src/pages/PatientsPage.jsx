@@ -3,17 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import {
-  pageWrap, pillTabsWrap, primaryBtnStyle, rowStyle, smallBtnStyle,
-  presetTabsWrap, presetTabStyle, filterBarStyle, filterInputStyle,
+  pageWrap, pillTabsWrap, rowStyle, filterInputStyle, presetTabsWrap, presetTabStyle,
   matchesPreset, matchesSearchText, matchesOnProgram, splitMultiValue, programColor, serviceColor,
   PATIENT_PRESETS, PatientFilterBuilder, matchesPatientFilters,
   PatientModal, DataTableOverlay, PasswordConfirmModal,
 } from './ManageDataPage';
 import { canManage } from '../roles';
+import { useIsMobile } from '../useIsMobile';
+import { PageHeader } from '../dashboardUi';
+import { INK, MUTED, HAIRLINE, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 
 export default function PatientsPage() {
   const { user } = useAuth();
   const isAdmin = canManage(user);
+  const isMobile = useIsMobile(768);
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,75 +68,59 @@ export default function PatientsPage() {
 
   return (
     <div style={{ ...pageWrap(), position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Patients</h1>
-          <p style={{ fontSize: 13, color: '#6b7280', marginTop: 0, marginBottom: 20 }}>
-            Click a patient to open their chart.
-          </p>
-        </div>
-        {/* Right side: On Program | All toggle, with Data Table stacked underneath it */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-          <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1.5px solid #e2e4e9' }}>
-            <button
-              type="button"
-              onClick={() => setShowAllPatients(false)}
-              style={{ padding: '7px 14px', fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer', background: !showAllPatients ? '#6D28D9' : 'white', color: !showAllPatients ? 'white' : '#374151' }}
-            >
-              On Program
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAllPatients(true)}
-              style={{ padding: '7px 14px', fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer', background: showAllPatients ? '#6D28D9' : 'white', color: showAllPatients ? 'white' : '#374151' }}
-            >
-              All
-            </button>
-          </div>
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setConfirmingDataTablePassword(true)}
-              title="View and edit all patient data as a table"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #e2e4e9', background: 'white',
-                color: '#374151', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: '7px 14px', borderRadius: 8,
-              }}
-            >
-              <span aria-hidden="true">&#9635;</span> Data Table
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Header, like the other pages: title with the page actions, the
+          preset pills, then one row of search and filters. */}
+      <PageHeader
+        title="Patients"
+        isMobile={isMobile}
+        actions={(
+          <>
+            {isAdmin && (
+              <button type="button" onClick={() => setConfirmingDataTablePassword(true)} title="View and edit all patient data as a table" style={buttonStyle('secondary')}>
+                Data table
+              </button>
+            )}
+            <button type="button" onClick={() => setModalTarget({ existing: null })} style={buttonStyle('primary')}>Add patient</button>
+          </>
+        )}
+      />
 
-      {loadError && <p style={{ color: '#dc2626', fontSize: 13 }}>{loadError}</p>}
+      {loadError && <p style={{ color: TONES.danger.fg, fontSize: 13 }}>{loadError}</p>}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button style={primaryBtnStyle()} onClick={() => setModalTarget({ existing: null })}>+ Add Patient</button>
-      </div>
-
-      <div style={presetTabsWrap()}>
+      <div style={presetTabsWrap()} role="group" aria-label="Patient groups">
         {PATIENT_PRESETS.map(p => (
-          <button key={p.key} type="button" onClick={() => setPreset(p.key)} style={presetTabStyle(preset === p.key)}>
+          <button key={p.key} type="button" aria-pressed={preset === p.key} onClick={() => setPreset(p.key)} style={presetTabStyle(preset === p.key)}>
             {p.label}
           </button>
         ))}
       </div>
 
-      <div style={filterBarStyle()}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
         <input
-          style={filterInputStyle(220)}
-          placeholder="Search all fields..."
+          style={{ ...filterInputStyle(isMobile ? '100%' : 240), borderRadius: 6, borderColor: HAIRLINE }}
+          placeholder="Search all fields"
+          aria-label="Search patients"
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
         />
         <PatientFilterBuilder filters={filters} onChange={setFilters} patients={patients} staffDirectory={staffDirectory} />
         {(preset !== 'all' || searchText || filters.length > 0) && (
-          <button type="button" onClick={clearFilters} style={smallBtnStyle(false)}>Clear Filters</button>
+          <button type="button" onClick={clearFilters} style={buttonStyle('text', { fontSize: 12.5 })}>Clear filters</button>
         )}
-        <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 'auto' }}>
-          {filteredPatients.length} of {patients.length}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: isMobile ? 0 : 'auto' }}>
+          <div role="group" aria-label="Which patients" style={{ display: 'flex', gap: 4 }}>
+            {[[false, 'On program'], [true, 'All']].map(([all, label]) => (
+              <button
+                key={label} type="button" aria-pressed={showAllPatients === all} onClick={() => setShowAllPatients(all)}
+                style={{
+                  padding: '5px 10px', fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', borderRadius: 6, cursor: 'pointer',
+                  border: `1px solid ${showAllPatients === all ? INK : HAIRLINE}`, background: showAllPatients === all ? INK : 'white', color: showAllPatients === all ? 'white' : INK,
+                }}
+              >{label}</button>
+            ))}
+          </div>
+          <span style={{ fontSize: 12.5, color: MUTED, ...NUMERIC }}>{filteredPatients.length} of {patients.length}</span>
+        </div>
       </div>
 
       {loading ? (

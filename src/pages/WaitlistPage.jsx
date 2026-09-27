@@ -528,7 +528,6 @@ export default function WaitlistPage() {
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>
         <PageHeader
           title="Waitlist"
-          subtitle={view === 'active' ? 'Patients waiting to start services, longest wait first.' : 'Entries that were scheduled or removed, most recent first.'}
           isMobile={isMobile}
           actions={(
             <div style={{ textAlign: isMobile ? 'left' : 'right', ...NUMERIC }}>

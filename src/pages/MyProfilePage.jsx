@@ -144,7 +144,7 @@ function AdminManagedCard({ profile }) {
     ['Username', profile.username],
   ];
   return (
-    <Card title="Employment" subtitle="Maintained by an administrator.">
+    <Card title="Employment">
       <dl style={{ margin: 0 }}>
         {rows.map(([label, value]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: `1px solid ${HAIRLINE}` }}>
@@ -254,7 +254,6 @@ function CredentialsPanel({ credentials, isMobile, onChanged }) {
   return (
     <Card
       title="Licences and certifications"
-      subtitle={`Credentials expiring within ${EXPIRING_SOON_DAYS} days are flagged. A renewal task is created 14 days before expiry.`}
       action={!mode && <button type="button" onClick={() => setMode('new')} style={buttonStyle('secondary')}>Add credential</button>}
     >
       <div>
@@ -312,7 +311,7 @@ export default function MyProfilePage() {
   return (
     <div style={{ background: PAGE_BG, fontFamily: FONT, minHeight: '100%' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>
-        <PageHeader title="My profile" subtitle="Your contact details, employment information and credentials." isMobile={isMobile} />
+        <PageHeader title="My profile" isMobile={isMobile} />
 
         {/* Who you are, at a glance */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>

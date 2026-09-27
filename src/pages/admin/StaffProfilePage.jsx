@@ -320,10 +320,7 @@ function ProviderSection({ staff, providers, allStaff, isMobile, onChanged }) {
   const twoCol = isMobile ? '1fr' : '1fr 1fr';
 
   return (
-    <SectionCard
-      title="Linked provider"
-      hint="Their provider is how they appear on the schedule. It's always named after them and stays with this account."
-    >
+    <SectionCard title="Linked provider">
       {notice && <Notice>{notice}</Notice>}
       {error && <Notice kind="error">{error}</Notice>}
 
@@ -441,7 +438,7 @@ function ProviderSection({ staff, providers, allStaff, isMobile, onChanged }) {
 // ---------------------------------------------------------------------------
 function ScheduleSection({ staff, providerExists, goTo }) {
   return (
-    <SectionCard title="Weekly schedule" hint={providerExists ? `Contracted hours for ${staff.provider_name}. Unchecked days mean they aren't contracted that day, and the schedule shades any time outside these hours.` : undefined}>
+    <SectionCard title="Weekly schedule">
       {providerExists ? (
         <>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 2px' }}>Standing hours</h3>
@@ -475,12 +472,7 @@ function TimeOffSection({ staff, isMobile, onChanged }) {
   const [balanceVersion, setBalanceVersion] = useState(0);
   const [historyVersion, setHistoryVersion] = useState(0);
   return (
-    <SectionCard
-      title="Time off"
-      hint={view === 'requests'
-        ? 'Every request, and time off added for them.'
-        : 'Use Adjust to correct a balance directly, for example to give someone their real starting balance.'}
-    >
+    <SectionCard title="Time off">
       <UnderlineTabs
         label="Time off" active={view} onPick={setView} style={{ marginBottom: 16 }}
         tabs={[{ key: 'requests', label: 'Requests' }, { key: 'balances', label: 'Balances' }]}
@@ -544,7 +536,7 @@ function CaseloadSection({ staff, providerExists, goTo }) {
   }
 
   return (
-    <SectionCard title="Caseload" hint="Appointments for the next two weeks, canceled ones left out.">
+    <SectionCard title="Caseload">
       {error && <Notice kind="error">The caseload couldn't be loaded ({error}).</Notice>}
       {!appts && !error && <p style={{ fontSize: 13.5, color: BRAND.muted }}>Loading...</p>}
       {appts && (
@@ -637,7 +629,7 @@ function TasksSection({ staff }) {
   };
 
   return (
-    <SectionCard title="Tasks" hint={`Tasks assigned to ${displayName(staff)}.`}>
+    <SectionCard title="Tasks">
       {error && <Notice kind="error">{error}</Notice>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         <input style={inputStyle({ flex: 1, minWidth: 200 })} value={title} onChange={e => setTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }} placeholder={`Assign a task to ${staff.preferred_name || staff.first_name || staff.username}`} aria-label="New task title" />

@@ -1335,7 +1335,6 @@ function ScheduleApp() {
   const [showLookaheadDetails, setShowLookaheadDetails] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [viewMode, setViewMode] = useState('provider');
   const [closedInfo, setClosedInfo] = useState(null); // { date, reason } if the selected date is closed, else null
 
@@ -1445,10 +1444,8 @@ function ScheduleApp() {
       setAppointments(apts);
       setOooRecords(ooo);
       setClosedInfo(closedDates.length > 0 ? closedDates[0] : null);
-      setConnectionStatus('live');
     } catch (err) {
       setError(err.message);
-      setConnectionStatus('error');
     }
     setLoading(false);
     setDayLoadedOnce(true);
@@ -1795,17 +1792,6 @@ function ScheduleApp() {
             <button onClick={() => setViewMode('unassigned')} style={{ ...segmentBtnStyle(viewMode === 'unassigned'), borderRight: 'none' }}>
               <ListIcon size={14} /> Unassigned
             </button>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{
-              width: 7, height: 7, borderRadius: '50%',
-              background: connectionStatus === 'live' ? '#10b981' : connectionStatus === 'error' ? '#dc2626' : '#f59e0b',
-            }} />
-            <span style={{ fontSize: 11.5, color: '#9ca3af' }}>
-              {connectionStatus === 'live' ? 'Connected — refreshes every 30s' : connectionStatus === 'error' ? 'Connection issue' : 'Connecting...'}
-            </span>
           </div>
         </div>
         {viewMode === 'provider' && (

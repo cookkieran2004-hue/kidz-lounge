@@ -158,7 +158,7 @@ export default function SupportTicketsPage() {
   return (
     <div style={{ background: PAGE_BG, fontFamily: FONT, minHeight: '100%' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>
-        <PageHeader title="Support tickets" subtitle="Help desk requests from staff and the public Help page." isMobile={isMobile} />
+        <PageHeader title="Support tickets" isMobile={isMobile} />
         {error && <p role="alert" style={{ fontSize: 13.5, color: TONES.danger.fg, background: TONES.danger.bg, borderRadius: 6, padding: '10px 12px', margin: '0 0 16px' }}>{error}</p>}
 
         <Card pad={isMobile ? 14 : 20}>

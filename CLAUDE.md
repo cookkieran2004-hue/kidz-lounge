@@ -44,6 +44,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 - **Phone numbers** are US 10-digit, formatted as you type, `(555) 555-5555`, never free text.
 - **Deleting** asks inline ("Delete this? Delete / Keep"), not a browser `confirm()`.
 - **Professional, not playful.** This is a business tool. Kieran rejected an earlier design as "too fun" and "very AI". Avoid:
+  - descriptions under page or section titles (e.g. "Time off balances, your schedule and requests."). Headers are just the title. Leave out `PageHeader`'s `subtitle`, `Card`'s `subtitle` and `SectionCard`'s `hint` unless they carry real information, such as "Week of Sep 28"
   - greetings ("Good evening, Jamie")
   - gradients and drop shadows
   - colored stripes, oversized serif numbers and emoji-like flourishes

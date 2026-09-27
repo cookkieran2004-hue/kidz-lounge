@@ -611,7 +611,6 @@ export default function MyTimePage() {
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>
         <PageHeader
           title="My time"
-          subtitle="Time off balances, your schedule and requests."
           isMobile={isMobile}
           actions={<button type="button" onClick={openNewRequest} style={buttonStyle('primary', isMobile ? { width: '100%' } : {})}>New request</button>}
         />
@@ -675,7 +674,7 @@ export default function MyTimePage() {
         </div>
 
         {data && (
-          <Card title="Balance history" subtitle="PTO is credited each Sunday for the hours worked Monday to Friday. Select a week to see the calculation.">
+          <Card title="Balance history">
             <TimeOffHistory refreshKey={historyKey} onChanged={loadBase} />
           </Card>
         )}
