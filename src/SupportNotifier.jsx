@@ -61,7 +61,7 @@ export default function SupportNotifier() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <span aria-hidden="true" style={{ width: 28, height: 28, borderRadius: '50%', background: '#ECFDF3', color: '#067647', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16 }}>&#10003;</span>
-          <h2 id="kl-support-notice-title" style={{ margin: 0, fontSize: 17, color: '#111827' }}>Your support ticket #{current.id} was resolved</h2>
+          <h2 id="kl-support-notice-title" style={{ margin: 0, fontSize: 17, color: '#111827' }}>Your support ticket {current.reference || `#${current.id}`} was resolved</h2>
         </div>
         <p style={{ margin: '0 0 6px', fontSize: 13, color: '#6b7280' }}>You wrote:</p>
         <p style={{ margin: '0 0 12px', fontSize: 14, color: '#111827', whiteSpace: 'pre-wrap' }}>{firstLine}{firstLine.length < (current.issue || '').length ? '...' : ''}</p>

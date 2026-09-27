@@ -55,7 +55,8 @@ export default function SupportPage() {
         issue, urgency, contact_name: name, contact_info: contact, website,
         page: params.get('from') || (user ? '' : 'login screen'),
       });
-      setSentId(res?.id ?? '');
+      // The ticket's reference (e.g. KL-QMZRTA); '' still means "sent".
+      setSentId(res?.reference || '');
     } catch (err) {
       setError(err.message);
     }
@@ -76,7 +77,8 @@ export default function SupportPage() {
 
       {sentId !== null ? (
         <div role="status" style={{ border: '1px solid #999', padding: 16, marginTop: 20 }}>
-          <p style={{ margin: '0 0 8px', fontWeight: 'bold' }}>Thanks. Your ticket{sentId ? ` #${sentId}` : ''} was sent.</p>
+          <p style={{ margin: '0 0 8px', fontWeight: 'bold' }}>Thanks. Your ticket{sentId ? ` ${sentId}` : ''} was sent.</p>
+          {sentId && <p style={{ margin: '0 0 8px', fontSize: 14 }}>Please quote reference <b>{sentId}</b> if you contact us about it.</p>}
           <p style={{ margin: '0 0 12px', fontSize: 14 }}>We'll contact you at {contact}.</p>
           <button type="button" onClick={startOver} style={{ fontSize: 14, padding: '4px 12px' }}>Send another</button>{' '}
           <Link to={user ? '/' : '/login'} style={{ fontSize: 14, marginLeft: 8 }}>{user ? 'Back to the schedule' : 'Back to sign in'}</Link>

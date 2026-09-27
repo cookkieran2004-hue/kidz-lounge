@@ -54,7 +54,7 @@ export default function SupportTicketsPage() {
       {tickets === null ? <p>Loading...</p> : tickets.length === 0 ? <p style={{ color: '#555' }}>No {status === 'all' ? '' : status} tickets.</p> : tickets.map(t => (
         <div key={t.id} style={{ border: '1px solid #999', padding: 12, marginBottom: 12, background: t.status === 'resolved' ? '#f6f6f6' : 'white' }}>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline', fontSize: 14 }}>
-            <b>#{t.id}</b>
+            <b>{t.reference || `#${t.id}`}</b>
             <b style={{ color: URGENCY_COLOR[t.urgency] }}>{t.urgency}</b>
             <span style={{ color: '#555' }}>{when(t.created_at)}</span>
             <span style={{ marginLeft: 'auto', color: t.status === 'open' ? '#111' : '#067647' }}>{t.status === 'open' ? 'Open' : `Resolved ${when(t.resolved_at)}`}</span>
