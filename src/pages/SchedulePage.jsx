@@ -347,6 +347,9 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
   // vertical room to spare (a 60+ minute slot), so a normal 30-minute card
   // stays down to two lines and reliably fits its row.
   const showTimeLine = heightPx >= 90;
+  // A 15-minute card is half a row: one line, name then status, so the name
+  // isn't clipped by the room and status lines stacked under it.
+  const compact = heightPx < 50;
   return (
     <div
       onClick={onClick}
@@ -361,20 +364,21 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
         background: (isCanceled || isNoShow) ? `color-mix(in srgb, ${color} 30%, white)` : `color-mix(in srgb, ${color} 10%, white)`,
         borderLeft: `3px solid ${color}`,
         borderRadius: 6,
-        padding: '5px 8px',
+        padding: compact ? '0 8px' : '5px 8px',
         cursor: 'pointer',
         transition: 'box-shadow 0.15s, transform 0.1s',
         boxShadow: hasConflict ? '0 0 0 2px #dc2626, 0 2px 6px rgba(0,0,0,0.08)' : '0 0 0 1px white, 0 1px 3px rgba(0,0,0,0.1)',
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        gap: 1,
+        flexDirection: compact ? 'row' : 'column',
+        alignItems: compact ? 'center' : undefined,
+        justifyContent: compact ? 'flex-start' : 'center',
+        gap: compact ? 6 : 1,
       }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = hasConflict ? '0 0 0 2px #dc2626, 0 3px 10px rgba(0,0,0,0.15)' : '0 0 0 1px white, 0 3px 10px rgba(0,0,0,0.15)'; }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = hasConflict ? '0 0 0 2px #dc2626, 0 2px 6px rgba(0,0,0,0.08)' : '0 0 0 1px white, 0 1px 3px rgba(0,0,0,0.1)'; }}
     >
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937', display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937', display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: compact ? 1 : 0, minWidth: 0, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{apt.patient_name || '(no patient)'}</span>
         {hasComments && <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
 
@@ -384,7 +388,7 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
           {formatSlotLabel(apt.appointment_time.slice(0, 5))} &middot; {Number(apt.duration) || 30} min
         </div>
       )}
-      {setRoom && onRoomClick && (
+      {!compact && setRoom && onRoomClick && (
         <div style={{ flexShrink: 0, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
           <button
             type="button"
@@ -401,7 +405,7 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
           </button>
         </div>
       )}
-      {!setRoom && badgeLabel && (
+      {!compact && !setRoom && badgeLabel && (
         <div style={{ flexShrink: 0, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
           <span
             onClick={onRoomClick ? (e) => { e.stopPropagation(); onRoomClick(e); } : undefined}
@@ -2029,9 +2033,17 @@ function ScheduleApp() {
                               </div>
                             );
                           })()}
-                          {cellAppointments.map((apt, stackIndex) => {
+                          {cellAppointments.map((apt, cellIndex) => {
+                            // Staggered only behind earlier cards it actually overlaps;
+                            // a back-to-back visit in the same row (11:30 then 11:45)
+                            // sits exactly at its own time.
+                            const span = (x) => { const st = timeToMinutes(x.appointment_time.slice(0, 5)); return [st, st + (Number(x.duration) || 30)]; };
+                            const [aStart, aEnd] = span(apt);
+                            const stackIndex = cellAppointments.slice(0, cellIndex).filter(o => { const [s2, e2] = span(o); return s2 < aEnd && aStart < e2; }).length;
                             const duration = Number(apt.duration) || 30;
-                            const heightPx = Math.max(1, duration / 30) * ROW_HEIGHT - CARD_MARGIN * 2;
+                            // True length (a 15-minute visit is half a row), so a card never covers
+                            // the next appointment starting a quarter hour later.
+                            const heightPx = Math.max(0.5, duration / 30) * ROW_HEIGHT - CARD_MARGIN * 2;
                             const aptMinutes = timeToMinutes(apt.appointment_time.slice(0, 5));
                             const slotMinutes = timeToMinutes(time);
                             const offsetWithinSlot = ((aptMinutes - slotMinutes) / 30) * ROW_HEIGHT;

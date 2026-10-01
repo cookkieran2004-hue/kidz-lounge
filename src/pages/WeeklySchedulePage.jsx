@@ -213,7 +213,13 @@ export default function WeeklySchedulePage() {
     appointments.forEach(apt => {
       const dayBucket = g[apt.appointment_date];
       if (!dayBucket) return;
-      const slot = apt.appointment_time.slice(0, 5);
+      // The row it starts in: the latest half-hour row at or before its time.
+      // Matching the exact time lost anything at :15 or :45 (no such row) --
+      // the card never drew, though the time still showed as booked. The card
+      // itself is placed within the row by its exact minutes (offsetWithinSlot).
+      const aptMinutes = timeToMinutes(apt.appointment_time.slice(0, 5));
+      let slot = TIME_SLOTS[0];
+      TIME_SLOTS.forEach(t => { if (timeToMinutes(t) <= aptMinutes) slot = t; });
       if (!dayBucket[slot]) dayBucket[slot] = [];
       dayBucket[slot].push(apt);
     });
@@ -541,9 +547,17 @@ export default function WeeklySchedulePage() {
                               </div>
                             );
                           })()}
-                          {cellAppointments.map((apt, stackIndex) => {
+                          {cellAppointments.map((apt, cellIndex) => {
+                            // Staggered only behind earlier cards it actually overlaps;
+                            // a back-to-back visit in the same row (11:30 then 11:45)
+                            // sits exactly at its own time.
+                            const span = (x) => { const st = timeToMinutes(x.appointment_time.slice(0, 5)); return [st, st + (Number(x.duration) || 30)]; };
+                            const [aStart, aEnd] = span(apt);
+                            const stackIndex = cellAppointments.slice(0, cellIndex).filter(o => { const [s2, e2] = span(o); return s2 < aEnd && aStart < e2; }).length;
                             const duration = Number(apt.duration) || 30;
-                            const heightPx = Math.max(1, duration / 30) * ROW_HEIGHT - CARD_MARGIN * 2;
+                            // True length (a 15-minute visit is half a row), so a card never covers
+                            // the next appointment starting a quarter hour later.
+                            const heightPx = Math.max(0.5, duration / 30) * ROW_HEIGHT - CARD_MARGIN * 2;
                             const aptMinutes = timeToMinutes(apt.appointment_time.slice(0, 5));
                             const slotMinutes = timeToMinutes(time);
                             const offsetWithinSlot = ((aptMinutes - slotMinutes) / 30) * ROW_HEIGHT;
