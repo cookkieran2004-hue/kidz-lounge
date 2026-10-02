@@ -88,6 +88,10 @@ export default function SupportPage() {
           <label htmlFor="support-issue" style={labelStyle}>What's the issue?</label>
           <textarea id="support-issue" rows={6} value={issue} onChange={e => setIssue(e.target.value)} style={{ ...boxStyle, resize: 'vertical' }}
             placeholder="What happened, what you expected, and which page you were on." />
+          {/* HIPAA: this form is public and tickets aren't patient records. */}
+          <p style={{ fontSize: 12.5, color: '#555', margin: '4px 0 14px' }}>
+            Please don't include patient names or other patient details. Describe the problem in general terms, e.g. "a patient's chart won't open".
+          </p>
 
           <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
             <legend style={labelStyle}>Urgency</legend>
