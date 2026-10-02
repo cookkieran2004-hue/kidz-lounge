@@ -32,6 +32,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 
 - **Show names, not usernames**, anywhere the UI says who did something. Use `useStaffNames()` from `src/staffDirectory.js`, which includes archived staff. Exception: the task detail popup keeps "For <username>".
 - **One page scroll.** Don't nest scroll areas in pages. The schedule grids grow to full height, with sticky column headers.
+- **Sticky header stack** (`src/stickyLayout.js`): the nav bar sticks on every page. The daily and weekly schedules' headers (title through the specialty bubbles) stick below it, and the grids' column names stick below those (`top: STACK_TOP`). Heights are measured live into `--kl-nav-h` / `--kl-page-header-h`. A new sticky element must sit below the stack, not at `top: 0`.
 - **Grids always fit the screen.** No sideways scrolling: columns share the width, and the provider filter chips narrow what's shown.
 - **Schedule colors are consistent everywhere.** Time-off and OOO colors come from `oooBlockColors` / `statusColor` in `SchedulePage.jsx`, via `src/timeTypes.js` (`timeTypeStyle`, `sessionStyle`). Never hard-code another palette for PTO/UPTO/Lunch/Meeting or session status.
 - **Things on schedule events stay neutral** and shouldn't stand out, e.g. the grey dashed "Set room" pill.

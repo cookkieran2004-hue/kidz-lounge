@@ -8,6 +8,7 @@ import { MeetingAgendaEditor, MeetingAgendaPlaceholder } from '../MeetingAgenda'
 import { useStaffNames } from '../staffDirectory';
 import { usePatientAlerts, alertsFor, AlertSymbol, PatientAlertsInline } from '../patientAlerts';
 import { canManage } from '../roles';
+import { useStickyHeight, stickyStackHeight, STACK_TOP } from '../stickyLayout';
 import { DISCIPLINES, DISCIPLINE_NAMES, disciplinesOf } from '../disciplines';
 import Linkify from '../Linkify';
 
@@ -1368,6 +1369,11 @@ function ScheduleApp() {
   const [gridEl, setGridEl] = useState(null); // the grid's box (the page scrolls, not the grid)
   const [nowLineTop, setNowLineTop] = useState(null); // px from top of grid content, or null if hidden
   const autoScrolledGridRef = useRef(null);
+  // The header (title through the specialty bubbles) stays put under the
+  // nav bar while the grid scrolls; its height places the grid's sticky
+  // column names (src/stickyLayout.js).
+  const pageHeaderRef = useRef(null);
+  useStickyHeight(pageHeaderRef, '--kl-page-header-h');
 
 
   // ---- Unassigned view: rows you've given a room stay listed until you leave the view ----
@@ -1689,7 +1695,10 @@ function ScheduleApp() {
     if (autoScrolledGridRef.current !== gridEl) {
       autoScrolledGridRef.current = gridEl;
       const lineInPage = gridEl.getBoundingClientRect().top + window.scrollY + top;
-      window.scrollTo({ top: Math.max(0, lineInPage - window.innerHeight / 3) });
+      // A third of the way down the part of the window the sticky header
+      // doesn't cover.
+      const covered = stickyStackHeight();
+      window.scrollTo({ top: Math.max(0, lineInPage - covered - (window.innerHeight - covered) / 3) });
     }
   }, [gridEl, isToday, now, appointments, providers, viewMode]);
 
@@ -1747,7 +1756,15 @@ function ScheduleApp() {
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', padding: '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: 16, flexShrink: 0 }}>
+      <div
+        ref={pageHeaderRef}
+        style={{
+          position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: '#f6f7f9', flexShrink: 0,
+          // Covers the page's top padding and side gutters too, so nothing
+          // scrolling underneath shows through around it.
+          margin: '-20px -28px 0', padding: '20px 28px 16px',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
             Today's Appointments
@@ -1932,7 +1949,7 @@ function ScheduleApp() {
               <col style={{ width: 64 }} />
               {(viewMode === 'provider' ? gridProviders : TREATMENT_AREA_OPTIONS.map(r => ({ id: r }))).map(c => <col key={c.id} />)}
             </colgroup>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+            <thead style={{ position: 'sticky', top: STACK_TOP, zIndex: 20 }}>
               <tr>
                 <th style={thStyle()}>Time</th>
                 {viewMode === 'provider' && gridProviders.map(p => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { useStickyHeight } from './stickyLayout';
 import { useIsMobile } from './useIsMobile';
 import { useTasks } from './TasksContext';
 import { Avatar } from './Avatar';
@@ -25,7 +26,10 @@ const barStyle = {
   background: 'white',
   borderBottom: `1.5px solid ${BRAND_PURPLE}`,
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  position: 'relative',
+  // Stays at the top of every page (see src/stickyLayout.js).
+  position: 'sticky',
+  top: 0,
+  zIndex: 1000,
 };
 
 function tabStyle({ isActive }) {
@@ -226,6 +230,8 @@ export default function NavBar() {
   // Close the mobile menu automatically whenever the route changes, so it
   // never stays open after tapping a link or navigating via back/forward.
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  const navRef = useRef(null);
+  useStickyHeight(navRef, '--kl-nav-h');
 
   // No nav chrome on the login / set-password screens.
   if (!user) return null;
@@ -236,7 +242,7 @@ export default function NavBar() {
 
   if (!isMobile) {
     return (
-      <nav style={barStyle}>
+      <nav ref={navRef} style={barStyle}>
         <img src="/logo.png" alt="The Kidz Lounge" style={{ height: 34, width: 'auto', marginRight: 16 }} />
         {visibleTabs.map(tab => (
           <NavLink key={tab.to} to={tab.to} end={tab.end} style={tabStyle}>
@@ -269,7 +275,7 @@ export default function NavBar() {
   }
 
   return (
-    <nav style={barStyle}>
+    <nav ref={navRef} style={barStyle}>
       <img src="/logo.png" alt="The Kidz Lounge" style={{ height: 30, width: 'auto' }} />
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
         <button

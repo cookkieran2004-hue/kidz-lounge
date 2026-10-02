@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
@@ -15,6 +15,7 @@ import {
   thStyle, tdTimeStyle, tdCellStyle,
 } from './SchedulePage';
 import { canManage } from '../roles';
+import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 
 function startOfWeek(date) {
   // The Monday of the date's week, where weeks run Sunday to Saturday: on
@@ -56,6 +57,9 @@ export default function WeeklySchedulePage() {
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState(lockedProvider || '');
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
+  // Header stays under the nav bar while the week scrolls (src/stickyLayout.js).
+  const pageHeaderRef = useRef(null);
+  useStickyHeight(pageHeaderRef, '--kl-page-header-h');
   const [mobileDay, setMobileDay] = useState(() => workday(new Date()));
   const [appointments, setAppointments] = useState([]);
   const [oooRecords, setOooRecords] = useState([]);
@@ -293,7 +297,14 @@ export default function WeeklySchedulePage() {
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', padding: isMobile ? '16px' : '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16, flexShrink: 0 }}>
+      <div
+        ref={pageHeaderRef}
+        style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, flexShrink: 0,
+          position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: '#f6f7f9',
+          margin: isMobile ? '-16px -16px 0' : '-20px -28px 0', padding: isMobile ? '16px 16px 16px' : '20px 28px 16px',
+        }}
+      >
         <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
           {isMobile ? "Today's Schedule" : 'Weekly Schedule'}
         </h1>
@@ -474,7 +485,7 @@ export default function WeeklySchedulePage() {
               <col style={{ width: 64 }} />
               {daysToShow.map(d => <col key={d.dateStr} />)}
             </colgroup>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+            <thead style={{ position: 'sticky', top: STACK_TOP, zIndex: 20 }}>
               <tr>
                 <th style={thStyle()}>Time</th>
                 {daysToShow.map(d => (
