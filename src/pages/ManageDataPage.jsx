@@ -88,6 +88,9 @@ export const PATIENT_FILTER_COLUMNS = [
   { key: 'Services', label: 'Services' },
   { key: 'Mandate', label: 'Mandate' },
   { key: 'Case_Manager', label: 'Case Manager' },
+  // Read-only: providers with an upcoming appointment (the chart's Care
+  // Team), worked out by GET /patients.
+  { key: 'care_team', label: 'Care Team' },
   { key: 'ID_Number', label: 'ID #' },
   { key: 'Date_of_Birth', label: 'Date of Birth' },
   { key: 'IFSP_Type', label: 'IFSP Type' },
@@ -107,6 +110,7 @@ function patientFieldToString(patient, key) {
   const val = patient[key];
   if (val === null || val === undefined) return '';
   if (key === 'Picture_Consent') return val === true ? 'yes' : val === false ? 'no' : '';
+  if (Array.isArray(val)) return val.join(', ');
   return String(val);
 }
 
@@ -1622,13 +1626,14 @@ function formatCellValue(patient, key) {
   const val = patient[key];
   if (val === null || val === undefined || val === '') return '';
   if (key === 'Picture_Consent') return val === true ? 'Yes' : val === false ? 'No' : '';
+  if (Array.isArray(val)) return val.join(', ');
   return String(val);
 }
 
 const DATE_TABLE_COLUMN_KEYS = new Set(['Date_of_Birth', 'RX_Date', 'RX_Expiration', 'IFSP_Start_Date', 'IFSP_End_Date', 'Report_Date']);
 // Same locked, auto-calculated fields as the Patient form -- not directly
 // editable here either.
-const LOCKED_TABLE_COLUMNS = new Set(['RX_Expiration', 'Report_Date', 'mrn']);
+const LOCKED_TABLE_COLUMNS = new Set(['RX_Expiration', 'Report_Date', 'mrn', 'care_team']);
 const MULTI_SELECT_TABLE_COLUMNS = { Services: SERVICES_OPTIONS, Program: PROGRAM_OPTIONS };
 const SINGLE_SELECT_TABLE_COLUMNS = {
   Relationship_To_Patient: RELATIONSHIP_OPTIONS,
@@ -1798,11 +1803,12 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
 const MULTI_VALUE_FILTER_COLUMNS = new Set(['Services', 'Program']);
 
 function isOptionFilterColumn(column) {
-  return !!(SINGLE_SELECT_TABLE_COLUMNS[column] || MULTI_SELECT_TABLE_COLUMNS[column]) || column === 'Case_Manager' || column === 'Picture_Consent';
+  return !!(SINGLE_SELECT_TABLE_COLUMNS[column] || MULTI_SELECT_TABLE_COLUMNS[column]) || column === 'Case_Manager' || column === 'Picture_Consent' || column === 'care_team';
 }
 
 export function patientFilterTokens(patient, column) {
   if (column === 'Picture_Consent') return patient.Picture_Consent === true ? ['Yes'] : patient.Picture_Consent === false ? ['No'] : [];
+  if (column === 'care_team') return patient.care_team || [];
   if (MULTI_VALUE_FILTER_COLUMNS.has(column)) return splitMultiValue(patient[column]);
   const v = patient[column];
   return v === null || v === undefined || String(v).trim() === '' ? [] : [String(v).trim()];
@@ -1814,6 +1820,7 @@ export function patientFilterOptions(column, patients, staffDirectory = []) {
   let base;
   if (column === 'Case_Manager') base = [...staffDirectory.map(s => s.display_name), 'Not Needed'];
   else if (column === 'Picture_Consent') base = ['Yes', 'No'];
+  else if (column === 'care_team') base = [];
   else base = SINGLE_SELECT_TABLE_COLUMNS[column] || MULTI_SELECT_TABLE_COLUMNS[column];
   if (!base) return null;
   const seen = new Map(base.map(v => [v.toLowerCase(), v]));
@@ -2151,7 +2158,8 @@ export function DataTableOverlay({ patients, onClose, onPatientsChanged, initial
     const payload = buildPayload(patient, columnKey, rawValue);
     payload.admin_password = password;
     const updated = await api.updatePatient(patient.id, payload);
-    setRows(prev => prev.map(r => (r.id === patient.id ? updated : r)));
+    // A save returns the bare patient; keep the care team worked out on load.
+    setRows(prev => prev.map(r => (r.id === patient.id ? { ...updated, care_team: r.care_team } : r)));
     onPatientsChanged?.();
   };
 
