@@ -71,7 +71,9 @@ export function MeetingAgendaPlaceholder({ recurring, note }) {
   );
 }
 
-export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDate, readOnly = false, recurringHint = false }) {
+// onSaved: after a save, so the schedule can refresh its "has notes this
+// week" markers straight away.
+export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDate, readOnly = false, recurringHint = false, onSaved }) {
   // Keyed on the plain ids so a parent re-render never reloads (and wipes
   // unsaved typing in) the agenda.
   const blockSeries = blockRef?.series_id;
@@ -135,6 +137,7 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
         : { agenda: single };
       apply(await storeAgenda(record));
       setStatus({ kind: 'saved', text: 'Agenda saved' });
+      onSaved?.();
     } catch (err) {
       setStatus({ kind: 'error', text: err.message });
     }

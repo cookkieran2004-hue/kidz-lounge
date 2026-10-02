@@ -2046,6 +2046,10 @@ function ScheduleApp() {
                                 {isFirstSlot && (
                                   <span style={{ fontSize: 10.5, fontWeight: 600, color: oooColors.text }}>
                                     {oooMatch.type}
+                                    {oooMatch.has_week_agenda && (
+                                      // "This week only" agenda notes for this date -- same red * as an appointment with comments.
+                                      <span title="Has notes for this week" style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1, marginLeft: 3 }}>*</span>
+                                    )}
                                   </span>
                                 )}
                               </div>
@@ -3355,6 +3359,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced, request
                 fixedDate={meetingDate || undefined}
                 readOnly={!link.can_edit_agenda}
                 recurringHint={!!link.request.is_recurring}
+                onSaved={onCommentsSynced}
               />
             ) : (
               <MeetingAgendaEditor
@@ -3362,6 +3367,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced, request
                 blockRef={blockRef}
                 fixedDate={seriesId ? weekDate : undefined}
                 recurringHint={!!seriesId}
+                onSaved={onCommentsSynced}
               />
             )}
           </div>

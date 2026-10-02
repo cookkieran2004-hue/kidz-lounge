@@ -256,7 +256,7 @@ function WeekView({ weekStart, setWeekStart, days, isMobile, isProvider, onOpen 
               return (
                 <button type="button" key={i} onClick={() => onOpen(b)} style={{ display: 'flex', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit', border: 'none', gap: 8, alignItems: 'center', padding: '6px 8px', marginBottom: 4, borderRadius: 4, background: s.bg, borderLeft: `3px ${b.pending ? 'dashed' : 'solid'} ${s.border}` }}>
                   <span style={{ fontSize: 12, color: s.text, fontWeight: 600, minWidth: 110, ...NUMERIC }}>{timeRange(b.start, b.end)}</span>
-                  <span style={{ fontSize: 12.5, color: s.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}{b.pending ? ' · pending' : ''}{b.canceled ? ' · canceled' : ''}</span>
+                  <span style={{ fontSize: 12.5, color: s.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}{b.ooo?.has_week_agenda && <span title="Has notes for this week" style={{ color: '#dc2626', fontWeight: 700 }}> *</span>}{b.pending ? ' · pending' : ''}{b.canceled ? ' · canceled' : ''}</span>
                 </button>
               );
             })}
@@ -325,7 +325,7 @@ function WeekView({ weekStart, setWeekStart, days, isMobile, isProvider, onOpen 
                       : { border: `1px ${b.pending ? 'dashed' : 'solid'} ${s.border}`, borderRadius: 4, boxShadow: 'none' }),
                   }}
                 >
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: s.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: b.canceled ? 'line-through' : 'none' }}>{b.title}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: s.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: b.canceled ? 'line-through' : 'none' }}>{b.title}{b.ooo?.has_week_agenda && <span title="Has notes for this week" style={{ color: '#dc2626', fontWeight: 700 }}> *</span>}</div>
                   {h > 34 && <div style={{ fontSize: 10.5, color: s.text, opacity: 0.85, whiteSpace: 'nowrap', ...NUMERIC }}>{timeRange(b.start, b.end)}</div>}
                 </button>
               );
