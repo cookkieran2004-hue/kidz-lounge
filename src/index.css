@@ -31,6 +31,18 @@ body {
   width: stretch;
 }
 
+/* Phones and tablets: iOS Safari zooms the page in whenever a field with
+   text smaller than 16px is focused, and leaves it zoomed. Fields are 16px
+   on phones, tablets and touch screens so that never happens; pinch-zoom still works. The
+   !important wins over the inline font sizes the pages set. */
+@media (max-width: 1024px), (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* User manuals (pages/ManualPage.jsx, text in public/manuals) */
 .kl-manual { color: #18181B; font-size: 14.5px; line-height: 1.65; }
 .kl-manual > :first-child { margin-top: 0; }
