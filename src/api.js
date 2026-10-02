@@ -77,6 +77,22 @@ export const api = {
   // ---- Auth ----
   login: (username, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   me: () => request('/auth/me'),
+  // Only so the audit log shows when a session ended.
+  logout: (reason) => request('/auth/logout', { method: 'POST', body: JSON.stringify({ reason }) }),
+
+  // ---- Audit log (Developers only) ----
+  getAuditLog: (filters = {}) => request(`/audit-log?${new URLSearchParams(Object.entries(filters).filter(([, v]) => v))}`),
+  // The same filters as a CSV file, saved through the browser.
+  downloadAuditLogCsv: async (filters = {}) => {
+    const qs = new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), format: 'csv' });
+    const res = await fetch(`${API_BASE}/audit-log?${qs}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) throw new Error('The audit log export failed. Try again.');
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url; a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
   setPassword: (new_password) => request('/auth/set-password', { method: 'POST', body: JSON.stringify({ new_password }) }),
   getStaff: () => request('/auth/users'),
   createStaff: (record) => request('/auth/users', { method: 'POST', body: JSON.stringify(record) }),

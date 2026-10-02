@@ -4,6 +4,9 @@ import { usePendingTimeOff } from '../PendingTimeOffContext';
 import StaffDirectory from './admin/StaffDirectory';
 import { TimeOffManageTab, OfficeHoursTab } from './StaffPage';
 import { Card, PageHeader, UnderlineTabs } from '../dashboardUi';
+import AuditLogTab from './admin/AuditLogTab';
+import { useAuth } from '../AuthContext';
+import { canViewAuditLog } from '../roles';
 import { PAGE_BG, FONT } from '../uiTokens';
 
 // ADMIN area. Staff (the default tab) is the people-first directory; each
@@ -15,12 +18,15 @@ import { PAGE_BG, FONT } from '../uiTokens';
 
 export default function AdminPage() {
   const isMobile = useIsMobile(768);
+  const { user } = useAuth();
   const { pendingCount, refreshPending } = usePendingTimeOff();
 
   const tabs = [
     { key: 'staff', label: 'Staff' },
     { key: 'time-off', label: 'Time off', badge: pendingCount },
     { key: 'office-hours', label: 'Office hours' },
+    // HIPAA audit log: Developers only.
+    ...(canViewAuditLog(user) ? [{ key: 'audit-log', label: 'Audit log' }] : []),
   ];
 
   // Tab lives in the address (?tab=staff) so refreshes keep your place.
@@ -41,6 +47,11 @@ export default function AdminPage() {
         {tab === 'time-off' && (
           <Card title="Time off" pad={isMobile ? 14 : 20}>
             <TimeOffManageTab isMobile={isMobile} embedded onChanged={refreshPending} />
+          </Card>
+        )}
+        {tab === 'audit-log' && (
+          <Card title="Audit log" pad={isMobile ? 14 : 20}>
+            <AuditLogTab isMobile={isMobile} />
           </Card>
         )}
         {tab === 'office-hours' && (

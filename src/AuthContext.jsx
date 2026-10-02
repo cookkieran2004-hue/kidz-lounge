@@ -50,7 +50,11 @@ export function AuthProvider({ children }) {
     try { setUser(await api.me()); } catch { /* keep the current user */ }
   }, []);
 
-  const logout = useCallback(() => {
+  // `reason` is for the audit log ('idle' for the 30-minute timeout). The
+  // server is told first, while the token still works; it never holds up
+  // signing out.
+  const logout = useCallback((reason) => {
+    if (getToken()) api.logout(typeof reason === 'string' ? reason : 'signed out').catch(() => {});
     setToken(null);
     setUser(null);
   }, []);
@@ -65,7 +69,7 @@ export function AuthProvider({ children }) {
 
     const resetTimer = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(logout, IDLE_LIMIT_MS);
+      timeoutId = setTimeout(() => logout('idle'), IDLE_LIMIT_MS);
     };
 
     const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
