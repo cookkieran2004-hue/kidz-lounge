@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from './api';
 import { useAuth } from './AuthContext';
+import Linkify from './Linkify';
 
 // Popup telling someone their support ticket was resolved (only tickets
 // they sent while signed in). Checks on sign-in, every minute, and on
@@ -68,7 +69,7 @@ export default function SupportNotifier() {
         {current.resolution_note && (
           <>
             <p style={{ margin: '0 0 6px', fontSize: 13, color: '#6b7280' }}>Note from support:</p>
-            <p style={{ margin: '0 0 12px', fontSize: 14, color: '#111827', whiteSpace: 'pre-wrap' }}>{current.resolution_note}</p>
+            <p style={{ margin: '0 0 12px', fontSize: 14, color: '#111827', whiteSpace: 'pre-wrap' }}><Linkify text={current.resolution_note} /></p>
           </>
         )}
         <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#6b7280' }}>Still having trouble? Send a new ticket from Help &amp; Support at the bottom of the page.</p>

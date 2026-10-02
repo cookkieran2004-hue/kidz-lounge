@@ -6,6 +6,7 @@ import { useIsMobile } from '../useIsMobile';
 import { CalendarPicker, DateField, dateToInputValue } from './SchedulePage';
 import TaskDetailModal, { taskHasComments } from '../TaskDetailModal';
 import { canManage } from '../roles';
+import Linkify from '../Linkify';
 
 const BRAND_PURPLE = '#6D28D9';
 const BRAND_TINT = '#F5F3FF';
@@ -59,7 +60,7 @@ function TaskRow({ task, currentUsername, onToggleDone, onDelete, canDelete, onO
           )}
         </div>
         {task.description && (
-          <div style={{ fontSize: 12.5, color: '#6b7280', marginTop: 3 }}>{task.description}</div>
+          <div style={{ fontSize: 12.5, color: '#6b7280', marginTop: 3 }}><Linkify text={task.description} /></div>
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 5, flexWrap: 'wrap' }}>
           {task.assigned_by && task.assigned_by !== currentUsername && (

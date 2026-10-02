@@ -8,6 +8,7 @@ import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyl
 import { DISCIPLINES, DISCIPLINE_NAMES, disciplinesOf } from '../disciplines';
 import { DateField, TimeField, AppointmentModal, dateToInputValue, formatSlotLabel } from './SchedulePage';
 import { PatientModal } from './ManageDataPage';
+import Linkify from '../Linkify';
 
 // Waitlist: patients waiting to start a service, one entry per patient per
 // specialty (kidz-lounge-api/routes/waitlist.js), longest wait first.
@@ -345,7 +346,7 @@ function ActiveList({ entries, isMobile, onSchedule, onEdit, onStatus }) {
                 <span style={{ fontSize: 12.5, color: MUTED }}>{e.preferred_provider || 'Any provider'}</span>
               </div>
               <div style={{ fontSize: 12.5, color: MUTED }}>{availabilityText(e)}</div>
-              {e.notes && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}>{e.notes}</div>}
+              {e.notes && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}><Linkify text={e.notes} /></div>}
               <div style={{ marginTop: 8 }}><EntryActions entry={e} onSchedule={onSchedule} onEdit={onEdit} isMobile /></div>
             </div>
           );
@@ -367,7 +368,7 @@ function ActiveList({ entries, isMobile, onSchedule, onEdit, onStatus }) {
             <div style={{ minWidth: 0 }}>
               <Link to={`/patients/${encodeURIComponent(e.patient_name)}`} style={{ fontSize: 13.5, fontWeight: 500, color: INK, textDecoration: 'none' }}>{e.patient_name}</Link>
               {e.program && <span style={{ fontSize: 12, color: MUTED }}> · {e.program}</span>}
-              {e.notes && <div title={e.notes} style={{ fontSize: 12.5, color: MUTED, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.notes}</div>}
+              {e.notes && <div title={e.notes} style={{ fontSize: 12.5, color: MUTED, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><Linkify text={e.notes} /></div>}
             </div>
             <span><Tag title={DISCIPLINE_NAMES[e.specialty]}>{e.specialty}</Tag></span>
             <span style={{ fontSize: 13, color: e.preferred_provider ? INK : SUBTLE }}>{e.preferred_provider || 'Any'}</span>

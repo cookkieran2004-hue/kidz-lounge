@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from './api';
+import Linkify from './Linkify';
 
 // Meeting agendas. One component, used in three places:
 //   - the schedule's out-of-office view: one week (`fixedDate`), editable
@@ -40,7 +41,7 @@ function ReadOnlyText({ text }) {
       flex: 1, minHeight: 64, padding: '8px 10px', borderRadius: 8, border: `1px solid ${BORDER}`, background: '#FAF9FD',
       fontSize: 13, color: INK, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
     }}>
-      {text || ''}
+      <Linkify text={text} />
     </div>
   );
 }

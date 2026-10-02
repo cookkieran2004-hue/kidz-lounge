@@ -9,6 +9,7 @@ import { useStaffNames } from '../staffDirectory';
 import { usePatientAlerts, alertsFor, AlertSymbol, PatientAlertsInline } from '../patientAlerts';
 import { canManage } from '../roles';
 import { DISCIPLINES, DISCIPLINE_NAMES, disciplinesOf } from '../disciplines';
+import Linkify from '../Linkify';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -601,7 +602,7 @@ function PatientDetailsPanel({ patientName }) {
       {patient.Scheduling_Notes && (
         <div>
           {sectionHeader('Notes')}
-          <p style={{ fontSize: 13, color: '#374151', whiteSpace: 'pre-wrap', margin: 0 }}>{patient.Scheduling_Notes}</p>
+          <p style={{ fontSize: 13, color: '#374151', whiteSpace: 'pre-wrap', margin: 0 }}><Linkify text={patient.Scheduling_Notes} /></p>
         </div>
       )}
 
@@ -929,7 +930,7 @@ function CommentsThread({ table, recordId, comments, currentUser, onUpdated, isV
                     </button>
                   )}
                 </div>
-                <p style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, color: '#374151', margin: '2px 0 0' }}>{c.text}</p>
+                <p style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, color: '#374151', margin: '2px 0 0' }}><Linkify text={c.text} /></p>
               </div>
             );
           })
@@ -3320,7 +3321,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced, request
           {notes && (
             <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #E4E4E7' }}>
               <div style={{ fontSize: 12, color: '#71717A', marginBottom: 2 }}>{existing.type === 'Other' ? 'Details' : 'Notes'}</div>
-              <div style={{ fontSize: 13.5, color: '#18181B', whiteSpace: 'pre-wrap' }}>{notes}</div>
+              <div style={{ fontSize: 13.5, color: '#18181B', whiteSpace: 'pre-wrap' }}><Linkify text={notes} /></div>
             </div>
           )}
         </div>
@@ -3367,7 +3368,7 @@ export function OOOModal({ existing, onClose, onSaved, onCommentsSynced, request
                   <p style={{ fontSize: 11.5, fontWeight: 600, color: BRAND.muted, margin: '0 0 4px' }}>Earlier comments on this calendar block</p>
                   {parseComments(localComments).map(c => (
                     <p key={c.id} style={{ fontSize: 12, color: '#4b5563', margin: '0 0 4px', whiteSpace: 'pre-wrap' }}>
-                      <strong style={{ fontWeight: 600 }}>{c.legacy ? 'Note' : (c.author_display || c.author_username)}:</strong> {c.text}
+                      <strong style={{ fontWeight: 600 }}>{c.legacy ? 'Note' : (c.author_display || c.author_username)}:</strong> <Linkify text={c.text} />
                     </p>
                   ))}
                 </div>

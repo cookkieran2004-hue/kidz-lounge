@@ -7,6 +7,7 @@ import { useStaffNames } from '../staffDirectory';
 import { useIsMobile } from '../useIsMobile';
 import { PageHeader, Card, Tag, UnderlineTabs } from '../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
+import Linkify from '../Linkify';
 
 // The help desk inbox (Developers only): one condensed line per ticket --
 // click it for the full issue, who sent it and the actions (resolve with a
@@ -48,7 +49,7 @@ function TicketDetail({ t, nameFor, isMobile, onStatus, onDelete }) {
     <div style={{ padding: isMobile ? '4px 0 12px' : '2px 0 14px 132px' }}>
       <div style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '12px 14px', margin: '0 0 10px' }}>
         <div style={{ fontSize: 12, fontWeight: 500, color: MUTED, marginBottom: 4 }}>Issue</div>
-        <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 14.5, color: INK, margin: 0, lineHeight: 1.55 }}>{t.issue}</p>
+        <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 14.5, color: INK, margin: 0, lineHeight: 1.55 }}><Linkify text={t.issue} /></p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '2px 24px', ...meta }}>
         <span>From <span style={{ color: INK }}>{t.contact_name}</span> · {t.contact_info}</span>
@@ -58,7 +59,7 @@ function TicketDetail({ t, nameFor, isMobile, onStatus, onDelete }) {
         {t.status === 'resolved' && <span>Resolved {fullWhen(t.resolved_at)}{t.resolved_by ? ` by ${nameFor(t.resolved_by)}` : ''}</span>}
       </div>
       {t.status === 'resolved' && t.resolution_note && (
-        <p style={{ fontSize: 13, color: INK, margin: '8px 0 0' }}><span style={{ color: MUTED }}>Note:</span> {t.resolution_note}</p>
+        <p style={{ fontSize: 13, color: INK, margin: '8px 0 0' }}><span style={{ color: MUTED }}>Note:</span> <Linkify text={t.resolution_note} /></p>
       )}
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>

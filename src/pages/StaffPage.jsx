@@ -11,6 +11,7 @@ import { Tag, UnderlineTabs } from '../dashboardUi';
 import { INK as UI_INK, MUTED as UI_MUTED, HAIRLINE as UI_HAIRLINE, NUMERIC, buttonStyle } from '../uiTokens';
 import { canAdminister } from '../roles';
 import TimeOffBalancesBoard from '../TimeOffBalancesBoard';
+import Linkify from '../Linkify';
 
 // Building blocks for the pages under the username menu (My profile,
 // My time, ADMIN). This file used to be the single "/me" page; the pages
@@ -484,7 +485,7 @@ function RequestList({ requests, isMobile, showUsername, onApprove, onDeny, onEd
             {req.created_by && req.created_by !== req.username && (
               <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>Added by {nameFor(req.created_by)}</div>
             )}
-            {req.notes && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>{req.notes}</div>}
+            {req.notes && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}><Linkify text={req.notes} /></div>}
             {req.status === 'denied' && req.review_note && <div style={{ fontSize: 12, color: '#991B1B', marginTop: 2 }}>Reason: {req.review_note}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -583,7 +584,7 @@ function MeetingsImIn({ isMobile }) {
                 Organized by {nameFor(m.username)}
                 {(m.attendees || []).length > 1 && <> &middot; with {m.attendees.map(nameFor).join(', ')}</>}
               </div>
-              {m.notes && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>{m.notes}</div>}
+              {m.notes && <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}><Linkify text={m.notes} /></div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <StatusBadge status={m.status} />
@@ -774,7 +775,7 @@ function RequestRow({ req, isMobile, onChange, onDelete, meeting, agendaOpen, on
         {(req.attendees || []).length > 0 && line(<>With {req.attendees.map(nameFor).join(', ')}</>)}
         {req.created_by && req.created_by !== req.username && line(<>Added by {nameFor(req.created_by)}</>)}
         {onApprove && req.status === 'pending' && req.requested_at && line(<>Requested {rDay(String(req.requested_at).slice(0, 10))}</>)}
-        {req.notes && line(<>Note: {req.notes}</>, { color: UI_INK })}
+        {req.notes && line(<>Note: <Linkify text={req.notes} /></>, { color: UI_INK })}
         {req.status === 'denied' && req.review_note && line(<>Reason: {req.review_note}</>, { color: '#B42318' })}
         {agendaOpen && <div style={{ marginTop: 12 }}><MeetingAgendaEditor requestId={req.id} /></div>}
         {isMobile && <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{actions()}</div>}

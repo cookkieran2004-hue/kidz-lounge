@@ -4,6 +4,7 @@ import { useIsMobile } from './useIsMobile';
 import { useStaffNames } from './staffDirectory';
 import { DateField } from './pages/SchedulePage';
 import { canManage } from './roles';
+import Linkify from './Linkify';
 
 const BRAND_PURPLE = '#6D28D9';
 const BORDER = '#E2E4E9';
@@ -91,7 +92,7 @@ function CommentRow({ comment, isAdmin, currentUsername, onEdit, onDelete, isMob
         </div>
       ) : (
         <>
-          <p style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, color: '#374151', margin: '3px 0 0' }}>{comment.text}</p>
+          <p style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, color: '#374151', margin: '3px 0 0' }}><Linkify text={comment.text} /></p>
           {!comment.legacy && (isOwnComment || isAdmin) && (
             <div style={{ display: 'flex', gap: isMobile ? 16 : 10, marginTop: isMobile ? 6 : 3 }}>
               {isOwnComment && (
@@ -218,7 +219,7 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
           </div>
         ) : (
           <>
-            {task.description && <p style={{ fontSize: 13.5, color: '#374151', margin: '8px 0' }}>{task.description}</p>}
+            {task.description && <p style={{ fontSize: 13.5, color: '#374151', margin: '8px 0', whiteSpace: 'pre-wrap' }}><Linkify text={task.description} /></p>}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '10px 0 12px' }}>
               <span style={{ fontSize: 12, color: '#9ca3af' }}>For {task.assigned_to}</span>
               {task.assigned_by && <span style={{ fontSize: 12, color: '#9ca3af' }}>&middot; Assigned by {task.assigned_by_display || nameFor(task.assigned_by)}</span>}

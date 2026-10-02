@@ -8,6 +8,7 @@ import { DateField, dateToInputValue } from './SchedulePage';
 import { Card, Tag, PageHeader, StatStrip, Stat, UnderlineTabs } from '../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 import { roleLabel } from '../roles';
+import Linkify from '../Linkify';
 
 // My profile: who you are at the practice (a summary up top), the details
 // you can change yourself, and your licences/certifications. Position,
@@ -220,7 +221,7 @@ function CredentialRow({ c, isMobile, onEdit, onRemove }) {
   const name = (
     <div style={{ minWidth: 0 }}>
       <div style={{ fontSize: 13.5, fontWeight: 500, color: INK }}>{c.credential_name}</div>
-      {c.notes && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}>{c.notes}</div>}
+      {c.notes && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}><Linkify text={c.notes} /></div>}
       {confirming && <div style={{ fontSize: 12.5, color: '#B42318', marginTop: 4 }}>Remove this credential?</div>}
     </div>
   );

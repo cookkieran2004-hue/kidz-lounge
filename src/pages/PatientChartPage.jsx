@@ -9,6 +9,7 @@ import { useIsMobile } from '../useIsMobile';
 import { PatientAlertsInline } from '../patientAlerts';
 import { useStaffNames } from '../staffDirectory';
 import { roomDisplayText, AppointmentModal, STATUS_OPTIONS, dateToInputValue } from './SchedulePage';
+import Linkify from '../Linkify';
 
 const PATIENT_CHART_PHONE_BREAKPOINT = 768;
 
@@ -336,7 +337,7 @@ function OverviewTab({ patient, isMobile }) {
         <>
           <p style={sectionHeaderStyle()}>Notes</p>
           <div style={cardStyle()}>
-            <p style={{ fontSize: 13, color: '#374151', whiteSpace: 'pre-wrap', margin: 0 }}>{patient.Scheduling_Notes}</p>
+            <p style={{ fontSize: 13, color: '#374151', whiteSpace: 'pre-wrap', margin: 0 }}><Linkify text={patient.Scheduling_Notes} /></p>
           </div>
         </>
       )}

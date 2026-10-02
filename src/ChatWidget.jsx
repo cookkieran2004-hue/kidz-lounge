@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 import { useChat } from './ChatContext';
+import Linkify from './Linkify';
 
 const BRAND_PURPLE = '#6D28D9';
 const BORDER = '#E2E4E9';
@@ -217,7 +218,7 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
                 maxWidth: '80%', padding: '7px 11px', borderRadius: 12,
                 background: isOwn ? BRAND_PURPLE : '#f1f2f4', color: isOwn ? 'white' : '#111827', fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0,
               }}>
-                {m.text}
+                <Linkify text={m.text} color={isOwn ? 'white' : undefined} />
               </div>
               <span style={{ fontSize: 9.5, color: '#c1c5cc', marginTop: 2 }}>{formatMessageTime(m.created_at)}</span>
             </div>
