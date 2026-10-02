@@ -159,7 +159,6 @@ export default function PatientsPage() {
               ))}
               {p.Status && <span style={{ fontSize: 11, color: '#9ca3af' }}>{p.Status}</span>}
               {p.Case_Manager && <span style={{ fontSize: 11.5, color: '#9ca3af' }}>CM: {p.Case_Manager}</span>}
-              {p.care_team?.length > 0 && <span style={{ fontSize: 11.5, color: '#9ca3af' }}>Care team: {p.care_team.join(', ')}</span>}
             </div>
             <span style={{ fontSize: 12, color: '#9ca3af' }}>View Chart &rarr;</span>
           </div>
