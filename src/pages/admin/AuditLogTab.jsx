@@ -5,15 +5,14 @@ import { DateField } from '../SchedulePage';
 import { Tag } from '../../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, NUMERIC, TONES, buttonStyle } from '../../uiTokens';
 
-// Admin > Audit log (Developers only): the HIPAA record of who viewed,
-// changed, deleted or downloaded patient information, and every sign-in
+// Admin > Audit log (Developers only): the HIPAA record of who created,
+// changed, deleted or uploaded patient information, and every sign-in
 // (kidz-lounge-api/lib/audit.js). Read-only -- entries can never be edited
 // or deleted. Filter, page back 100 at a time, or export the filtered
 // entries to CSV (for a compliance request or an investigation).
 
 const ACTIONS = [
-  ['', 'All actions'], ['view', 'Viewed'], ['search', 'Searched'], ['create', 'Created'], ['update', 'Changed'],
-  ['delete', 'Deleted'], ['download', 'Downloaded'], ['upload', 'Uploaded'], ['export', 'Exported'],
+  ['', 'All actions'], ['create', 'Created'], ['update', 'Changed'], ['delete', 'Deleted'], ['upload', 'Uploaded'],
   ['login', 'Signed in'], ['login_failed', 'Failed sign-in'], ['logout', 'Signed out'], ['password_set', 'Set password'],
 ];
 const ACTION_LABEL = Object.fromEntries(ACTIONS.filter(([k]) => k));
@@ -77,7 +76,7 @@ export default function AuditLogTab({ isMobile }) {
   return (
     <div>
       <p style={{ fontSize: 13, color: MUTED, margin: '0 0 14px' }}>
-        Every view, change, deletion and download of patient information, and every sign-in. Entries are kept permanently and can't be edited or deleted.
+        Every sign-in, and every change to patient information (created, changed, deleted or uploaded). Entries are kept permanently and can't be edited or deleted.
       </p>
 
       <form onSubmit={apply} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
