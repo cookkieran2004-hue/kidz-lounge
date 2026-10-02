@@ -64,7 +64,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - To avoid `set-state-in-effect`, fetch in the effect and set state in the `.then` callback.
   - Put shared constants in non-component modules (like `timeTypes.js`).
 - No tests.
-- Deployed on Vercel (`vercel.json` rewrites everything to `index.html` for client-side routing).
+- Deployed on Vercel (`vercel.json` rewrites everything to `index.html` for client-side routing, and sets security headers on every response: HSTS, a Content-Security-Policy, `X-Frame-Options: DENY`, nosniff, `Referrer-Policy: no-referrer` and Permissions-Policy). **The CSP only allows the app itself, the API Gateway (`*.execute-api.us-east-2.amazonaws.com`) and S3 (`*.s3*.amazonaws.com`).** Anything new loaded from elsewhere (fonts, scripts, images, APIs) must be added to it, or the browser blocks it. The app can't be embedded in a frame (`frame-ancestors 'none'`).
 
 ## Stack & structure
 
