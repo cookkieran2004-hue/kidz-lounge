@@ -12,6 +12,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
     "marked": "^18.0.14",
+    "pdfjs-dist": "^4.10.38",
+    "pdfmake": "^0.3.11",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2"

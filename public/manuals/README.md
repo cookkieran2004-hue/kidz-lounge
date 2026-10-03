@@ -20,7 +20,7 @@ Pages that every manual shares are in `shared/`, and the screenshots are in `img
    - A line starting with `- ` is a bullet point, and `1. ` makes a numbered step.
    - A line starting with `> ` is a highlighted tip.
    - `![Description](img/file.png)` shows a picture. In files inside `shared/`, write `../img/file.png`.
-3. Save, then commit and push. The manual updates when the site does.
+3. Save, then commit and push. The manual updates when the site does. The app turns the text into the PDF people see under **User manual** (and download), so there's no PDF to update by hand.
 
 ## Sharing pages between manuals
 

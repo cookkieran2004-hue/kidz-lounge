@@ -43,31 +43,6 @@ body {
   }
 }
 
-/* User manuals (pages/ManualPage.jsx, text in public/manuals) */
-.kl-manual { color: #18181B; font-size: 14.5px; line-height: 1.65; }
-.kl-manual > :first-child { margin-top: 0; }
-.kl-manual h1 { font-size: 24px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; }
-.kl-manual h2 { font-size: 19px; font-weight: 600; margin: 40px 0 10px; padding-top: 18px; border-top: 1px solid #E4E4E7; scroll-margin-top: 16px; }
-.kl-manual h3 { font-size: 15.5px; font-weight: 600; margin: 24px 0 6px; scroll-margin-top: 16px; }
-.kl-manual p, .kl-manual ul, .kl-manual ol { margin: 0 0 12px; }
-.kl-manual ul, .kl-manual ol { padding-left: 22px; }
-.kl-manual li { margin: 3px 0; }
-.kl-manual a { color: #6D28D9; }
-.kl-manual code { font-size: 13px; background: #F4F4F5; border-radius: 4px; padding: 1px 5px; }
-.kl-manual img { display: block; max-width: 100%; height: auto; margin: 12px 0 18px; border: 1px solid #E4E4E7; border-radius: 8px; }
-.kl-manual blockquote { margin: 14px 0; padding: 10px 14px; background: #F5F3FF; border-radius: 6px; color: #3F3F46; }
-.kl-manual blockquote p { margin: 0; }
-.kl-manual table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; font-size: 13.5px; }
-.kl-manual th, .kl-manual td { border-bottom: 1px solid #E4E4E7; padding: 7px 10px; text-align: left; vertical-align: top; }
-.kl-manual th { color: #71717A; font-weight: 500; }
-.kl-manual-toc:hover { background: #F4F4F5 !important; }
-@media print {
-  .kl-shell > *:not(main), .kl-no-print { display: none !important; }
-  .kl-manual { border: none !important; padding: 0 !important; }
-  .kl-manual h2 { break-before: page; border-top: none; }
-  .kl-manual img { break-inside: avoid; }
-}
-
 /* Username dropdown items (NavBar.jsx) */
 .kl-menu-item { background: transparent; }
 .kl-menu-item:hover, .kl-menu-item:focus-visible { background: #F5F3FF; outline: none; }

@@ -1,28 +1,20 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Marked } from 'marked';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
 import { PageHeader, UnderlineTabs } from '../dashboardUi';
-import { INK, MUTED, HAIRLINE, PAGE_BG, FONT, TONES, buttonStyle } from '../uiTokens';
-import { MANUALS, manualForRole, loadManual, slugify } from '../manual';
+import { PAGE_BG, FONT, TONES, buttonStyle } from '../uiTokens';
+import { MANUALS, manualForRole } from '../manual';
+import { buildManualPdf } from '../manualPdf';
+import PdfViewer from '../PdfViewer';
 
-// User manuals (footer > User manual). The text lives in public/manuals/ as
-// Markdown -- edit it there (public/manuals/README.md explains how) -- and
-// is loaded and rendered here. Everyone can read all three; each person
-// starts on their own role's manual. Open to signed-out visitors too, like
-// Help & Support, so "how to sign in" is reachable.
-
-// Headings get ids so the contents list can jump to them.
-const marked = new Marked({
-  gfm: true,
-  renderer: {
-    heading({ tokens, depth }) {
-      const text = this.parser.parseInline(tokens);
-      return `<h${depth} id="${slugify(text)}">${text}</h${depth}>\n`;
-    },
-  },
-});
+// User manuals (footer > User manual). Each manual is built into a PDF from
+// its Markdown in public/manuals (src/manualPdf.js; edit the text there --
+// public/manuals/README.md explains how) and shown in a PDF viewer that
+// scrolls through every page. Download saves the PDF; Print opens it in the
+// browser's own PDF viewer to print. Everyone can read all three; each
+// person starts on their own role's manual. Open to signed-out visitors
+// too, like Help & Support.
 
 export default function ManualPage() {
   const { user } = useAuth();
@@ -30,66 +22,75 @@ export default function ManualPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const picked = searchParams.get('manual');
   const manual = MANUALS.some(m => m.key === picked) ? picked : manualForRole(user?.role);
-  const [doc, setDoc] = useState({ manual: null, markdown: '', error: null });
+  const [pdf, setPdf] = useState({ manual: null, blob: null, error: null });
+  const viewerRef = useRef(null);
+  const [viewerHeight, setViewerHeight] = useState(600);
 
   useEffect(() => {
     let alive = true;
-    loadManual(manual)
-      .then(markdown => { if (alive) setDoc({ manual, markdown, error: null }); })
-      .catch(err => { if (alive) setDoc({ manual, markdown: '', error: err.message }); });
+    buildManualPdf(manual)
+      .then(blob => { if (alive) setPdf({ manual, blob, error: null }); })
+      .catch(err => { if (alive) setPdf({ manual, blob: null, error: err.message || 'The manual could not be built.' }); });
     return () => { alive = false; };
   }, [manual]);
 
-  const { html, contents } = useMemo(() => {
-    if (!doc.markdown) return { html: '', contents: [] };
-    const tokens = marked.lexer(doc.markdown);
-    const contents = tokens.filter(t => t.type === 'heading' && t.depth === 2).map(t => ({ id: slugify(marked.parseInline(t.text)), text: t.text.replace(/[*_`]/g, '') }));
-    return { html: marked.parser(tokens), contents };
-  }, [doc.markdown]);
+  // The viewer fills the window below the header; the manual scrolls
+  // inside it.
+  // Re-measured after every render too: the header above it settles after
+  // the first paint (fonts, tabs), which left the viewer a little too tall.
+  const fit = useCallback(() => {
+    const el = viewerRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    const h = Math.max(320, Math.floor(window.innerHeight - top - (isMobile ? 12 : 20)));
+    setViewerHeight(prev => (Math.abs(prev - h) > 1 ? h : prev));
+  }, [isMobile]);
+  useLayoutEffect(() => { fit(); });
+  useEffect(() => {
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [fit]);
 
-  const loading = doc.manual !== manual;
+  const ready = pdf.manual === manual && pdf.blob;
+  const label = MANUALS.find(m => m.key === manual)?.label || '';
+  const fileName = `The Kidz Lounge - ${label} manual.pdf`;
   const pick = (key) => setSearchParams(key === manualForRole(user?.role) ? {} : { manual: key }, { replace: true });
-  const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const download = () => {
+    const url = URL.createObjectURL(pdf.blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+  // The browser's own PDF viewer has Print (and works on phones too).
+  const openForPrint = () => {
+    const url = URL.createObjectURL(pdf.blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
 
   return (
     <div style={{ background: PAGE_BG, fontFamily: FONT, minHeight: '100%' }}>
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>
-        <div className="kl-no-print">
-          <PageHeader
-            title="User manual"
-            isMobile={isMobile}
-            actions={<button type="button" onClick={() => window.print()} style={buttonStyle('secondary')}>Print / Save as PDF</button>}
-          />
-          <UnderlineTabs label="Manual" active={manual} onPick={pick} tabs={MANUALS} style={{ marginBottom: 20 }} />
-        </div>
-
-        {doc.error && !loading && (
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '14px 12px 0' : '24px 28px 0' }}>
+        <PageHeader
+          title="User manual"
+          isMobile={isMobile}
+          actions={(
+            <>
+              <button type="button" onClick={openForPrint} disabled={!ready} style={buttonStyle('secondary', { opacity: ready ? 1 : 0.6 })}>Print</button>
+              <button type="button" onClick={download} disabled={!ready} style={buttonStyle('primary', { opacity: ready ? 1 : 0.6 })}>Download PDF</button>
+            </>
+          )}
+        />
+        <UnderlineTabs label="Manual" active={manual} onPick={pick} tabs={MANUALS} style={{ marginBottom: 14 }} />
+        {pdf.error && pdf.manual === manual && (
           <p role="alert" style={{ fontSize: 13.5, color: TONES.danger.fg, background: TONES.danger.bg, borderRadius: 6, padding: '10px 12px' }}>
             The manual couldn't be loaded. Check your connection and reload the page.
           </p>
         )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '220px minmax(0, 1fr)', gap: isMobile ? 14 : 28, alignItems: 'start' }}>
-          {!isMobile && (
-            <nav aria-label="Contents" className="kl-no-print" style={{ position: 'sticky', top: 16 }}>
-              <div style={{ fontSize: 12, color: MUTED, fontWeight: 500, margin: '0 0 8px 10px' }}>Contents</div>
-              {contents.map(c => (
-                <button
-                  key={c.id} type="button" onClick={() => jump(c.id)}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderRadius: 4, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: INK }}
-                  className="kl-manual-toc"
-                >
-                  {c.text}
-                </button>
-              ))}
-            </nav>
-          )}
-          <article
-            className="kl-manual"
-            style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 8, padding: isMobile ? '18px 16px' : '28px 36px', minWidth: 0, opacity: loading ? 0.5 : 1 }}
-            // The manuals are our own files in public/manuals, not user input.
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+        <div ref={viewerRef}>
+          <PdfViewer key={manual} data={ready ? pdf.blob : null} height={viewerHeight} />
         </div>
       </div>
     </div>
