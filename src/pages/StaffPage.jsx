@@ -955,6 +955,9 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
   // (pending/upcoming soonest first, past/denied most recent first).
   const [sortBy, setSortBy] = useState('default');
   const [typeFilter, setTypeFilter] = useState('');
+  // Date range: keeps requests that overlap it (either end may be blank).
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [balancesByUser, setBalancesByUser] = useState({});
 
   useEffect(() => {
@@ -1039,7 +1042,13 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
   const q = nameQuery.trim().toLowerCase();
   const visible = (requests || [])
     .filter(r => !q || nameFor(r.username).toLowerCase().includes(q) || r.username.toLowerCase().includes(q))
-    .filter(r => !typeFilter || r.request_type === typeFilter);
+    .filter(r => !typeFilter || r.request_type === typeFilter)
+    .filter(r => {
+      if (!fromDate && !toDate) return true;
+      const start = requestFirstDay(r) || '';
+      const end = (r.is_balance_type ? r.end_date : r.is_recurring ? r.recurring_end_date : r.ooo_date) || '9999-12-31';
+      return (!toDate || start <= toDate) && (!fromDate || String(end).slice(0, 10) >= fromDate);
+    });
   const groups = groupRequests(visible, dateToInputValue(new Date()));
   if (sortBy !== 'default') {
     const day = (r) => requestFirstDay(r) || '';
@@ -1092,16 +1101,6 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
           {!forUsername && (
             <input type="search" value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="Filter by name" aria-label="Filter by name" style={{ ...inputBox, width: isMobile ? '100%' : 180 }} />
           )}
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} aria-label="Filter by type" style={{ ...inputBox, width: isMobile ? '100%' : 'auto' }}>
-            <option value="">All types</option>
-            {typesPresent.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort" style={{ ...inputBox, width: isMobile ? '100%' : 'auto' }}>
-            <option value="default">Sort: usual order</option>
-            <option value="newest">Date: newest first</option>
-            <option value="oldest">Date: oldest first</option>
-            <option value="type">Type, then date</option>
-          </select>
           {!adding && (
             <button type="button" onClick={startAdding} style={buttonStyle('secondary', { width: isMobile ? '100%' : 'auto' })}>
               Add time off
@@ -1109,6 +1108,25 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
           )}
         </div>
       </div>
+      {tab !== 'balances' && (
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '10px 0 4px' }}>
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} aria-label="Filter by type" style={{ ...inputBox, width: isMobile ? '100%' : 'auto' }}>
+          <option value="">All types</option>
+          {typesPresent.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort" style={{ ...inputBox, width: isMobile ? '100%' : 'auto' }}>
+          <option value="default">Sort: usual order</option>
+          <option value="newest">Date: newest first</option>
+          <option value="oldest">Date: oldest first</option>
+          <option value="type">Type, then date</option>
+        </select>
+        <DateField value={fromDate} onChange={setFromDate} max={toDate || undefined} placeholder="From" clearable floating ariaLabel="From date" style={{ ...inputBox, width: isMobile ? '100%' : 170 }} />
+        <DateField value={toDate} onChange={setToDate} min={fromDate || undefined} placeholder="To" clearable floating ariaLabel="To date" style={{ ...inputBox, width: isMobile ? '100%' : 170 }} />
+        {(typeFilter || fromDate || toDate || sortBy !== 'default') && (
+          <button type="button" onClick={() => { setTypeFilter(''); setFromDate(''); setToDate(''); setSortBy('default'); }} style={buttonStyle('text', { fontSize: 13 })}>Clear</button>
+        )}
+      </div>
+      )}
 
       {addedNotice && <p role="status" style={{ fontSize: 12.5, color: '#067647', fontWeight: 600, margin: '0 0 12px' }}>{addedNotice}</p>}
       {notFound && (
