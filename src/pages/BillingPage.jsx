@@ -5,7 +5,7 @@ import { useIsMobile } from '../useIsMobile';
 import { canManage, canAdminister } from '../roles';
 import { PageHeader } from '../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
-import { useStickyHeight } from '../stickyLayout';
+import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 
 // Billing: one provider's month, laid out like the paper billing invoice
 // (kidz-lounge-api routes/billing.js). Same access as the Weekly view:
@@ -82,6 +82,22 @@ export default function BillingPage() {
   const [savingReview, setSavingReview] = useState(false);
   const headerRef = useRef(null);
   const sheetRef = useRef(null);
+  // When the whole sheet fits the window, the day numbers stick under the
+  // page header as the page scrolls. When it doesn't, the table scrolls
+  // sideways instead (and a sideways-scrolling box can't stick).
+  const tableBoxRef = useRef(null);
+  const [fits, setFits] = useState(true);
+  useEffect(() => {
+    const box = tableBoxRef.current;
+    if (!box) return undefined;
+    const check = () => { const t = box.querySelector('table'); setFits(!t || t.scrollWidth <= box.clientWidth + 1); };
+    check();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(check) : null;
+    ro?.observe(box);
+    const t = box.querySelector('table');
+    if (t) ro?.observe(t);
+    return () => ro?.disconnect();
+  }, [sheet]);
   useStickyHeight(headerRef, '--kl-page-header-h');
   const active = manager ? provider : lockedProvider;
 
@@ -151,7 +167,7 @@ export default function BillingPage() {
   const weekday = (d) => new Date(`${dateOf(d)}T00:00:00`).getDay();
   const NAME_W = isMobile ? 130 : 160;
   const cell = { borderBottom: `1px solid ${HAIRLINE}`, borderRight: `1px solid ${HAIRLINE}`, padding: '0 4px', height: 34, fontSize: 12.5, color: INK, boxSizing: 'border-box', whiteSpace: 'nowrap' };
-  const head = { ...cell, height: 'auto', padding: '6px 4px', fontSize: 11.5, fontWeight: 600, color: MUTED, background: '#FAFAFA', position: 'sticky', top: 0, zIndex: 2 };
+  const head = { ...cell, height: 'auto', padding: '6px 4px', fontSize: 11.5, fontWeight: 600, color: MUTED, background: '#FAFAFA', position: 'sticky', top: fits ? STACK_TOP : 0, zIndex: 2 };
   const stickyName = { position: 'sticky', left: 0, zIndex: 1, background: 'white', minWidth: NAME_W, maxWidth: NAME_W, overflow: 'hidden', textOverflow: 'ellipsis' };
   const dayBg = (d) => (sheet?.closures?.[dateOf(d)] ? '#F5F3FF' : (weekday(d) === 0 || weekday(d) === 6) ? '#F4F4F5' : dateOf(d) === sheet?.today ? '#FFFBEB' : undefined);
   const grand = grouped.reduce((t, g) => ({ scheduled: t.scheduled + g.scheduled, total: t.total + g.total }), { scheduled: 0, total: 0 });
@@ -160,7 +176,12 @@ export default function BillingPage() {
   return (
     <div style={{ background: PAGE_BG, minHeight: '100%', fontFamily: FONT }}>
       <div style={{ padding: isMobile ? 16 : '24px 28px 40px', maxWidth: 1600, margin: '0 auto' }}>
-        <div ref={headerRef}>
+        {/* Title, month, provider and billing dates stay under the nav bar
+            while the sheet scrolls (src/stickyLayout.js). */}
+        <div ref={headerRef} style={{
+          position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: PAGE_BG,
+          margin: isMobile ? '-16px -16px 0' : '-24px -28px 0', padding: isMobile ? '16px 16px 12px' : '24px 28px 12px',
+        }}>
           <PageHeader
             title="Billing"
             isMobile={isMobile}
@@ -180,6 +201,11 @@ export default function BillingPage() {
               </div>
             }
           />
+          {sheet && (
+            <div style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12 }}>
+              <SheetInfo sheet={sheet} isMobile={isMobile} />
+            </div>
+          )}
         </div>
 
         {error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
@@ -187,16 +213,14 @@ export default function BillingPage() {
 
         <style>{PRINT_CSS}</style>
         {sheet && (
-          <div ref={sheetRef} className="kl-billing-print" style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div ref={sheetRef} className="kl-billing-print" style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: 'clip' }}>
             <div className="kl-print-only" style={{ display: 'none', padding: '12px 16px 0', fontSize: 16, fontWeight: 600, color: INK }}>Billing Invoice · {monthLabel(month)}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px 20px', padding: '14px 16px', borderBottom: `1px solid ${HAIRLINE}`, fontSize: 13, color: MUTED }}>
-              <span>Provider: <strong style={{ color: INK, fontWeight: 600 }}>{sheet.provider}</strong></span>
-              <span>Discipline: <strong style={{ color: INK, fontWeight: 600 }}>{sheet.discipline || '—'}</strong></span>
-              <span>Phone: <strong style={{ color: INK, fontWeight: 600 }}>{sheet.phone || '—'}</strong></span>
-              <span>Billing dates: <strong style={{ color: INK, fontWeight: 600 }}>{shortDate(sheet.start)} – {shortDate(sheet.end)}</strong></span>
+            {/* On screen this line is in the sticky header above; printed here. */}
+            <div className="kl-print-only" style={{ display: 'none' }}>
+              <SheetInfo sheet={sheet} isMobile={isMobile} />
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div ref={tableBoxRef} style={{ overflowX: fits ? 'clip' : 'auto' }}>
               <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', ...NUMERIC }}>
                 <thead>
                   <tr>
@@ -258,6 +282,18 @@ export default function BillingPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SheetInfo({ sheet, isMobile }) {
+  const strong = { color: INK, fontWeight: 600 };
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px 20px', padding: '12px 16px', fontSize: 13, color: MUTED }}>
+      <span>Provider: <strong style={strong}>{sheet.provider}</strong></span>
+      <span>Discipline: <strong style={strong}>{sheet.discipline || '—'}</strong></span>
+      <span>Phone: <strong style={strong}>{sheet.phone || '—'}</strong></span>
+      <span>Billing dates: <strong style={strong}>{shortDate(sheet.start)} – {shortDate(sheet.end)}</strong></span>
     </div>
   );
 }
