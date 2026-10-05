@@ -29,6 +29,25 @@ const MARK_STYLE = {
   Z: { bg: '#0F766E', fg: 'white', title: 'Emergency closure' },
   M: { bg: '#2563EB', fg: 'white', title: 'Make-up' },
 };
+// US Letter landscape (11in) less 0.3in margins each side, in CSS px.
+const PRINTABLE_WIDTH_PX = 10.4 * 96;
+const PRINT_CSS = `
+@media print {
+  @page { size: letter landscape; margin: 0.3in; }
+  html, body { background: white !important; }
+  body * { visibility: hidden !important; }
+  .kl-billing-print, .kl-billing-print * { visibility: visible !important; }
+  .kl-billing-print {
+    position: absolute !important; left: 0; top: 0;
+    width: var(--kl-print-width, auto) !important;
+    zoom: var(--kl-print-zoom, 1);
+    border-radius: 0 !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .kl-billing-print > div { overflow: visible !important; }
+  .kl-billing-print th { position: static !important; }
+  .kl-print-only { display: block !important; }
+}`;
 const pad = (n) => String(n).padStart(2, '0');
 const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 const monthLabel = (key) => new Date(`${key}-01T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -62,6 +81,7 @@ export default function BillingPage() {
   const [version, setVersion] = useState(0);
   const [savingReview, setSavingReview] = useState(false);
   const headerRef = useRef(null);
+  const sheetRef = useRef(null);
   useStickyHeight(headerRef, '--kl-page-header-h');
   const active = manager ? provider : lockedProvider;
 
@@ -89,6 +109,23 @@ export default function BillingPage() {
       return { ...g, rows, scheduled: rows.reduce((t, r) => t + r.scheduled, 0), total: rows.reduce((t, r) => t + r.total_sessions, 0) };
     }).filter(g => g.rows.length);
   }, [sheet]);
+
+  // Print exactly what's on screen: the sheet alone, landscape, at its
+  // on-screen width scaled down to fit the page (PRINT_CSS). Also applies
+  // to Cmd/Ctrl+P.
+  useEffect(() => {
+    const before = () => {
+      const el = sheetRef.current;
+      if (!el) return;
+      // The whole table, even the part scrolled out of view on a narrow screen.
+      const table = el.querySelector('table');
+      const width = Math.max(el.getBoundingClientRect().width, table ? table.scrollWidth + 2 : 0);
+      el.style.setProperty('--kl-print-width', `${width}px`);
+      el.style.setProperty('--kl-print-zoom', String(Math.min(1, PRINTABLE_WIDTH_PX / width)));
+    };
+    window.addEventListener('beforeprint', before);
+    return () => window.removeEventListener('beforeprint', before);
+  }, []);
 
   const toggleReviewed = async () => {
     setSavingReview(true);
@@ -148,8 +185,10 @@ export default function BillingPage() {
         {error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
         {!sheet && !error && <p style={{ fontSize: 13, color: MUTED }}>Loading billing...</p>}
 
+        <style>{PRINT_CSS}</style>
         {sheet && (
-          <div style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div ref={sheetRef} className="kl-billing-print" style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: 'hidden' }}>
+            <div className="kl-print-only" style={{ display: 'none', padding: '12px 16px 0', fontSize: 16, fontWeight: 600, color: INK }}>Billing Invoice · {monthLabel(month)}</div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px 20px', padding: '14px 16px', borderBottom: `1px solid ${HAIRLINE}`, fontSize: 13, color: MUTED }}>
               <span>Provider: <strong style={{ color: INK, fontWeight: 600 }}>{sheet.provider}</strong></span>
               <span>Discipline: <strong style={{ color: INK, fontWeight: 600 }}>{sheet.discipline || '—'}</strong></span>
