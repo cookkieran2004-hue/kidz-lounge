@@ -7,10 +7,10 @@ import { useIsMobile } from '../useIsMobile';
 import {
   BRAND, BRAND_SERIF, TIME_SLOTS, ROW_HEIGHT, CARD_MARGIN, STATUS_OPTIONS,
   dateToInputValue, formatSlotLabel, timeToMinutes, gapSegmentsForSlot,
-  statusColor, roomColor, programColor, oooBlockColors,
+  statusColor, roomColor, programColor,
   computeConflicts, getAppointmentTimeRange, ConflictReviewModal,
   ChevronLeft, ChevronRight, CalendarIcon, PlusIcon,
-  AppointmentCard, AppointmentModal, OOOModal, CalendarPicker, ClosedDaySash, RoomPickerMenu, roomBadgeLabel,
+  AppointmentCard, AppointmentModal, OOOModal, OOOSlotBlock, CalendarPicker, ClosedDaySash, RoomPickerMenu, roomBadgeLabel,
   Dot, iconBtnStyle, primaryBtnStyle, secondaryBtnStyle,
   thStyle, tdTimeStyle, tdCellStyle,
 } from './SchedulePage';
@@ -238,13 +238,32 @@ export default function WeeklySchedulePage() {
 
   const oooForDaySlot = (dateStr, time) => {
     const slotM = timeToMinutes(time);
-    return oooRecords.find(o => {
+    // Every block touching this half-hour row; OOOSlotBlock layers them
+    // (PTO/UPTO on top) in front of the appointments, same as the Schedule.
+    return oooRecords.filter(o => {
       if (o.ooo_date !== dateStr) return false;
       const start = timeToMinutes(o.start_time.slice(0, 5));
       const end = timeToMinutes(o.end_time.slice(0, 5));
-      return slotM >= start && slotM < end;
+      return start < slotM + 30 && slotM < end;
     });
   };
+
+  // Per OOO block: appointments behind it (see-through) and conflicts (red).
+  const oooOverlay = useMemo(() => {
+    const map = {};
+    oooRecords.forEach(ooo => {
+      const start = timeToMinutes(ooo.start_time.slice(0, 5));
+      const end = timeToMinutes(ooo.end_time.slice(0, 5));
+      const behind = appointments.some(a => {
+        if (a.appointment_date !== ooo.ooo_date || (a.provider && ooo.provider && a.provider !== ooo.provider)) return false;
+        const r = getAppointmentTimeRange(a);
+        return r.start < end && start < r.end;
+      });
+      const conflict = weekConflicts.some(c => c.kind === 'ooo' && c.ooo.id === ooo.id);
+      map[ooo.id] = { behind, conflict, start, end };
+    });
+    return map;
+  }, [oooRecords, appointments, weekConflicts]);
 
   // Non-contracted shading per row comes from gapSegmentsForSlot (SchedulePage.jsx).
 
@@ -511,7 +530,7 @@ export default function WeeklySchedulePage() {
                       const cellAppointments = (grid[d.dateStr]?.[time] || [])
                         .slice()
                         .sort((a, b) => (a.appointment_status === 'Canceled' ? 1 : 0) - (b.appointment_status === 'Canceled' ? 1 : 0));
-                      const oooMatch = oooForDaySlot(d.dateStr, time);
+                      const oooMatches = oooForDaySlot(d.dateStr, time);
                       const contractedGapSegments = closedByDate[d.dateStr] ? [] : gapSegmentsForSlot(contractedGaps.find(g => g.date === d.dateStr)?.gaps, time, ROW_HEIGHT);
                       return (
                         <td
@@ -535,39 +554,16 @@ export default function WeeklySchedulePage() {
                               }}
                             />
                           ))}
-                          {oooMatch && (() => {
-                            const oooColors = oooBlockColors(oooMatch.type);
-                            const startM = timeToMinutes(oooMatch.start_time.slice(0, 5));
-                            const endM = timeToMinutes(oooMatch.end_time.slice(0, 5));
-                            const slotM = timeToMinutes(time);
-                            const isFirstSlot = slotM <= startM && slotM + 30 > startM;
-                            const oooTop = isFirstSlot ? ((startM - slotM) / 30) * ROW_HEIGHT : 0;
-                            const remainingMinutes = endM - Math.max(startM, slotM);
-                            const oooHeight = Math.min(remainingMinutes, 30 - (isFirstSlot ? startM - slotM : 0)) / 30 * ROW_HEIGHT;
-                            return (
-                              <div
-                                onClick={() => { setEditingOOO(oooMatch); setShowOOOModal(true); }}
-                                style={{
-                                  position: 'absolute', top: oooTop, left: 0, right: 0, height: oooHeight,
-                                  background: oooColors.background,
-                                  borderTop: isFirstSlot ? `2px dashed ${oooColors.border}` : 'none',
-                                  cursor: 'pointer', zIndex: 1, display: 'flex',
-                                  alignItems: isFirstSlot ? 'flex-start' : 'center', justifyContent: 'center',
-                                  paddingTop: isFirstSlot ? 4 : 0,
-                                }}
-                              >
-                                {isFirstSlot && (
-                                  <span style={{ fontSize: 10.5, fontWeight: 600, color: oooColors.text }}>
-                                    {oooMatch.type}
-                                    {oooMatch.has_week_agenda && (
-                                      // "This week only" agenda notes for this date -- same red * as an appointment with comments.
-                                      <span title="Has notes for this week" style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1, marginLeft: 3 }}>*</span>
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })()}
+                          {oooMatches.map(oooMatch => (
+                            <OOOSlotBlock
+                              key={oooMatch.id}
+                              ooo={oooMatch}
+                              time={time}
+                              rowHeight={ROW_HEIGHT}
+                              overlay={oooOverlay[oooMatch.id]}
+                              onClick={() => { setEditingOOO(oooMatch); setShowOOOModal(true); }}
+                            />
+                          ))}
                           {cellAppointments.map((apt, cellIndex) => {
                             // Staggered only behind earlier cards it actually overlaps;
                             // a back-to-back visit in the same row (11:30 then 11:45)

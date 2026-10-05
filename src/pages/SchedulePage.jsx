@@ -341,7 +341,12 @@ export function OOOSlotBlock({ ooo, time, rowHeight, overlay, onClick }) {
       onClick={behind ? undefined : onClick}
       style={{
         position: 'absolute', top, left: 0, right: 0, height,
-        background: behind ? `color-mix(in srgb, ${colors.background} 45%, transparent)` : colors.background,
+        // See-through over appointments. Tinted types (Meeting, Lunch, ...) use
+        // their full color here -- their pale fill all but vanishes once
+        // made transparent.
+        background: behind
+          ? (OOO_SOLID_BLOCKS[ooo.type] ? `color-mix(in srgb, ${colors.background} 45%, transparent)` : `color-mix(in srgb, ${oooTypeColor(ooo.type)} 30%, transparent)`)
+          : colors.background,
         borderTop: isFirstSlot && !overlay?.conflict ? `2px dashed ${colors.border}` : 'none',
         boxShadow: outline,
         boxSizing: 'border-box',
