@@ -22,7 +22,7 @@ const KIND_LABEL = {
   adjustment: 'Adjusted by an admin',
   cap: 'Cap',
   carryover: 'Year-end carryover',
-  reset: 'PTO balance set',
+  reset: 'Starting PTO',
 };
 
 const fmtDate = (s) => new Date(`${String(s).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

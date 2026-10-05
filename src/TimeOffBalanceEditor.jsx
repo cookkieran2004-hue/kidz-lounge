@@ -50,8 +50,8 @@ export default function TimeOffBalanceEditor({ username, onSaved }) {
         const r = await api.setPtoAsOf(username, n, asOf);
         const asOfLabel = new Date(`${asOf}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         setNotice(r.used_since
-          ? `Set to ${n} h as of ${asOfLabel}, less ${r.used_since} h of PTO taken since: ${r.balance_hours} h now.`
-          : `Set to ${n} h as of ${asOfLabel}. No PTO taken since: ${r.balance_hours} h now.`);
+          ? `Starting PTO ${n} h as of ${asOfLabel}, less ${r.used_since} h taken since: ${r.balance_hours} h now.`
+          : `Starting PTO ${n} h as of ${asOfLabel}. No PTO taken since: ${r.balance_hours} h now.`);
       } else {
         await api.setTimeOffBalance(username, 'PTO', n);
         setNotice(`PTO balance set to ${n} h.`);
@@ -92,7 +92,7 @@ export default function TimeOffBalanceEditor({ username, onSaved }) {
               </div>
               {!mode && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={() => open('asof')} style={buttonStyle('secondary', { fontSize: 12.5, padding: '5px 10px' })}>Set as of a date</button>
+                  <button type="button" onClick={() => open('asof')} style={buttonStyle('secondary', { fontSize: 12.5, padding: '5px 10px' })}>Enter starting PTO</button>
                   <button type="button" onClick={() => open('adjust')} style={buttonStyle('text', { fontSize: 12.5 })}>Adjust</button>
                 </div>
               )}
@@ -100,12 +100,12 @@ export default function TimeOffBalanceEditor({ username, onSaved }) {
                 <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
                   {mode === 'asof' && (
                     <div>
-                      <span style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 3 }}>Balance as of</span>
+                      <span style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 3 }}>As of</span>
                       <DateField value={asOf} onChange={v => setAsOf(v || dateToInputValue(new Date()))} max={dateToInputValue(new Date())} style={{ ...input, width: '100%' }} ariaLabel="Balance as of date" />
                     </div>
                   )}
                   <label style={{ display: 'block' }}>
-                    <span style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 3 }}>{mode === 'asof' ? 'PTO hours on that date' : 'New PTO balance (hours)'}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 3 }}>{mode === 'asof' ? 'Starting PTO hours' : 'New PTO balance (hours)'}</span>
                     <input type="number" step="0.25" min="0" max="120" inputMode="decimal" autoFocus value={hours} onChange={e => setHours(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setMode(null); }} style={{ ...input, width: 120, ...NUMERIC }} />
                   </label>
