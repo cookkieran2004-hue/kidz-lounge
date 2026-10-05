@@ -25,6 +25,8 @@ import SupportPage from './pages/SupportPage';
 import SupportTicketsPage from './pages/SupportTicketsPage';
 import Footer from './Footer';
 import SupportNotifier from './SupportNotifier';
+import PastLockDialog from './PastLockDialog';
+import BillingPage from './pages/BillingPage';
 
 function AppShell() {
   return (
@@ -41,6 +43,7 @@ function AppShell() {
           <Routes>
             <Route path="/" element={<RequireAuth><SchedulePage /></RequireAuth>} />
             <Route path="/weekly" element={<RequireAuth><WeeklySchedulePage /></RequireAuth>} />
+            <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/patients" element={<RequireAuth><PatientsPage /></RequireAuth>} />
             <Route path="/waitlist" element={<RequireAuth><WaitlistPage /></RequireAuth>} />
             <Route path="/patients/:name" element={<RequireAuth><PatientChartPage /></RequireAuth>} />
@@ -61,6 +64,7 @@ function AppShell() {
           <Footer />
           </div>
           <SupportNotifier />
+          <PastLockDialog />
         </ChatProvider>
       </TasksProvider>
     </PendingTimeOffProvider>

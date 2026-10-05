@@ -22,6 +22,23 @@ const RETRY_WAITS_MS = [500, 1500];
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const OFFLINE_MESSAGE = "Couldn't reach the server. Check your internet connection and try again in a moment.";
 
+// Past dates are locked for billing (kidz-lounge-api lib/pastLock.js). A
+// change only an admin may make comes back 409 { code: 'pastLocked' }; the
+// handler (src/PastLockDialog.jsx) asks for a reason, and the same call is
+// resent with it, which files it for an Admin/Developer to approve. One
+// save can make several calls (e.g. ending a weekly series and starting a
+// new one), so a reason is reused for a few seconds.
+let pastLockHandler = null;
+export function setPastLockHandler(fn) { pastLockHandler = fn; }
+let recentReason = null; // { text, at }
+const REASON_REUSE_MS = 15000;
+async function approvalReasonFor(info) {
+  if (recentReason && Date.now() - recentReason.at < REASON_REUSE_MS) return recentReason.text;
+  const text = pastLockHandler ? await pastLockHandler(info) : null;
+  if (text) recentReason = { text, at: Date.now() };
+  return text;
+}
+
 async function request(path, options = {}) {
   const token = getToken();
   const canRetry = !options.method || options.method === 'GET';
@@ -52,6 +69,18 @@ async function request(path, options = {}) {
     break;
   }
   const data = await res.json().catch(() => null);
+  if (res.status === 409 && data?.code === 'pastLocked' && !options.approvalReason) {
+    const reason = await approvalReasonFor(data);
+    if (!reason) {
+      const err = new Error('Not changed. That date has passed, so the change needs an admin.');
+      err.status = 409; err.data = data; err.cancelled = true;
+      throw err;
+    }
+    const sep = path.includes('?') ? '&' : '?';
+    const sent = await request(`${path}${sep}approval_reason=${encodeURIComponent(reason)}`, { ...options, approvalReason: reason });
+    if (sent?.pending) pastLockHandler?.sent?.(sent);
+    return sent;
+  }
   if (!res.ok) {
     const err = new Error(data?.error || `Request failed (${res.status})`);
     err.status = res.status;
@@ -263,7 +292,15 @@ export const api = {
   getContractedGapsBatch: (start, end) => request(`/providers/contracted-gaps-batch?start=${start}&end=${end}`),
   setOfficeHours: (record) => request('/office-hours', { method: 'PUT', body: JSON.stringify(record) }),
   getOfficeClosures: () => request('/office-closures'),
-  addOfficeClosure: (closureDate, reason) => request('/office-closures', { method: 'POST', body: JSON.stringify({ closure_date: closureDate, reason }) }),
+  addOfficeClosure: (closureDate, reason, closureType = 'holiday') => request('/office-closures', { method: 'POST', body: JSON.stringify({ closure_date: closureDate, reason, closure_type: closureType }) }),
+
+  // ---- Billing (routes/billing.js) ----
+  getBillingSheet: (provider, month) => request(`/billing?provider=${encodeURIComponent(provider || '')}&month=${month}`),
+  setBillingReviewed: (provider, month, reviewed) => request('/billing/review', { method: 'PUT', body: JSON.stringify({ provider, month, reviewed }) }),
+  // Changes to past appointments waiting for an Admin/Developer.
+  getScheduleChangeRequests: (status = 'pending') => request(`/schedule-change-requests?status=${status}`),
+  approveScheduleChange: (id) => request(`/schedule-change-requests/${id}/approve`, { method: 'PUT', body: '{}' }),
+  denyScheduleChange: (id, note) => request(`/schedule-change-requests/${id}/deny`, { method: 'PUT', body: JSON.stringify({ note }) }),
   deleteOfficeClosure: (id) => request(`/office-closures/${id}`, { method: 'DELETE' }),
   getProviderUsualSchedule: (providerName) => request(`/providers/${encodeURIComponent(providerName)}/usual-schedule`),
   // Scheduled changes to contracted hours (start date, optional end date, weekly hours).

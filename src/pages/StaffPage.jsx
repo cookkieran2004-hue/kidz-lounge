@@ -1186,6 +1186,8 @@ export function OfficeHoursTab({ isMobile, embedded }) {
   const [closures, setClosures] = useState([]);
   const [newClosureDate, setNewClosureDate] = useState('');
   const [newClosureReason, setNewClosureReason] = useState('');
+  // Holiday (H on the billing sheet) or emergency closure (Z).
+  const [newClosureType, setNewClosureType] = useState('holiday');
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
@@ -1216,11 +1218,11 @@ export function OfficeHoursTab({ isMobile, embedded }) {
     if (!newClosureDate) { setError('Pick a date first.'); return; }
     setError(null);
     try {
-      await api.addOfficeClosure(newClosureDate, newClosureReason || null);
+      await api.addOfficeClosure(newClosureDate, newClosureReason || null, newClosureType);
     } catch (err) {
       setError(err.message); return;
     }
-    setNewClosureDate(''); setNewClosureReason('');
+    setNewClosureDate(''); setNewClosureReason(''); setNewClosureType('holiday');
     load();
   };
 
@@ -1269,6 +1271,10 @@ export function OfficeHoursTab({ isMobile, embedded }) {
       </p>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <DateField style={inputStyle} floating value={newClosureDate} onChange={setNewClosureDate} ariaLabel="Closure date" />
+        <select aria-label="Closure type" value={newClosureType} onChange={e => setNewClosureType(e.target.value)} style={{ ...inputStyle, background: 'white' }}>
+          <option value="holiday">Holiday</option>
+          <option value="emergency">Emergency closure</option>
+        </select>
         <input placeholder="Reason (optional)" style={{ ...inputStyle, flex: 1, minWidth: 160 }} value={newClosureReason} onChange={e => setNewClosureReason(e.target.value)} />
         <button onClick={handleAddClosure} style={{ padding: isMobile ? '9px 14px' : '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND.forest, color: 'white', cursor: 'pointer' }}>
           Add closure
@@ -1281,7 +1287,7 @@ export function OfficeHoursTab({ isMobile, embedded }) {
         ) : (
           closures.map((c, i) => (
             <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < closures.length - 1 ? '1px solid #f1f2f4' : 'none' }}>
-              <span style={{ fontSize: 13, color: '#241A33' }}>{formatDate(c.closure_date)}{c.reason ? ` \u2014 ${c.reason}` : ''}</span>
+              <span style={{ fontSize: 13, color: '#241A33' }}>{formatDate(c.closure_date)}{c.closure_type === 'emergency' ? ' · Emergency closure' : ' · Holiday'}{c.reason ? ` \u2014 ${c.reason}` : ''}</span>
               <button onClick={() => handleRemoveClosure(c.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', color: '#991B1B', cursor: 'pointer' }}>Remove</button>
             </div>
           ))

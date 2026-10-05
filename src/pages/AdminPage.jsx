@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '../useIsMobile';
 import { usePendingTimeOff } from '../PendingTimeOffContext';
@@ -5,6 +6,8 @@ import StaffDirectory from './admin/StaffDirectory';
 import { TimeOffManageTab, OfficeHoursTab } from './StaffPage';
 import { Card, PageHeader, UnderlineTabs } from '../dashboardUi';
 import AuditLogTab from './admin/AuditLogTab';
+import ScheduleChangesTab from './admin/ScheduleChangesTab';
+import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { canViewAuditLog } from '../roles';
 import { PAGE_BG, FONT } from '../uiTokens';
@@ -20,10 +23,17 @@ export default function AdminPage() {
   const isMobile = useIsMobile(768);
   const { user } = useAuth();
   const { pendingCount, refreshPending } = usePendingTimeOff();
+  // Changes to past (billing-locked) appointments waiting for approval.
+  const [changeCount, setChangeCount] = useState(0);
+  const refreshChanges = useCallback(() => {
+    api.getScheduleChangeRequests('pending').then(r => setChangeCount((r || []).length)).catch(() => {});
+  }, []);
+  useEffect(() => { refreshChanges(); }, [refreshChanges]);
 
   const tabs = [
     { key: 'staff', label: 'Staff' },
     { key: 'time-off', label: 'Time off', badge: pendingCount },
+    { key: 'schedule-changes', label: 'Schedule changes', badge: changeCount },
     { key: 'office-hours', label: 'Office hours' },
     // HIPAA audit log: Developers only.
     ...(canViewAuditLog(user) ? [{ key: 'audit-log', label: 'Audit log' }] : []),
@@ -47,6 +57,11 @@ export default function AdminPage() {
         {tab === 'time-off' && (
           <Card title="Time off" pad={isMobile ? 14 : 20}>
             <TimeOffManageTab isMobile={isMobile} embedded onChanged={refreshPending} />
+          </Card>
+        )}
+        {tab === 'schedule-changes' && (
+          <Card title="Changes to past dates" pad={isMobile ? 14 : 20}>
+            <ScheduleChangesTab isMobile={isMobile} onChanged={refreshChanges} />
           </Card>
         )}
         {tab === 'audit-log' && (
