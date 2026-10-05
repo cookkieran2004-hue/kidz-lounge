@@ -313,6 +313,67 @@ export function oooBlockColors(type) {
   };
 }
 
+// OOO blocks draw IN FRONT of appointment cards (cards are z 5-15), PTO and
+// UPTO above every other type.
+const oooLayer = (type) => (type === 'PTO' || type === 'UPTO' ? 1 : 0);
+
+// One 30-minute row's piece of an OOO block on the day grid. `overlay`:
+// { behind, conflict, start, end } -- with appointments behind it the fill
+// goes see-through and only the label takes clicks, so the cards stay
+// visible and clickable; a conflict gets a red outline around the whole
+// block.
+export function OOOSlotBlock({ ooo, time, rowHeight, overlay, onClick }) {
+  const colors = oooBlockColors(ooo.type);
+  const startM = overlay?.start ?? timeToMinutes(ooo.start_time.slice(0, 5));
+  const endM = overlay?.end ?? timeToMinutes(ooo.end_time.slice(0, 5));
+  const slotM = timeToMinutes(time);
+  const isFirstSlot = slotM <= startM && slotM + 30 > startM;
+  const isLastSlot = endM <= slotM + 30;
+  const top = isFirstSlot ? ((startM - slotM) / 30) * rowHeight : 0;
+  const height = (Math.min(endM, slotM + 30) - Math.max(startM, slotM)) / 30 * rowHeight;
+  const behind = !!overlay?.behind;
+  const red = '#dc2626';
+  const outline = overlay?.conflict
+    ? [`inset 2px 0 0 ${red}`, `inset -2px 0 0 ${red}`, isFirstSlot && `inset 0 2px 0 ${red}`, isLastSlot && `inset 0 -2px 0 ${red}`].filter(Boolean).join(', ')
+    : undefined;
+  return (
+    <div
+      onClick={behind ? undefined : onClick}
+      style={{
+        position: 'absolute', top, left: 0, right: 0, height,
+        background: behind ? `color-mix(in srgb, ${colors.background} 45%, transparent)` : colors.background,
+        borderTop: isFirstSlot && !overlay?.conflict ? `2px dashed ${colors.border}` : 'none',
+        boxShadow: outline,
+        boxSizing: 'border-box',
+        cursor: behind ? 'default' : 'pointer',
+        pointerEvents: behind ? 'none' : 'auto',
+        zIndex: 20 + oooLayer(ooo.type),
+        display: 'flex',
+        alignItems: isFirstSlot ? 'flex-start' : 'center',
+        justifyContent: behind ? 'flex-end' : 'center',
+        paddingTop: isFirstSlot ? (behind ? 3 : 4) : 0,
+        paddingRight: behind ? 4 : 0,
+      }}
+    >
+      {isFirstSlot && (
+        <span
+          onClick={behind ? onClick : undefined}
+          style={{
+            fontSize: 10.5, fontWeight: 600, color: colors.text, pointerEvents: 'auto', cursor: 'pointer',
+            ...(behind ? { background: colors.background, border: `1px solid ${overlay?.conflict ? red : colors.border}`, borderRadius: 4, padding: '0 5px', lineHeight: '16px' } : {}),
+          }}
+        >
+          {ooo.type}
+          {ooo.has_week_agenda && (
+            // "This week only" agenda notes for this date -- same red * as an appointment with comments.
+            <span title="Has notes for this week" style={{ color: red, fontWeight: 700, fontSize: 13, lineHeight: 1, marginLeft: 3 }}>*</span>
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ---------- Minimal line-icon set (no emoji) ----------
 function Icon({ path, size = 14, color = 'currentColor', strokeWidth = 1.8 }) {
   return (
@@ -1712,14 +1773,18 @@ function ScheduleApp() {
     return map;
   }, [providers, oooRecords]);
 
+  // Every OOO block covering a slot, lowest layer first: other blocks, then
+  // PTO/UPTO on top.
   const oooCoveringSlot = (providerName, time) => {
     const slotMinutes = timeToMinutes(time);
     const records = oooByProvider[providerName] || [];
-    return records.find(ooo => {
+    return records.filter(ooo => {
       const start = timeToMinutes(ooo.start_time.slice(0, 5));
       const end = timeToMinutes(ooo.end_time.slice(0, 5));
-      return slotMinutes >= start && slotMinutes < end;
-    });
+      // Any overlap with this half-hour row, so a block starting at :15 or
+      // :45 still draws (and labels) from its true start.
+      return start < slotMinutes + 30 && slotMinutes < end;
+    }).sort((a, b) => oooLayer(a.type) - oooLayer(b.type));
   };
 
   // Non-contracted shading per row comes from gapSegmentsForSlot (top of file).
@@ -1749,6 +1814,24 @@ function ScheduleApp() {
     });
     return { list: active, ids };
   }, [allConflicts, dismissedConflictKeys]);
+
+  // Per OOO block: is any appointment behind it (draw it see-through), and
+  // is it in an active conflict (red outline)?
+  const oooOverlay = useMemo(() => {
+    const map = {};
+    oooRecords.forEach(ooo => {
+      const start = timeToMinutes(ooo.start_time.slice(0, 5));
+      const end = timeToMinutes(ooo.end_time.slice(0, 5));
+      const behind = appointments.some(a => {
+        if (a.provider !== ooo.provider) return false;
+        const r = getAppointmentTimeRange(a);
+        return r.start < end && start < r.end;
+      });
+      const conflict = activeConflicts.list.some(c => c.kind === 'ooo' && c.ooo.id === ooo.id);
+      map[ooo.id] = { behind, conflict, start, end };
+    });
+    return map;
+  }, [oooRecords, appointments, activeConflicts]);
 
   const dismissedConflictsList = useMemo(() => {
     return allConflicts.filter(c => dismissedConflictKeys.has(getConflictKey(c)));
@@ -1986,7 +2069,7 @@ function ScheduleApp() {
                       const cellAppointments = (sourceGrid[colKey]?.[time] || [])
                         .slice()
                         .sort((a, b) => (a.appointment_status === 'Canceled' ? 1 : 0) - (b.appointment_status === 'Canceled' ? 1 : 0));
-                      const oooMatch = viewMode === 'provider' ? oooCoveringSlot(colKey, time) : null;
+                      const oooMatches = viewMode === 'provider' ? oooCoveringSlot(colKey, time) : [];
                       const contractedGapSegments = viewMode === 'provider' && !closedInfo ? gapSegmentsForSlot(contractedGapsByProvider[colKey], time, ROW_HEIGHT) : [];
                       return (
                         <td
@@ -2015,46 +2098,16 @@ function ScheduleApp() {
                               }}
                             />
                           ))}
-                          {oooMatch && (() => {
-                            const oooColors = oooBlockColors(oooMatch.type);
-                            const startM = timeToMinutes(oooMatch.start_time.slice(0, 5));
-                            const endM = timeToMinutes(oooMatch.end_time.slice(0, 5));
-                            const slotM = timeToMinutes(time);
-                            const isFirstSlot = slotM <= startM && slotM + 30 > startM;
-                            const oooTop = isFirstSlot ? ((startM - slotM) / 30) * ROW_HEIGHT : 0;
-                            const remainingMinutes = endM - Math.max(startM, slotM);
-                            const oooHeight = Math.min(remainingMinutes, 30 - (isFirstSlot ? startM - slotM : 0)) / 30 * ROW_HEIGHT;
-                            return (
-                              <div
-                                onClick={() => { setEditingOOO(oooMatch); setShowOOOModal(true); }}
-                                style={{
-                                  position: 'absolute',
-                                  top: oooTop,
-                                  left: 0,
-                                  right: 0,
-                                  height: oooHeight,
-                                  background: oooColors.background,
-                                  borderTop: isFirstSlot ? `2px dashed ${oooColors.border}` : 'none',
-                                  cursor: 'pointer',
-                                  zIndex: 1,
-                                  display: 'flex',
-                                  alignItems: isFirstSlot ? 'flex-start' : 'center',
-                                  justifyContent: 'center',
-                                  paddingTop: isFirstSlot ? 4 : 0,
-                                }}
-                              >
-                                {isFirstSlot && (
-                                  <span style={{ fontSize: 10.5, fontWeight: 600, color: oooColors.text }}>
-                                    {oooMatch.type}
-                                    {oooMatch.has_week_agenda && (
-                                      // "This week only" agenda notes for this date -- same red * as an appointment with comments.
-                                      <span title="Has notes for this week" style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1, marginLeft: 3 }}>*</span>
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })()}
+                          {oooMatches.map(oooMatch => (
+                            <OOOSlotBlock
+                              key={oooMatch.id}
+                              ooo={oooMatch}
+                              time={time}
+                              rowHeight={ROW_HEIGHT}
+                              overlay={oooOverlay[oooMatch.id]}
+                              onClick={() => { setEditingOOO(oooMatch); setShowOOOModal(true); }}
+                            />
+                          ))}
                           {cellAppointments.map((apt, cellIndex) => {
                             // Staggered only behind earlier cards it actually overlaps;
                             // a back-to-back visit in the same row (11:30 then 11:45)

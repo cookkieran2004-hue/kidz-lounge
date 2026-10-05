@@ -109,6 +109,12 @@ export default function WeeklySchedulePage() {
   }, [contractedGaps, activeProvider]);
 
   const weekConflicts = useMemo(() => computeConflicts(appointments, oooRecords, flatContractedGaps, closedDates), [appointments, oooRecords, flatContractedGaps, closedDates]);
+  // Appointments in a conflict get the same red ring as on the Schedule page.
+  const conflictIds = useMemo(() => {
+    const ids = new Set();
+    weekConflicts.forEach(c => { ids.add(c.a.id); if (c.kind === 'pair') ids.add(c.b.id); });
+    return ids;
+  }, [weekConflicts]);
 
   const displayedDateStrs = useMemo(() => new Set(daysToShow.map(d => d.dateStr)), [daysToShow]);
   const futureLookaheadConflicts = useMemo(() => {
@@ -583,7 +589,7 @@ export default function WeeklySchedulePage() {
                                 heightPx={heightPx}
                                 stackIndex={stackIndex}
                                 offsetWithinSlot={offsetWithinSlot}
-                                hasConflict={false}
+                                hasConflict={conflictIds.has(apt.id)}
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
                                 badgeLabel={roomBadgeLabel(apt.treatment_area)}
                                 badgeColor={apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
