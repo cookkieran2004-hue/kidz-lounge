@@ -4,11 +4,11 @@ import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
 import { TimeOffTab, BRAND } from './StaffPage';
-import { timeTypeStyle, sessionStyle, monthlyAccrual } from '../timeTypes';
+import { timeTypeStyle, sessionStyle } from '../timeTypes';
 import TimeOffHistory from '../TimeOffHistory';
 import { Card, Tag, PageHeader, StatStrip, Stat } from '../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, ACCENT, buttonStyle } from '../uiTokens';
-import { DateField, AppointmentModal, OOOModal, dateToInputValue, formatSlotLabel } from './SchedulePage';
+import { AppointmentModal, OOOModal, dateToInputValue, formatSlotLabel } from './SchedulePage';
 
 // My time: a personal dashboard for everything about your time at work --
 // balances and what they'll be, your week, what's coming up, your contracted
@@ -59,29 +59,6 @@ function requestHours(r) {
 }
 function firstDayOf(r) { return r.is_balance_type ? r.start_date : r.is_recurring ? r.recurring_start_date : r.ooo_date; }
 function lastDayOf(r) { return r.is_balance_type ? r.end_date : r.is_recurring ? null : r.ooo_date; }
-// PTO on `target`: a weekly credit every Sunday at the person's scheduled
-// rate, never past the 120-hour cap, cut to 40 at each year end -- the same
-// rules as the Sunday job (kidz-lounge-api/lib/ptoAccrual.js).
-function forecastPto(start, weekly, policy, fromStr, target) {
-  let bal = start;
-  let weeks = 0;
-  let d = toDate(fromStr); d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7)); // next Sunday
-  for (; dateToInputValue(d) <= target; d.setDate(d.getDate() + 7)) {
-    const sunday = dateToInputValue(d);
-    if (bal < policy.balance_cap) bal = Math.min(policy.balance_cap, bal + weekly);
-    weeks++;
-    const yearEnd = `${Number(sunday.slice(0, 4)) - 1}-12-31`;
-    if (addDays(sunday, -7) < yearEnd && yearEnd < sunday && bal > policy.carryover_max) bal = policy.carryover_max;
-  }
-  return { value: Math.round(bal * 100) / 100, weeks };
-}
-// 1st-of-month credits strictly after today, up to and including `target`.
-function creditsBetween(fromStr, target) {
-  let n = 0;
-  const d = toDate(fromStr); d.setDate(1); d.setMonth(d.getMonth() + 1);
-  while (dateToInputValue(d) <= target) { n++; d.setMonth(d.getMonth() + 1); }
-  return n;
-}
 // Hours in effect on a date: the most recently started change covering it,
 // otherwise the standing weekly schedule (same rule as the API).
 function hoursOn(dateStr, standing, changes) {
@@ -155,17 +132,23 @@ function BalanceStat({ type, hours, pendingHours, policy, first, isMobile }) {
   const label = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
       <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: block.bg, border: `1px solid ${block.border}`, boxSizing: 'border-box' }} />
-      {type === 'PTO' ? 'PTO balance' : 'UPTO balance'}
+      {type === 'PTO' ? 'PTO balance' : 'UPTO'}
     </span>
   );
+  // UPTO is unlimited (Oct 2026): show the hours used this year instead of
+  // a balance.
+  if (type === 'UPTO') {
+    return (
+      <Stat first={first} isMobile={isMobile} label={label} value="Unlimited" valueColor={BALANCE_GREEN.UPTO}
+        sub={`${hoursText(policy?.upto_used_this_year ?? 0)} used in ${new Date().getFullYear()}`}>
+        {pendingHours > 0 && <div style={{ fontSize: 12.5, color: '#B54708', marginTop: 2 }}>{hoursText(pendingHours)} pending approval</div>}
+      </Stat>
+    );
+  }
   return (
     <Stat first={first} isMobile={isMobile} label={label} value={hoursText(hours)} valueColor={hours < 0 ? '#B42318' : BALANCE_GREEN[type]}
       sub={`About ${(hours / 8).toFixed(1)} days`}>
-      <div style={{ fontSize: 12.5, color: atCap ? '#B54708' : MUTED, marginTop: 2 }}>
-        {type === 'PTO'
-          ? (atCap ? `At the ${policy.pto.balance_cap} h cap; accrual paused` : policy ? `Earns about ${hoursText(policy.pto.estimated_weekly_credit)} per week` : '')
-          : `${hoursText(policy?.upto?.monthly_hours ?? monthlyAccrual('UPTO'))} credited monthly`}
-      </div>
+      {atCap && <div style={{ fontSize: 12.5, color: '#B54708', marginTop: 2 }}>At the {policy.pto.balance_cap} h maximum</div>}
       {pendingHours > 0 && <div style={{ fontSize: 12.5, color: '#B54708', marginTop: 2 }}>{hoursText(pendingHours)} pending approval</div>}
     </Stat>
   );
@@ -184,34 +167,6 @@ function NextTimeOffStat({ next, onNew, isMobile }) {
   return (
     <Stat isMobile={isMobile} label="Next time off" value={<span style={{ fontSize: 18 }}>{span}</span>}
       sub={`${next.request_type}${requestHours(next) > 0 ? ` · ${hoursText(requestHours(next))}` : ''} · ${inDays <= 0 ? 'today' : `in ${inDays} day${inDays === 1 ? '' : 's'}`}`} />
-  );
-}
-
-function ProjectionStat({ balances, pendingByType, policy, isMobile }) {
-  const [target, setTarget] = useState(() => addDays(todayStr(), 90));
-  const future = target > todayStr();
-  const credits = future ? creditsBetween(todayStr(), target) : 0;
-  const pto = policy && future
-    ? forecastPto((balances.PTO ?? 0) - (pendingByType.PTO || 0), policy.pto.estimated_weekly_credit, policy.pto, todayStr(), target)
-    : { value: (balances.PTO ?? 0) - (pendingByType.PTO || 0), weeks: 0 };
-  const upto = (balances.UPTO ?? 0) + credits * (policy?.upto?.monthly_hours ?? monthlyAccrual('UPTO')) - (pendingByType.UPTO || 0);
-  return (
-    <Stat isMobile={isMobile} label={
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        Projected on
-        <DateField
-          value={target}
-          onChange={(v) => v && setTarget(v)}
-          min={todayStr()}
-          floating
-          ariaLabel="Projection date"
-          style={{ padding: '2px 8px', borderRadius: 6, border: `1px solid ${HAIRLINE}`, fontSize: 12.5, color: INK, background: 'white', boxSizing: 'border-box' }}
-        />
-      </span>
-    }
-      value={<span style={{ fontSize: 18 }}>PTO {hoursText(pto.value)}<span style={{ color: SUBTLE, fontWeight: 400 }}> · </span>UPTO {hoursText(upto)}</span>}
-      sub={`Includes ${pto.weeks} weekly PTO and ${credits} monthly UPTO credit${credits === 1 ? '' : 's'}${Object.values(pendingByType).some(Boolean) ? ', less pending requests' : ''}.`}
-    />
   );
 }
 
@@ -561,6 +516,8 @@ export default function MyTimePage() {
 
     return { pendingByType, next, comingUp: items.slice(0, 7) };
   }, [data, user]);
+  // Missing before the employment migration -> treat as salaried (old behaviour).
+  const employment = data?.policy?.employment_type || 'salaried';
 
   const days = useMemo(() => {
     if (!data) return [];
@@ -619,12 +576,16 @@ export default function MyTimePage() {
           <p style={{ fontSize: 13.5, color: MUTED }}>Loading...</p>
         ) : (
           <>
-            {/* Balances, next time off, projection */}
-            <StatStrip columns={isNarrow ? 2 : 4} isMobile={isMobile}>
-              <BalanceStat first type="PTO" hours={data.balances.PTO ?? 0} pendingHours={derived.pendingByType.PTO || 0} policy={data.policy} isMobile={isMobile} />
-              <BalanceStat type="UPTO" hours={data.balances.UPTO ?? 0} pendingHours={derived.pendingByType.UPTO || 0} policy={data.policy} isMobile={isMobile} />
+            {/* What they can take depends on their employment type: salaried
+                PTO + UPTO, hourly UPTO, neither none (Oct 2026 policy). */}
+            <StatStrip columns={isNarrow ? 2 : 3} isMobile={isMobile}>
+              {employment === 'salaried' && <BalanceStat first type="PTO" hours={data.balances.PTO ?? 0} pendingHours={derived.pendingByType.PTO || 0} policy={data.policy} isMobile={isMobile} />}
+              {employment !== 'neither' && <BalanceStat first={employment === 'hourly'} type="UPTO" hours={0} pendingHours={derived.pendingByType.UPTO || 0} policy={data.policy} isMobile={isMobile} />}
+              {employment === 'neither' && (
+                <Stat first isMobile={isMobile} label="Paid and unpaid time off" value={<span style={{ fontSize: 16, fontWeight: 500, color: MUTED }}>Not eligible</span>}
+                  sub="Lunch, meetings and other time off still work." />
+              )}
               <NextTimeOffStat next={derived.next} onNew={openNewRequest} isMobile={isMobile} />
-              <ProjectionStat balances={data.balances} pendingByType={derived.pendingByType} policy={data.policy} isMobile={isMobile} />
             </StatStrip>
 
             {/* Week + side column */}

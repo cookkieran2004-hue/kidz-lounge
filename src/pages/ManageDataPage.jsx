@@ -5,10 +5,10 @@ import { useAuth } from '../AuthContext';
 import { Avatar } from '../Avatar';
 import { WarningIcon, SyringeIcon, refreshPatientAlerts } from '../patientAlerts';
 import { DateField, TimeField } from './SchedulePage';
-import { timeTypeStyle, monthlyAccrual } from '../timeTypes';
 import { useIsMobile } from '../useIsMobile';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoices } from '../roles';
 import SpecialtyPicker from '../SpecialtyPicker';
+import TimeOffBalanceEditor from '../TimeOffBalanceEditor';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -1290,84 +1290,6 @@ export function PasswordConfirmModal({ expectedUsername, actionLabel, onConfirm,
 // isn't the same kind of sensitive change as editing role or position.
 // Balances as cards (same look as My time), each adjustable in place --
 // e.g. to give someone their real starting balance.
-export function TimeOffBalanceEditor({ username, embedded, onSaved }) {
-  const [balances, setBalances] = useState(null);
-  const [editingType, setEditingType] = useState(null);
-  const [draft, setDraft] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [savedType, setSavedType] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    api.getTimeOffBalancesFor(username).then(b => { if (alive) setBalances(b); }).catch(() => { if (alive) setBalances([]); });
-    return () => { alive = false; };
-  }, [username]);
-
-  const startEdit = (b) => { setEditingType(b.balance_type); setDraft(String(b.balance_hours)); setSavedType(null); setError(null); };
-  const handleSave = async (type) => {
-    const value = parseFloat(draft);
-    if (Number.isNaN(value)) { setError('Enter a number of hours.'); return; }
-    setSaving(true);
-    try {
-      await api.setTimeOffBalance(username, type, value);
-      setBalances(list => list.map(b => (b.balance_type === type ? { ...b, balance_hours: value } : b)));
-      setEditingType(null); setSavedType(type);
-      onSaved?.();
-    } catch (err) {
-      setError(err.message);
-    }
-    setSaving(false);
-  };
-
-  if (!balances) return null;
-  const serif = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
-
-  return (
-    <div style={embedded ? undefined : { marginTop: 16, paddingTop: 12, borderTop: '1px solid #e2e4e9' }}>
-      {!embedded && <label style={labelStyle()}>Time Off Balances</label>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
-        {balances.map(b => {
-          const s = timeTypeStyle(b.balance_type);
-          const hours = Number(b.balance_hours);
-          const isEditing = editingType === b.balance_type;
-          return (
-            <div key={b.balance_type} style={{ position: 'relative', overflow: 'hidden', border: '1px solid #E7E2F3', borderRadius: 14, padding: '14px 14px 12px 18px', background: 'white', boxShadow: '0 1px 2px rgba(36,26,51,0.04)' }}>
-              <div style={{ position: 'absolute', inset: '0 auto 0 0', width: 4, background: s.border }} />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', color: s.accent }}>{b.balance_type === 'PTO' ? 'PAID TIME OFF' : b.balance_type === 'UPTO' ? 'UNPAID TIME OFF' : b.balance_type}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: s.bg, color: s.text }}>{b.balance_type === 'PTO' ? '0.08h / hour worked' : `+${monthlyAccrual(b.balance_type)}h / month`}</span>
-              </div>
-              {isEditing ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                  <input
-                    type="number" step="0.25" autoFocus aria-label={`${b.balance_type} hours`}
-                    value={draft} onChange={e => setDraft(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSave(b.balance_type); if (e.key === 'Escape') setEditingType(null); }}
-                    style={{ ...inputStyle(), width: 96 }}
-                  />
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>hours</span>
-                  <button type="button" onClick={() => handleSave(b.balance_type)} disabled={saving} style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: '#6D28D9', color: 'white', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{saving ? 'Saving...' : 'Save'}</button>
-                  <button type="button" onClick={() => setEditingType(null)} style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #E7E2F3', background: 'white', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Cancel</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ fontFamily: serif, fontSize: 30, fontWeight: 700, color: hours < 0 ? '#B42318' : '#241A33', lineHeight: 1.15 }}>{hours}</span>
-                  <span style={{ fontSize: 12.5, color: '#6B6280' }}>hours</span>
-                  <span style={{ fontSize: 12, color: '#6B6280' }}>· ≈ {(hours / 8).toFixed(1)} days</span>
-                  <button type="button" onClick={() => startEdit(b)} style={{ marginLeft: 'auto', padding: '5px 10px', borderRadius: 8, border: '1px solid #E7E2F3', background: 'white', color: '#374151', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Adjust</button>
-                </div>
-              )}
-              {savedType === b.balance_type && !isEditing && <div role="status" style={{ fontSize: 12, color: '#067647', fontWeight: 600, marginTop: 4 }}>Saved</div>}
-              {isEditing && error && <div role="alert" style={{ fontSize: 12, color: '#B42318', marginTop: 4 }}>{error}</div>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export function StaffModal({ existing, providers, onClose, onSaved }) {
   const { user: currentUser } = useAuth();
   const [firstName, setFirstName] = useState(existing ? (existing.first_name || '') : '');

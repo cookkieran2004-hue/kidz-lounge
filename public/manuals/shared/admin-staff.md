@@ -20,7 +20,7 @@ The **Staff** tab lists everyone with an account. Tick **Show archived** to incl
 ### Adding a staff member
 
 1. Click **+ Add staff**.
-2. Fill in their name, position, hire date and **role**. Their username is made from their initials, and it can't be changed later.
+2. Fill in their name, position, hire date, **role** and **employment type** (Salaried, Hourly or Neither). Their username is made from their initials, and it can't be changed later.
 3. If they see patients, choose **Yes, add them as a provider** and pick their specialties. They'll get their own column on the schedule.
 4. Note the **temporary password**. Click **New one** for a different one.
 5. Click **Create account**, then give them their username and temporary password. They choose their own password the first time they sign in.
@@ -34,11 +34,11 @@ Click anyone to open their profile.
 ![A staff member's profile](../img/admin-staff-profile.png)
 
 - **Account and role:**
-  - **Edit** changes their name, position, hire date or role. You can change your own role, but at least one Admin or Developer must always remain.
+  - **Edit** changes their name, position, hire date, role or employment type. Salaried staff get PTO and UPTO, hourly staff get UPTO only, and Neither gets no PTO or UPTO. You can change your own role, but at least one Admin or Developer must always remain.
   - **Reset password** gives them a new temporary password.
   - **Archive account** stops them signing in without deleting their history. It can be restored at any time.
 - **Linked provider:** their provider details, including specialty (ST, OT, PT, SI; tick more than one if needed) and credentials. The provider is always named after the person.
-- **Weekly schedule:** their contracted hours for each day, and scheduled changes to those hours from a future date. Time outside these hours is greyed out on the schedule, and the hours set how much PTO they earn.
+- **Weekly schedule:** their contracted hours for each day, and scheduled changes to those hours from a future date. Time outside these hours is greyed out on the schedule, and PTO requests are charged for these hours.
 - **Time off:** their requests, balances and balance history. See [Time off approvals and balances](#time-off-approvals-and-balances).
 - **Caseload:** their appointments for the next two weeks.
 - **Tasks:** their open and completed tasks.

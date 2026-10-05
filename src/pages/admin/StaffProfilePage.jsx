@@ -6,7 +6,8 @@ import { Avatar } from '../../Avatar';
 import { useIsMobile } from '../../useIsMobile';
 import { usePendingTimeOff } from '../../PendingTimeOffContext';
 import TaskDetailModal from '../../TaskDetailModal';
-import { PasswordConfirmModal, UsualScheduleEditor, ScheduleChangesEditor, TimeOffBalanceEditor, generateTempPassword } from '../ManageDataPage';
+import { PasswordConfirmModal, UsualScheduleEditor, ScheduleChangesEditor, generateTempPassword } from '../ManageDataPage';
+import TimeOffBalanceEditor from '../../TimeOffBalanceEditor';
 import { TimeOffManageTab, calculateTenure } from '../StaffPage';
 import TimeOffHistory from '../../TimeOffHistory';
 import { UnderlineTabs } from '../../dashboardUi';
@@ -19,6 +20,7 @@ import {
 } from './adminUi';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, roleLabel } from '../../roles';
 import SpecialtyPicker from '../../SpecialtyPicker';
+import { EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_HINTS, employmentLabel } from '../../employment';
 
 const SECTIONS = [
   { key: 'account', label: 'Account and role' },
@@ -92,7 +94,7 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
   const startEdit = () => {
     setForm({
       first_name: staff.first_name || '', middle_name: staff.middle_name || '', last_name: staff.last_name || '',
-      preferred_name: staff.preferred_name || '', position: staff.position || '', hire_date: dateOnly(staff.hire_date), role: staff.role,
+      preferred_name: staff.preferred_name || '', position: staff.position || '', hire_date: dateOnly(staff.hire_date), role: staff.role, employment_type: staff.employment_type || 'neither',
     });
     setEditing(true); setNotice(null); setError(null);
   };
@@ -157,6 +159,7 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
           <Detail label="Position" value={staff.position} />
           <Detail label="Hire date" value={formatLongDate(staff.hire_date)} />
           <Detail label="Role" value={roleLabel(staff.role)} />
+          <Detail label="Employment type" value={employmentLabel(staff.employment_type)} />
           <div>
             <p style={{ margin: 0, fontSize: 12, color: BRAND.muted }}>Username</p>
             <p style={{ margin: '2px 0 0', fontSize: 14, color: INK, fontFamily: 'ui-monospace, Menlo, monospace' }}>{staff.username}</p>
@@ -184,6 +187,15 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
                 {ROLE_HINTS[form.role] || ''}
                 {isSelf && form.role !== staff.role && ' This is your own account: you\'ll have this access as soon as you save.'}
               </p>
+            </div>
+            <div>
+              <label style={{ display: 'block' }}>
+                <span style={labelStyle()}>Employment type</span>
+                <select style={inputStyle()} value={form.employment_type} onChange={set('employment_type')}>
+                  {EMPLOYMENT_TYPES.map(t => <option key={t} value={t}>{EMPLOYMENT_LABELS[t]}</option>)}
+                </select>
+              </label>
+              <p style={{ ...hintStyle(), fontSize: 11.5 }}>{EMPLOYMENT_HINTS[form.employment_type]}</p>
             </div>
           </div>
           {renames && (
@@ -482,7 +494,7 @@ function TimeOffSection({ staff, isMobile, onChanged }) {
         <TimeOffManageTab isMobile={isMobile} embedded forUsername={staff.username} onChanged={onChanged} onAdded={() => setBalanceVersion(v => v + 1)} />
       ) : (
         <>
-          <TimeOffBalanceEditor key={`${staff.username}:${balanceVersion}`} username={staff.username} embedded onSaved={() => setHistoryVersion(v => v + 1)} />
+          <TimeOffBalanceEditor key={`${staff.username}:${balanceVersion}:${staff.employment_type}`} username={staff.username} onSaved={() => setHistoryVersion(v => v + 1)} />
           <div style={{ marginTop: 22 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: INK, margin: '0 0 8px' }}>Balance history</h3>
             <TimeOffHistory username={staff.username} refreshKey={balanceVersion + historyVersion} limit={8} onChanged={() => setBalanceVersion(v => v + 1)} />

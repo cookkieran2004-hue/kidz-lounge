@@ -12,6 +12,7 @@ import { INK as UI_INK, MUTED as UI_MUTED, HAIRLINE as UI_HAIRLINE, NUMERIC, but
 import { canAdminister } from '../roles';
 import TimeOffBalancesBoard from '../TimeOffBalancesBoard';
 import Linkify from '../Linkify';
+import { allowedBalanceTypes } from '../employment';
 
 // Building blocks for the pages under the username menu (My profile,
 // My time, ADMIN). This file used to be the single "/me" page; the pages
@@ -204,6 +205,25 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
   const [error, setError] = useState(null);
 
   const isBalanceType = BALANCE_TYPES.includes(requestType);
+  // PTO / UPTO depend on the person's employment type (salaried: both,
+  // hourly: UPTO, neither: none). Unknown until loaded: offer both, the
+  // server refuses anything not allowed.
+  const policyFor = adminMode ? organizer : undefined;
+  const [allowedTypes, setAllowedTypes] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    api.getTimeOffPolicy(policyFor)
+      .then(policy => {
+        if (!alive) return;
+        const allowed = allowedBalanceTypes(policy?.employment_type || 'salaried');
+        setAllowedTypes(allowed);
+        // A new request starts on PTO; move it to something they can take.
+        if (!seed && BALANCE_TYPES.includes(requestType) && !allowed.includes(requestType)) setRequestType(allowed[0] || 'Lunch');
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [policyFor]); // eslint-disable-line react-hooks/exhaustive-deps
+  const balanceChoices = allowedTypes ? BALANCE_TYPES.filter(t => allowedTypes.includes(t) || t === seed?.request_type) : BALANCE_TYPES;
 
   useEffect(() => {
     if (isBalanceType && isRecurring) setIsRecurring(false);
@@ -307,9 +327,11 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
       <div style={{ marginBottom: 12 }}>
         <label style={labelStyle}>Type</label>
         <select style={inputStyle} value={requestType} onChange={e => setRequestType(e.target.value)}>
-          <optgroup label="Uses a balance">
-            {BALANCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </optgroup>
+          {balanceChoices.length > 0 && (
+            <optgroup label="Paid and unpaid time off">
+              {balanceChoices.map(t => <option key={t} value={t}>{t}</option>)}
+            </optgroup>
+          )}
           <optgroup label="Other schedule blocks">
             {BALANCE_NEUTRAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </optgroup>
@@ -928,6 +950,11 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
   const [staffOptions, setStaffOptions] = useState([]);
   const [addedNotice, setAddedNotice] = useState(null);
   const [nameQuery, setNameQuery] = useState('');
+  // A person's requests (and the full board) can be sorted by date or type
+  // and narrowed to one type. 'default' keeps each tab's natural order
+  // (pending/upcoming soonest first, past/denied most recent first).
+  const [sortBy, setSortBy] = useState('default');
+  const [typeFilter, setTypeFilter] = useState('');
   const [balancesByUser, setBalancesByUser] = useState({});
 
   useEffect(() => {
@@ -1010,8 +1037,20 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
   }
 
   const q = nameQuery.trim().toLowerCase();
-  const visible = (requests || []).filter(r => !q || nameFor(r.username).toLowerCase().includes(q) || r.username.toLowerCase().includes(q));
+  const visible = (requests || [])
+    .filter(r => !q || nameFor(r.username).toLowerCase().includes(q) || r.username.toLowerCase().includes(q))
+    .filter(r => !typeFilter || r.request_type === typeFilter);
   const groups = groupRequests(visible, dateToInputValue(new Date()));
+  if (sortBy !== 'default') {
+    const day = (r) => requestFirstDay(r) || '';
+    const cmp = {
+      newest: (a, b) => day(b).localeCompare(day(a)),
+      oldest: (a, b) => day(a).localeCompare(day(b)),
+      type: (a, b) => a.request_type.localeCompare(b.request_type) || day(b).localeCompare(day(a)),
+    }[sortBy];
+    Object.values(groups).forEach(list => list.sort(cmp));
+  }
+  const typesPresent = [...new Set((requests || []).map(r => r.request_type))].sort();
   const TABS = [
     { key: 'pending', label: 'Pending' },
     { key: 'upcoming', label: 'Upcoming' },
@@ -1053,6 +1092,16 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
           {!forUsername && (
             <input type="search" value={nameQuery} onChange={e => setNameQuery(e.target.value)} placeholder="Filter by name" aria-label="Filter by name" style={{ ...inputBox, width: isMobile ? '100%' : 180 }} />
           )}
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} aria-label="Filter by type" style={{ ...inputBox, width: isMobile ? '100%' : 'auto' }}>
+            <option value="">All types</option>
+            {typesPresent.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort" style={{ ...inputBox, width: isMobile ? '100%' : 'auto' }}>
+            <option value="default">Sort: usual order</option>
+            <option value="newest">Date: newest first</option>
+            <option value="oldest">Date: oldest first</option>
+            <option value="type">Type, then date</option>
+          </select>
           {!adding && (
             <button type="button" onClick={startAdding} style={buttonStyle('secondary', { width: isMobile ? '100%' : 'auto' })}>
               Add time off

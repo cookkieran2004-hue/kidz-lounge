@@ -6,40 +6,38 @@ The **Time off** tab in Admin covers everyone's requests and balances. The numbe
 
 ### Approving requests
 
-The **Pending** tab lists requests waiting for a decision. PTO and UPTO requests show how many hours they'll use and what the balance will be afterwards.
+The **Pending** tab lists requests waiting for a decision. PTO requests show how many hours they'll use and what the balance will be afterwards.
 
-- **Approve:** the time goes on the schedule, and PTO or UPTO hours come off the balance.
+- **Approve:** the time goes on the schedule, and PTO hours come off the balance. UPTO is unlimited, so it's only counted.
 - **Deny:** you can add a reason. The employee sees it.
 - **Edit:** change the dates or times first.
 - **Delete:** remove a request entirely.
 
-**Upcoming**, **Past** and **Denied** list the other requests. **Filter by name** shows one person. **Add time off** records time off for anyone, already approved.
+**Upcoming**, **Past** and **Denied** list the other requests. **Filter by name** shows one person. **All types** shows one kind of request, and **Sort** orders them by date (newest or oldest first) or by type. **Add time off** records time off for anyone, already approved.
 
-> If approving would leave someone with a negative balance, you're warned first. You can still approve it.
+> If approving would leave someone with a negative PTO balance, you're warned first. You can still approve it.
+
+> Only salaried staff can take PTO, and only salaried and hourly staff can take UPTO. If someone's request doesn't match their employment type, it can't be approved. Deny it, or change their employment type first.
 
 ### Everyone's balances
 
-The **Balances** tab lists every employee's PTO and UPTO. Each row shows hours waiting for approval, weekly scheduled hours and the PTO earned each week. **At cap** means their PTO has reached 120 hours and has stopped growing.
+The **Balances** tab lists every employee's employment type, PTO balance (salaried staff only) and the UPTO hours they've used this year. Hours waiting for approval are shown under each. **At cap** means their PTO has reached 120 hours.
 
 ![Everyone's balances](../img/admin-balances.png)
 
-To correct a balance, click the number, type the new total, add a reason if you like, and click **Save**. The change and the reason appear in that person's balance history.
+To correct a PTO balance, click the number, type the new total, add a reason if you like, and click **Save**. The change and the reason appear in that person's balance history.
 
 ![Changing a balance](../img/admin-balance-edit.png)
 
-One person's balances are also on their profile, under **Time off**, then **Balances**. Use **Adjust** there to set a balance directly.
+One person's balances are also on their profile, under **Time off**, then **Balances**.
 
-![Balances on a staff profile](../img/admin-staff-balances.png)
-
-### Correcting a week's hours worked
-
-PTO is credited every Sunday from the hours each person worked that week. The hours are estimated from their schedule. If an estimate is wrong, for example because someone covered an extra shift:
+### Setting a PTO balance as of a date
 
 1. Open their profile, go to **Time off**, then the **Balances** tab.
-2. Under **Balance history**, click **Details** on that week, then **Edit hours**.
-3. Change the **Worked** hours for any day, and add a reason if you like. The new PTO credit for the week is shown before you save.
-4. Click **Save hours**.
+2. Click **Set as of a date**.
+3. Choose the date and enter their PTO hours on that date.
+4. Click **Save**.
 
-The balance changes by the difference, still stopping at 120 hours. The week shows **Hours edited by** your name, and later recalculations leave it alone.
+Approved PTO taken from that date on is subtracted automatically, and the result becomes their balance. **Adjust** sets the balance directly instead.
 
-![Editing a week's hours worked](../img/admin-edit-hours.png)
+![Balances on a staff profile](../img/admin-staff-balances.png)

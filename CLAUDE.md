@@ -4,7 +4,7 @@ Frontend for Kidz Lounge, a staff-only scheduling and patient-management app for
 
 - daily and weekly schedules, recurring appointments, out-of-office
 - patient charts, documents, allergy and immunization alerts
-- tasks, chat, time off (weekly PTO accrual), staff admin, help-desk tickets
+- tasks, chat, time off (PTO/UPTO by employment type), staff admin, help-desk tickets
 
 The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with Postgres. **Read its CLAUDE.md for the data model and the time-off rules.** Most behavior questions ("where does this task go?", "how is PTO earned?") are answered in the API, not here.
 
@@ -96,8 +96,10 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - the request list (`TimeOffTab` in `compact` mode, with card rows)
 - **Admin** time off (`TimeOffManageTab` in `StaffPage.jsx`):
   - request cards with Approve/Deny and the effect on the balance
-  - tabs Pending/Upcoming/Past/Denied/Balances, and a name filter. Balances (`src/TimeOffBalancesBoard.jsx`, `GET /time-off/balances/all`) lists every active employee's PTO/UPTO, pending hours and weekly accrual; click a balance to set a new total with an optional reason (recorded as an adjustment)
-  - staff profiles have balance cards with an in-place Adjust
+  - tabs Pending/Upcoming/Past/Denied/Balances, and a name filter. Balances (`src/TimeOffBalancesBoard.jsx`, `GET /time-off/balances/all`) lists every active employee's employment type, PTO (salaried only), UPTO used this year and pending hours; click a PTO balance to set a new total with an optional reason (recorded as an adjustment)
+  - staff profiles have `src/TimeOffBalanceEditor.jsx`: PTO "Set as of a date" (`api.setPtoAsOf`) and Adjust, plus UPTO used this year
+  - sort (usual / newest / oldest / type) and type filter on the request lists
+- **Employment type** (`src/employment.js`, mirrors the API's `lib/employment.js`): salaried = PTO + UPTO, hourly = UPTO, neither = none. Set on New staff and the profile's Account and role. The request form only offers allowed types (from `getTimeOffPolicy`); My time shows PTO only for salaried, UPTO as "Unlimited" with hours used. Weekly accrual and monthly UPTO are paused, so there's no projection.
 - **Live updates use polling, not sockets.** Tasks poll every 60s, chat conversations every 15s, open chat messages every 5s, support counts every 60s, patient alerts every 5 min, and the schedule every 30s.
 - Patients are routed and fetched **by name** (`/patients/:name`, `api.getPatient(name)`) but updated and deleted by id. Always `encodeURIComponent` names.
 - Dates are plain `'YYYY-MM-DD'` strings from the API. Don't turn them into `Date` objects and back, because timezone shifts will corrupt them. Build local dates with `dateToInputValue`, not `toISOString()`.

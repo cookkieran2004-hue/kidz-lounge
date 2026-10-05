@@ -9,6 +9,7 @@ import {
 } from './adminUi';
 import { ROLES, ROLE_LABELS, ROLE_HINTS } from '../../roles';
 import SpecialtyPicker from '../../SpecialtyPicker';
+import { EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_HINTS } from '../../employment';
 
 // ---------------------------------------------------------------------------
 // Shown once after creating an account or resetting a password. Only the
@@ -150,7 +151,7 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
 
   const [person, setPerson] = useState({
     first_name: initialProvider?.first_name || '', middle_name: '', last_name: initialProvider?.last_name || '',
-    preferred_name: '', position: '', hire_date: '', role: 'staff',
+    preferred_name: '', position: '', hire_date: '', role: 'staff', employment_type: 'neither',
   });
   const setP = (k) => (e) => setPerson(p => ({ ...p, [k]: e.target.value }));
 
@@ -215,7 +216,7 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
     const createdStaff = await api.createStaff({
       first_name: person.first_name.trim(), middle_name: person.middle_name.trim(), last_name: person.last_name.trim(),
       preferred_name: person.preferred_name.trim() || undefined, position: person.position.trim(),
-      hire_date: person.hire_date || undefined, role: person.role,
+      hire_date: person.hire_date || undefined, role: person.role, employment_type: person.employment_type,
       temporary_password: tempPassword.trim(), provider_name: providerName, admin_password: adminPassword,
     });
 
@@ -273,6 +274,11 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
               <Field label="Role" hint={ROLE_HINTS[person.role] || ''}>
                 <select style={inputStyle()} value={person.role} onChange={setP('role')}>
                   {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+              </Field>
+              <Field label="Employment type" hint={EMPLOYMENT_HINTS[person.employment_type]}>
+                <select style={inputStyle()} value={person.employment_type} onChange={setP('employment_type')}>
+                  {EMPLOYMENT_TYPES.map(t => <option key={t} value={t}>{EMPLOYMENT_LABELS[t]}</option>)}
                 </select>
               </Field>
             </div>

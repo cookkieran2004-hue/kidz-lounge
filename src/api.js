@@ -244,7 +244,9 @@ export const api = {
   // note: optional reason, shown in their Balance history.
   setTimeOffBalance: (username, balanceType, balanceHours, note) =>
     request('/time-off/balances', { method: 'PUT', body: JSON.stringify({ username, balance_type: balanceType, balance_hours: balanceHours, ...(note ? { note } : {}) }) }),
-  // Admin: every active employee's PTO / UPTO, pending hours and weekly accrual.
+  // Admin: set someone's PTO to `hours` as of `asOfDate`; PTO taken since is subtracted.
+  setPtoAsOf: (username, hours, asOfDate) => request('/time-off/balances/as-of', { method: 'PUT', body: JSON.stringify({ username, hours, as_of_date: asOfDate }) }),
+  // Admin: every active employee's employment type, PTO, UPTO used this year and pending hours.
   getAllTimeOffBalances: () => request('/time-off/balances/all'),
 
   getMyProfile: () => request('/staff/me'),

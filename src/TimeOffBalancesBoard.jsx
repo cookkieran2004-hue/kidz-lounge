@@ -3,18 +3,23 @@ import { Link } from 'react-router-dom';
 import { api } from './api';
 import { Tag } from './dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, NUMERIC, TONES, buttonStyle } from './uiTokens';
+import { employmentLabel } from './employment';
 
-// Admin time off > Balances: every active employee's PTO and UPTO in one
-// table (GET /time-off/balances/all). Click a balance to set a new total,
-// with an optional reason; it goes through the same PUT /time-off/balances
-// as a staff profile's Adjust, so it shows in their Balance history as an
-// adjustment. `nameQuery` is the board's name filter; `onChanged` lets the
-// request lists refresh their balance notes.
+// Admin time off > Balances: every active employee's employment type, PTO
+// balance and UPTO used this year (GET /time-off/balances/all). Only salaried
+// staff have PTO; UPTO is unlimited, so it's a count, not a balance (Oct 2026
+// policy). Click a PTO balance to set a new total, with an optional reason;
+// it goes through the same PUT /time-off/balances as a staff profile's
+// Adjust, so it shows in their Balance history as an adjustment.
+// `nameQuery` is the board's name filter; `onChanged` lets the request lists
+// refresh their balance notes.
 
 const fmt = (h) => `${Math.round(Number(h) * 100) / 100} h`;
+// Before the employment migration the API sends no type: old behaviour.
+const typeOf = (r) => r.employment_type || 'salaried';
 
 function BalanceEditor({ row, type, onDone, onCancel }) {
-  const current = type === 'PTO' ? row.pto : row.upto;
+  const current = row.pto;
   const [value, setValue] = useState(String(current));
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -79,7 +84,7 @@ export default function TimeOffBalancesBoard({ nameQuery = '', isMobile, onChang
     const q = nameQuery.trim().toLowerCase();
     return (data?.rows || []).filter(r => !q || r.display_name.toLowerCase().includes(q) || r.username.toLowerCase().includes(q));
   }, [data, nameQuery]);
-  const totals = useMemo(() => rows.reduce((t, r) => ({ pto: t.pto + r.pto, upto: t.upto + r.upto }), { pto: 0, upto: 0 }), [rows]);
+  const totals = useMemo(() => rows.reduce((t, r) => ({ pto: t.pto + (typeOf(r) === 'salaried' ? r.pto : 0), upto: t.upto + Number(r.upto_used_this_year || 0) }), { pto: 0, upto: 0 }), [rows]);
   const cap = data?.balance_cap ?? 120;
 
   if (!data) return <p style={{ fontSize: 13, color: MUTED }}>Loading balances...</p>;
@@ -87,9 +92,21 @@ export default function TimeOffBalancesBoard({ nameQuery = '', isMobile, onChang
   const done = (message) => { setEditing(null); setNotice(message); setVersion(v => v + 1); onChanged?.(); };
   const isEditing = (r, type) => editing && editing.username === r.username && editing.type === type;
 
+  const dash = <span style={{ fontSize: 13, color: SUBTLE }}>—</span>;
+  const pendingNote = (h) => h > 0 && <span style={{ fontSize: 11.5, color: TONES.warning.fg, marginTop: 2, ...NUMERIC }}>{fmt(h)} pending</span>;
+  const uptoCell = (r) => {
+    if (typeOf(r) === 'neither') return dash;
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: isMobile ? 'flex-start' : 'flex-end' }}>
+        <span style={{ fontSize: 13.5, color: INK, ...NUMERIC }}>{fmt(r.upto_used_this_year || 0)}</span>
+        {pendingNote(r.pending_upto)}
+      </span>
+    );
+  };
   const balanceCell = (r, type) => {
-    const h = type === 'PTO' ? r.pto : r.upto;
-    const pending = type === 'PTO' ? r.pending_pto : r.pending_upto;
+    if (typeOf(r) !== 'salaried') return dash;
+    const h = r.pto;
+    const pending = r.pending_pto;
     return (
       <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: isMobile ? 'flex-start' : 'flex-end' }}>
         <button
@@ -103,30 +120,29 @@ export default function TimeOffBalancesBoard({ nameQuery = '', isMobile, onChang
         >
           {fmt(h)}
         </button>
-        {pending > 0 && <span style={{ fontSize: 11.5, color: TONES.warning.fg, marginTop: 2, ...NUMERIC }}>{fmt(pending)} pending</span>}
+        {pendingNote(pending)}
       </span>
     );
   };
 
-  const cols = isMobile ? 'minmax(0, 1fr) 84px 84px' : 'minmax(0, 1fr) 120px 120px 140px 140px';
+  const cols = isMobile ? 'minmax(0, 1fr) 84px 84px' : 'minmax(0, 1fr) 120px 120px 160px';
   const head = { fontSize: 12, color: MUTED, fontWeight: 500 };
   const right = { textAlign: isMobile ? 'left' : 'right' };
 
   return (
     <div>
       <p style={{ fontSize: 12.5, color: MUTED, margin: '10px 0 0', ...NUMERIC }}>
-        {rows.length} employee{rows.length === 1 ? '' : 's'} · {fmt(Math.round(totals.pto * 100) / 100)} PTO and {fmt(Math.round(totals.upto * 100) / 100)} UPTO held.
-        {' '}Click a balance to change it.
+        {rows.length} employee{rows.length === 1 ? '' : 's'} · {fmt(Math.round(totals.pto * 100) / 100)} PTO held · {fmt(Math.round(totals.upto * 100) / 100)} UPTO used in {new Date().getFullYear()}.
+        {' '}Click a PTO balance to change it. Set employment types and balances as of a date on each profile.
       </p>
       {error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg, margin: '8px 0 0' }}>{error}</p>}
       {notice && <p role="status" style={{ fontSize: 12.5, color: TONES.success.fg, fontWeight: 600, margin: '8px 0 0' }}>{notice}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 12, padding: '12px 0 7px', borderBottom: `1px solid ${HAIRLINE}` }}>
         <span style={head}>Employee</span>
+        {!isMobile && <span style={head}>Type</span>}
         <span style={{ ...head, ...right }}>PTO</span>
-        <span style={{ ...head, ...right }}>UPTO</span>
-        {!isMobile && <span style={{ ...head, textAlign: 'right' }}>Scheduled / week</span>}
-        {!isMobile && <span style={{ ...head, textAlign: 'right' }}>PTO earned / week</span>}
+        <span style={{ ...head, ...right }}>UPTO used {isMobile ? '' : `in ${new Date().getFullYear()}`}</span>
       </div>
       {rows.length === 0 && <p style={{ fontSize: 13.5, color: MUTED, margin: '16px 0' }}>{nameQuery.trim() ? 'No employees match that name.' : 'No active employees.'}</p>}
       {rows.map(r => (
@@ -134,13 +150,12 @@ export default function TimeOffBalancesBoard({ nameQuery = '', isMobile, onChang
           <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 12, alignItems: 'center', padding: '9px 0' }}>
             <span style={{ minWidth: 0 }}>
               <Link to={`/admin/staff/${encodeURIComponent(r.username)}`} style={{ fontSize: 13.5, fontWeight: 500, color: INK, textDecoration: 'none' }}>{r.display_name}</Link>
-              {r.pto >= cap && <span style={{ marginLeft: 6 }}><Tag tone="warning" title={`PTO stops accruing at ${cap} h`}>At cap</Tag></span>}
-              {isMobile && <span style={{ display: 'block', fontSize: 12, color: MUTED, ...NUMERIC }}>{fmt(r.weekly_scheduled_hours)} a week · earns {fmt(r.weekly_pto_credit)}</span>}
+              {typeOf(r) === 'salaried' && r.pto >= cap && <span style={{ marginLeft: 6 }}><Tag tone="warning" title={`PTO balances can't go over ${cap} h`}>At cap</Tag></span>}
+              {isMobile && <span style={{ display: 'block', fontSize: 12, color: MUTED }}>{employmentLabel(typeOf(r))}</span>}
             </span>
+            {!isMobile && <span style={{ fontSize: 13, color: MUTED }}>{employmentLabel(typeOf(r))}</span>}
             <span style={right}>{balanceCell(r, 'PTO')}</span>
-            <span style={right}>{balanceCell(r, 'UPTO')}</span>
-            {!isMobile && <span style={{ textAlign: 'right', fontSize: 13, color: MUTED, ...NUMERIC }}>{fmt(r.weekly_scheduled_hours)}</span>}
-            {!isMobile && <span style={{ textAlign: 'right', fontSize: 13, color: MUTED, ...NUMERIC }}>{fmt(r.weekly_pto_credit)}</span>}
+            <span style={right}>{uptoCell(r)}</span>
           </div>
           {editing && editing.username === r.username && (
             <BalanceEditor key={editing.type} row={r} type={editing.type} onDone={done} onCancel={() => setEditing(null)} />

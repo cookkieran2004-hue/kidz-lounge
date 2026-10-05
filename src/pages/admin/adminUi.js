@@ -95,6 +95,7 @@ export function staffSavePayload(staff, overrides, adminPassword) {
   const merged = { ...staff, ...overrides };
   return {
     role: merged.role,
+    employment_type: merged.employment_type || undefined,
     provider_name: merged.provider_name || '',
     first_name: (merged.first_name || '').trim() || undefined,
     middle_name: (merged.middle_name || '').trim() || undefined,
