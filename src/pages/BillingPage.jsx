@@ -45,7 +45,7 @@ const PRINT_CSS = `
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .kl-billing-print > div { overflow: visible !important; }
-  .kl-billing-print th { position: static !important; }
+  .kl-billing-print th, .kl-billing-print .kl-billing-head { position: static !important; }
   .kl-print-only { display: block !important; }
 }`;
 const pad = (n) => String(n).padStart(2, '0');
@@ -82,22 +82,12 @@ export default function BillingPage() {
   const [savingReview, setSavingReview] = useState(false);
   const headerRef = useRef(null);
   const sheetRef = useRef(null);
-  // When the whole sheet fits the window, the day numbers stick under the
-  // page header as the page scrolls. When it doesn't, the table scrolls
-  // sideways instead (and a sideways-scrolling box can't stick).
-  const tableBoxRef = useRef(null);
-  const [fits, setFits] = useState(true);
-  useEffect(() => {
-    const box = tableBoxRef.current;
-    if (!box) return undefined;
-    const check = () => { const t = box.querySelector('table'); setFits(!t || t.scrollWidth <= box.clientWidth + 1); };
-    check();
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(check) : null;
-    ro?.observe(box);
-    const t = box.querySelector('table');
-    if (t) ro?.observe(t);
-    return () => ro?.disconnect();
-  }, [sheet]);
+  // The column header (Name, Mandate, ... day numbers) is its own strip
+  // that sticks under the page header. A sideways-scrolling table can't have
+  // a sticky header, so the strip is a separate table with the same column
+  // widths, kept level with the rows' sideways scroll.
+  const headScrollRef = useRef(null);
+  const syncHeader = (e) => { if (headScrollRef.current) headScrollRef.current.scrollLeft = e.currentTarget.scrollLeft; };
   useStickyHeight(headerRef, '--kl-page-header-h');
   const active = manager ? provider : lockedProvider;
 
@@ -167,7 +157,12 @@ export default function BillingPage() {
   const weekday = (d) => new Date(`${dateOf(d)}T00:00:00`).getDay();
   const NAME_W = isMobile ? 130 : 160;
   const cell = { borderBottom: `1px solid ${HAIRLINE}`, borderRight: `1px solid ${HAIRLINE}`, padding: '0 4px', height: 34, fontSize: 12.5, color: INK, boxSizing: 'border-box', whiteSpace: 'nowrap' };
-  const head = { ...cell, height: 'auto', padding: '6px 4px', fontSize: 11.5, fontWeight: 600, color: MUTED, background: '#FAFAFA', position: 'sticky', top: fits ? STACK_TOP : 0, zIndex: 2 };
+  const head = { ...cell, height: 'auto', padding: '6px 4px', fontSize: 11.5, fontWeight: 600, color: MUTED, background: '#FAFAFA', overflow: 'hidden', textOverflow: 'ellipsis' };
+  // Fixed column widths, shared by the header strip and the rows.
+  const widths = [NAME_W, 72, 116, 62, ...days.map(() => 26), 48, 58, 70, 56];
+  const tableWidth = widths.reduce((t, w) => t + w, 0);
+  const colgroup = <colgroup>{widths.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>;
+  const tableStyle = { borderCollapse: 'separate', borderSpacing: 0, width: '100%', minWidth: tableWidth, tableLayout: 'fixed', ...NUMERIC };
   const stickyName = { position: 'sticky', left: 0, zIndex: 1, background: 'white', minWidth: NAME_W, maxWidth: NAME_W, overflow: 'hidden', textOverflow: 'ellipsis' };
   const dayBg = (d) => (sheet?.closures?.[dateOf(d)] ? '#F5F3FF' : (weekday(d) === 0 || weekday(d) === 6) ? '#F4F4F5' : dateOf(d) === sheet?.today ? '#FFFBEB' : undefined);
   // Sessions provided (X or M) on each day, across every patient.
@@ -222,8 +217,9 @@ export default function BillingPage() {
               <SheetInfo sheet={sheet} isMobile={isMobile} />
             </div>
 
-            <div ref={tableBoxRef} style={{ overflowX: fits ? 'clip' : 'auto' }}>
-              <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', ...NUMERIC }}>
+            <div ref={headScrollRef} className="kl-billing-head" style={{ position: 'sticky', top: STACK_TOP, zIndex: 5, overflow: 'hidden', background: '#FAFAFA' }}>
+              <table style={tableStyle}>
+                {colgroup}
                 <thead>
                   <tr>
                     <th style={{ ...head, ...stickyName, background: '#FAFAFA', zIndex: 3, textAlign: 'left', padding: '6px 10px' }}>Name</th>
@@ -242,6 +238,11 @@ export default function BillingPage() {
                     <th style={{ ...head, textAlign: 'right', borderRight: 'none' }}>Total</th>
                   </tr>
                 </thead>
+              </table>
+            </div>
+            <div onScroll={syncHeader} style={{ overflowX: 'auto' }}>
+              <table style={tableStyle}>
+                {colgroup}
                 <tbody>
                   {grouped.length === 0 && (
                     <tr><td colSpan={colCount} style={{ ...cell, height: 60, textAlign: 'center', color: MUTED, borderRight: 'none' }}>No sessions this month.</td></tr>
