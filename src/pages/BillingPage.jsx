@@ -334,7 +334,7 @@ function GroupRows({ group, days, cell, stickyName, dayBg }) {
         <td colSpan={days.length + 4} style={{ ...cell, background: '#F4F4F5', height: 28, borderRight: 'none' }} />
       </tr>
       {group.rows.map(r => (
-        <tr key={r.patient_name}>
+        <tr key={`${r.patient_name}|${r.program || ''}|${r.mandate || ''}`}>
           <td style={{ ...cell, ...stickyName, padding: '0 10px', fontWeight: 500 }} title={r.locked ? `${r.patient_name} · on this sheet for the month` : r.patient_name}>{r.patient_name}</td>
           <td style={cell}>{r.mandate || ''}</td>
           <td style={cell}>{r.program || ''}</td>

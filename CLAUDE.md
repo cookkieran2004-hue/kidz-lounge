@@ -125,3 +125,8 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 - `/billing` (`src/pages/BillingPage.jsx`, nav "Billing"): one provider's month laid out like the paper billing invoice, from `api.getBillingSheet` (kidz-lounge-api `routes/billing.js`). Same access as the Weekly view. Key: X provided, A child absent, PA provider absent, H holiday, Z emergency closure, M make-up; a dot = booked, day not over. Rate and $ columns are blank for now. Admin/Developer tick Reviewed.
 - **Past dates are locked** (API `lib/pastLock.js`): only the status can change. For anyone other than Admin/Developer, `src/api.js` catches the 409 `pastLocked` answer, `src/PastLockDialog.jsx` asks for a reason, and the change is filed for approval (202 `{ pending: true }`; one reason is reused for 15 s across a multi-call save). They're approved under Admin → Schedule changes (`src/pages/admin/ScheduleChangesTab.jsx`).
 - Office closures have a type (Holiday / Emergency closure) in Admin → Office hours, which sets H vs Z on the sheet.
+
+## Patient programs and mandates (Oct 2026)
+
+- In the patient form, clicking a program opens its mandate per service (`src/ProgramPlanEditor.jsx`, helpers in `src/programPlan.js`): sessions per week × minutes, and a service can only be under one program at a time. Editing an existing patient's programs asks "Program changes start on" (default today). Earlier appointments keep the old program and mandate for billing. The patient chart lists the history under "Programs and mandates".
+- Before the API has `PatientPrograms`, `getPatientPrograms` returns `available: false` and the form falls back to the old Program chips and Mandate box.

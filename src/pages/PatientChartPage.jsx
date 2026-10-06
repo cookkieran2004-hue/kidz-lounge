@@ -62,6 +62,38 @@ function InfoRow({ label, value }) {
   );
 }
 
+// Programs and mandates over time (kidz-lounge-api lib/patientPrograms.js):
+// current first, then past, with the dates each applied. Billing uses
+// whatever was in effect on each appointment's date.
+function ProgramHistory({ patient }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    api.getPatientPrograms(patient.id)
+      .then(res => { if (alive) setRows(res?.available ? res.rows : []); })
+      .catch(() => { if (alive) setRows([]); });
+    return () => { alive = false; };
+  }, [patient]);
+  if (!rows || !rows.length) return null;
+  const fmt = (d) => new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const span = (r) => (r.end_date ? `${r.start_date ? fmt(r.start_date) : 'From the start'} – ${fmt(r.end_date)}` : r.start_date ? `From ${fmt(r.start_date)}` : 'From the start');
+  const mandate = (r) => (r.service ? `${r.service} ${r.sessions}x${r.minutes}` : r.legacy_mandate ? `Old mandate: ${r.legacy_mandate}` : 'No mandate entered');
+  return (
+    <>
+      <p style={sectionHeaderStyle()}>Programs and mandates</p>
+      <div style={cardStyle()}>
+        {rows.map(r => (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', fontSize: 13, padding: '6px 0', borderBottom: '1px solid #EDE9F7', color: r.end_date ? BRAND.muted : '#241A33' }}>
+            <span style={{ fontWeight: 600, minWidth: 90 }}>{r.program}</span>
+            <span style={{ flex: 1 }}>{mandate(r)}</span>
+            <span style={{ fontSize: 12.5 }}>{span(r)}{!r.end_date && <span style={{ marginLeft: 6, fontWeight: 600, color: '#067647' }}>Current</span>}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function EmptyNote({ children }) {
   return <p style={{ fontSize: 13, color: BRAND.muted, margin: 0, fontStyle: 'italic' }}>{children}</p>;
 }
@@ -293,6 +325,8 @@ function OverviewTab({ patient, isMobile }) {
         <InfoRow label="Picture Consent" value={patient.Picture_Consent === true ? 'Yes' : patient.Picture_Consent === false ? 'No' : null} />
         {!patient.Date_of_Birth && !patient.ID_Number && !patient.Services && <EmptyNote>None on file</EmptyNote>}
       </div>
+
+      <ProgramHistory patient={patient} />
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
         <div>

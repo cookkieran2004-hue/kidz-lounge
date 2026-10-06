@@ -144,6 +144,8 @@ export const api = {
   getPatientAppointments: (name) => request(`/patients/${encodeURIComponent(name)}/appointments`),
   createPatient: (record) => request('/patients', { method: 'POST', body: JSON.stringify(record) }),
   updatePatient: (id, record) => request(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
+  // Program history with a mandate per service ('new' = a patient not saved yet).
+  getPatientPrograms: (id) => request(`/patients/${id || 'new'}/programs`),
   deletePatient: (id, force = false) => request(`/patients/${id}${force ? '?force=true' : ''}`, { method: 'DELETE' }),
 
   // ---- Waitlist ----

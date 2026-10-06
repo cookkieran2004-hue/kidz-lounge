@@ -9,6 +9,8 @@ import { useIsMobile } from '../useIsMobile';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoices } from '../roles';
 import SpecialtyPicker from '../SpecialtyPicker';
 import TimeOffBalanceEditor from '../TimeOffBalanceEditor';
+import ProgramPlanEditor from '../ProgramPlanEditor';
+import { planFromRows, planKey } from '../programPlan';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -788,10 +790,57 @@ export function PatientModal({ existing, onClose, onSaved }) {
   const [linkedCount, setLinkedCount] = useState(null);
   const [confirmingPassword, setConfirmingPassword] = useState(false);
   const [staffDirectory, setStaffDirectory] = useState([]);
+  // Programs with a mandate per service, kept as dated history
+  // (src/programPlan.js). null until loaded; false = the server doesn't
+  // have it yet, so the old Program chips and Mandate box are used.
+  const [programsAvailable, setProgramsAvailable] = useState(null);
+  const [plan, setPlan] = useState([]);
+  const [originalPlanKey, setOriginalPlanKey] = useState('[]');
+  const [effectiveFrom, setEffectiveFrom] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const planChanged = programsAvailable && planKey(plan) !== originalPlanKey;
 
   useEffect(() => {
     api.getStaffDirectory().then(setStaffDirectory).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    api.getPatientPrograms(existing?.id)
+      .then(res => {
+        if (!alive) return;
+        if (!res?.available) { setProgramsAvailable(false); return; }
+        let p = planFromRows(res.rows);
+        // No history yet: start from their current Program list.
+        if (!p.length && existing) p = splitMultiValue(existing.Program).map(program => ({ program, mandates: [], legacy: existing.Mandate || null }));
+        setPlan(p);
+        setOriginalPlanKey(planKey(p));
+        setProgramsAvailable(true);
+      })
+      .catch(() => { if (alive) setProgramsAvailable(false); });
+    return () => { alive = false; };
+  }, [existing]);
+
+  const changePlan = (next) => {
+    setPlan(next);
+    // Keep Program (and the services a mandate covers) in step with the plan.
+    setForm(f => {
+      const services = new Set(f.Services);
+      next.forEach(p => p.mandates.forEach(m => services.add(m.service)));
+      return { ...f, Program: next.map(p => p.program), Services: [...services] };
+    });
+  };
+  const withPlan = (payload) => {
+    if (!programsAvailable) return payload;
+    if (existing && !planChanged) return payload;
+    return {
+      ...payload,
+      Program: plan.map(p => p.program).join(', '),
+      program_plan: { effective_from: existing ? effectiveFrom : null, programs: plan.map(({ program, mandates }) => ({ program, mandates })) },
+    };
+  };
 
   const setField = (key, value) => setForm(f => ({ ...f, [key]: value }));
 
@@ -815,6 +864,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
 
   const handleSave = async () => {
     if (!form.Name.trim()) { setError('Name is required.'); return; }
+    if (existing && planChanged && !effectiveFrom) { setError('Choose the date the program changes start.'); return; }
     // Only editing an EXISTING patient requires password confirmation --
     // creating a brand-new one does not.
     if (existing) {
@@ -823,7 +873,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
       return;
     }
     setSaving(true); setError(null);
-    const payload = formToPayload(form);
+    const payload = withPlan(formToPayload(form));
     let saved;
     try {
       saved = await api.createPatient(payload);
@@ -836,7 +886,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
   };
 
   const performEditSave = async (adminPassword) => {
-    const payload = { ...formToPayload(form), admin_password: adminPassword };
+    const payload = { ...withPlan(formToPayload(form)), admin_password: adminPassword };
     const saved = await api.updatePatient(existing.id, payload);
     setConfirmingPassword(false);
     refreshPatientAlerts();
@@ -911,7 +961,22 @@ export function PatientModal({ existing, onClose, onSaved }) {
 
           <label style={emrLabelStyle()}>Program</label>
           <div style={{ marginBottom: 14 }}>
-            <MultiSelectChips options={PROGRAM_OPTIONS} selected={form.Program} onToggle={v => toggleMultiField('Program', v)} />
+            {programsAvailable ? (
+              <>
+                <ProgramPlanEditor options={PROGRAM_OPTIONS} plan={plan} onChange={changePlan} childServices={form.Services} legacyMandate={form.Mandate} />
+                {existing && planChanged && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 10, padding: '10px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8 }}>
+                    <span style={{ fontSize: 13, color: EMR_INK, fontWeight: 600 }}>Program changes start on</span>
+                    <DateField style={{ ...emrInputStyle(), width: 190 }} ariaLabel="Program changes start on" value={effectiveFrom} onChange={v => setEffectiveFrom(v)} />
+                    <span style={{ fontSize: 12, color: EMR_MUTED }}>Appointments before this date keep the old program and mandate.</span>
+                  </div>
+                )}
+              </>
+            ) : programsAvailable === false ? (
+              <MultiSelectChips options={PROGRAM_OPTIONS} selected={form.Program} onToggle={v => toggleMultiField('Program', v)} />
+            ) : (
+              <span style={{ fontSize: 12.5, color: EMR_MUTED }}>Loading programs...</span>
+            )}
           </div>
 
           <label style={emrLabelStyle()}>Status</label>
@@ -920,8 +985,14 @@ export function PatientModal({ existing, onClose, onSaved }) {
             {PATIENT_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
-          <label style={emrLabelStyle()}>Mandate</label>
-          <input style={emrInputStyle()} value={form.Mandate} onChange={e => setField('Mandate', e.target.value)} />
+          {/* Mandates are entered per program and service above; the old
+              single box only remains until the server has program history. */}
+          {programsAvailable === false && (
+            <>
+              <label style={emrLabelStyle()}>Mandate</label>
+              <input style={emrInputStyle()} value={form.Mandate} onChange={e => setField('Mandate', e.target.value)} />
+            </>
+          )}
 
           <EMRSectionHeading index={2} label="Parent / Guardian" />
           <div style={emrFieldGrid(2)}>
