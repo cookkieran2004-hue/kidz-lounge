@@ -170,6 +170,8 @@ export default function BillingPage() {
   const head = { ...cell, height: 'auto', padding: '6px 4px', fontSize: 11.5, fontWeight: 600, color: MUTED, background: '#FAFAFA', position: 'sticky', top: fits ? STACK_TOP : 0, zIndex: 2 };
   const stickyName = { position: 'sticky', left: 0, zIndex: 1, background: 'white', minWidth: NAME_W, maxWidth: NAME_W, overflow: 'hidden', textOverflow: 'ellipsis' };
   const dayBg = (d) => (sheet?.closures?.[dateOf(d)] ? '#F5F3FF' : (weekday(d) === 0 || weekday(d) === 6) ? '#F4F4F5' : dateOf(d) === sheet?.today ? '#FFFBEB' : undefined);
+  // Sessions provided (X or M) on each day, across every patient.
+  const perDay = Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => e.mark === 'X' || e.mark === 'M').length, 0)]));
   const grand = grouped.reduce((t, g) => ({ scheduled: t.scheduled + g.scheduled, total: t.total + g.total }), { scheduled: 0, total: 0 });
   const colCount = 4 + days.length + 4;
 
@@ -247,6 +249,21 @@ export default function BillingPage() {
                   {grouped.map(g => (
                     <GroupRows key={g.key} group={g} days={days} cell={cell} stickyName={stickyName} dayBg={dayBg} />
                   ))}
+                  {grouped.length > 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ ...cell, ...stickyName, maxWidth: 'none', fontWeight: 700, padding: '0 10px', background: '#F4F4F5', borderTop: `2px solid ${INK}` }}
+                        title="Sessions provided (X or M) each day">Daily total</td>
+                      {days.map(d => (
+                        <td key={d} style={{ ...cell, textAlign: 'center', padding: '0 2px', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}`, color: perDay[d] ? INK : SUBTLE }}>
+                          {perDay[d] || ''}
+                        </td>
+                      ))}
+                      <td style={{ ...cell, background: '#F4F4F5', borderTop: `2px solid ${INK}` }} />
+                      <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}` }}>{grand.scheduled}</td>
+                      <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}` }}>{grand.total}</td>
+                      <td style={{ ...cell, background: '#F4F4F5', borderTop: `2px solid ${INK}`, borderRight: 'none' }} />
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -272,6 +289,16 @@ export default function BillingPage() {
               <span style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
                 Sessions <strong style={{ color: INK, marginLeft: 6 }}>{grand.total} of {grand.scheduled}</strong>
               </span>
+              {/* The provider's approved PTO / UPTO for days in this month. */}
+              {['PTO', 'UPTO'].map(t => {
+                const reqs = (sheet.time_off?.requests || []).filter(x => x.type === t);
+                return (
+                  <span key={t} style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}
+                    title={reqs.length ? reqs.map(x => `${shortDate(x.start_date)}${x.end_date !== x.start_date ? ` – ${shortDate(x.end_date)}` : ''}: ${x.hours} h`).join('\n') : `No ${t} this month`}>
+                    {t} taken <strong style={{ color: INK, marginLeft: 6 }}>{sheet.time_off?.[t] ?? 0} h</strong>
+                  </span>
+                );
+              })}
               <label style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, color: INK, fontWeight: 600, cursor: canAdminister(user) ? 'pointer' : 'default' }}
                 title={canAdminister(user) ? undefined : 'Only an Admin or Developer can mark a sheet reviewed.'}>
                 <input type="checkbox" checked={!!sheet.reviewed} disabled={!canAdminister(user) || savingReview} onChange={toggleReviewed} />
