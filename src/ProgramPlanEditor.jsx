@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel } from './programPlan';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { api } from './api';
+import { DateField, dateToInputValue } from './pages/SchedulePage';
+import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey } from './programPlan';
 
 // Program chips for the patient form. Clicking a program opens its mandate:
 // which services it covers, each as sessions per week x minutes. A service
@@ -144,5 +147,76 @@ function MandateDialog({ program, initial, isSelected, childServices, ownerOf, o
         </div>
       </div>
     </div>
+  );
+}
+
+// The same editor in its own window, for one patient -- used by the Patients
+// data table's Program and Mandate cells. Loads their history, and on Save
+// hands back { effective_from, programs } for the patient save.
+export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
+  const [plan, setPlan] = useState(null);
+  const [originalKey, setOriginalKey] = useState('[]');
+  const [effectiveFrom, setEffectiveFrom] = useState(() => dateToInputValue(new Date()));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    api.getPatientPrograms(patient.id)
+      .then(res => {
+        if (!alive) return;
+        let p = planFromRows(res?.rows || []);
+        if (!p.length) p = String(patient.Program || '').split(',').map(s => s.trim()).filter(Boolean).map(program => ({ program, mandates: [], legacy: patient.Mandate || null }));
+        setPlan(p);
+        setOriginalKey(planKey(p));
+      })
+      .catch(err => { if (alive) { setPlan([]); setError(err.message); } });
+    return () => { alive = false; };
+  }, [patient]);
+
+  const changed = plan && planKey(plan) !== originalKey;
+  const save = async () => {
+    if (!effectiveFrom) { setError('Choose the date the changes start.'); return; }
+    setSaving(true); setError(null);
+    try {
+      await onSave({ effective_from: effectiveFrom, programs: plan.map(({ program, mandates }) => ({ program, mandates })) });
+      onClose();
+    } catch (err) {
+      setSaving(false);
+      if (err.message !== 'PASSWORD_REQUIRED') setError(err.message);
+      else onClose(); // the table asks for the password, then saves
+    }
+  };
+
+  return createPortal(
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 10005, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="kl-plan-title" onClick={e => e.stopPropagation()}
+        style={{ background: 'white', borderRadius: 12, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: 20, boxShadow: '0 20px 50px rgba(15,23,42,0.25)' }}>
+        <h3 id="kl-plan-title" style={{ margin: '0 0 14px', fontSize: 16, color: INK }}>{patient.Name}: programs and mandates</h3>
+        {!plan ? (
+          <p style={{ fontSize: 13, color: MUTED }}>Loading...</p>
+        ) : (
+          <ProgramPlanEditor options={options} plan={plan} onChange={setPlan}
+            childServices={String(patient.Services || '').split(',').map(s => s.trim()).filter(Boolean)} legacyMandate={patient.Mandate} />
+        )}
+        {changed && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 14, padding: '10px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8 }}>
+            <span style={{ fontSize: 13, color: INK, fontWeight: 600 }}>Changes start on</span>
+            <DateField style={{ padding: '7px 9px', borderRadius: 7, border: `1.5px solid ${BORDER}`, fontSize: 13.5, width: 190, boxSizing: 'border-box', background: 'white' }}
+              ariaLabel="Changes start on" value={effectiveFrom} onChange={v => setEffectiveFrom(v)} />
+            <span style={{ fontSize: 12, color: MUTED }}>Appointments before this date keep the old program and mandate.</span>
+          </div>
+        )}
+        {error && <p role="alert" style={{ color: '#B42318', fontSize: 12.5, margin: '10px 0 0' }}>{error}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <button type="button" onClick={onClose} style={{ padding: '7px 14px', borderRadius: 7, border: `1.5px solid ${BORDER}`, background: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+          <button type="button" onClick={save} disabled={!changed || saving}
+            style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: PRIMARY, color: 'white', fontWeight: 600, fontSize: 13, cursor: changed ? 'pointer' : 'default', opacity: changed && !saving ? 1 : 0.5 }}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

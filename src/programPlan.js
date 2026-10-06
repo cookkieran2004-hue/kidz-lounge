@@ -23,3 +23,11 @@ export function planKey(plan) {
 }
 
 export const mandateLabel = (m) => `${m.service} ${m.sessions}x${m.minutes}`;
+
+// Whether the server keeps program history yet (before its migration it
+// doesn't). Asked once per page load.
+let availablePromise = null;
+export function programHistoryAvailable(api) {
+  if (!availablePromise) availablePromise = api.getPatientPrograms(null).then(r => !!r?.available).catch(() => { availablePromise = null; return false; });
+  return availablePromise;
+}

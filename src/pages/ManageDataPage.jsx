@@ -9,8 +9,8 @@ import { useIsMobile } from '../useIsMobile';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoices } from '../roles';
 import SpecialtyPicker from '../SpecialtyPicker';
 import TimeOffBalanceEditor from '../TimeOffBalanceEditor';
-import ProgramPlanEditor from '../ProgramPlanEditor';
-import { planFromRows, planKey } from '../programPlan';
+import ProgramPlanEditor, { ProgramPlanDialog } from '../ProgramPlanEditor';
+import { planFromRows, planKey, programHistoryAvailable } from '../programPlan';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -1645,6 +1645,17 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
   const [localValue, setLocalValue] = useState(value);
   const [status, setStatus] = useState('idle'); // idle | saving | saved | error
   const [dropdownPos, setDropdownPos] = useState(null); // only used by multi-select cells
+  // Program and Mandate open the programs-and-mandates window once the
+  // server keeps program history (src/programPlan.js).
+  const [historyOn, setHistoryOn] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const usesPlan = columnKey === 'Program' || columnKey === 'Mandate';
+  useEffect(() => {
+    if (!usesPlan) return undefined;
+    let alive = true;
+    programHistoryAvailable(api).then(on => { if (alive) setHistoryOn(on); });
+    return () => { alive = false; };
+  }, [usesPlan]);
 
   useEffect(() => { setLocalValue(value); }, [value]);
 
@@ -1668,6 +1679,36 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
     padding: isMobile ? '8px 8px' : '4px 6px', fontSize: isMobile ? 16 : 11.5, borderRadius: 4, fontFamily: 'inherit', boxSizing: 'border-box',
     background: status === 'saving' ? '#FEF9C3' : status === 'error' ? '#FEF2F2' : status === 'saved' ? '#F0FDF4' : 'transparent',
   };
+
+  if (usesPlan && historyOn) {
+    const programs = splitMultiValue(patient.Program);
+    return (
+      <>
+        <button type="button" onClick={() => setPlanOpen(true)} title="Edit programs and mandates"
+          style={{ ...cellStyle, textAlign: 'left', cursor: 'pointer', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3, minHeight: 22, minWidth: columnKey === 'Mandate' ? 160 : 130 }}>
+          {columnKey === 'Program'
+            ? (programs.length ? programs.map(s => (
+              <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: '#EDE9FE', color: '#6D28D9' }}>{s}</span>
+            )) : <span style={{ color: '#9ca3af' }}>--</span>)
+            : (patient.Mandate || <span style={{ color: '#9ca3af' }}>--</span>)}
+        </button>
+        {planOpen && (
+          <ProgramPlanDialog patient={patient} options={PROGRAM_OPTIONS} onClose={() => setPlanOpen(false)}
+            onSave={async (plan) => {
+              setStatus('saving');
+              try {
+                await onCommit(patient, 'program_plan', plan);
+                setStatus('saved');
+                setTimeout(() => setStatus(s => (s === 'saved' ? 'idle' : s)), 900);
+              } catch (err) {
+                setStatus(err.message === 'PASSWORD_REQUIRED' ? 'idle' : 'error');
+                throw err;
+              }
+            }} />
+        )}
+      </>
+    );
+  }
 
   // Locked, auto-calculated / system-generated fields -- same read-only
   // treatment as the form (RX Expiration, Report Date, and MRN).
@@ -2132,6 +2173,14 @@ export function DataTableOverlay({ patients, onClose, onPatientsChanged, initial
     }
     if (columnKey === 'IFSP_End_Date') {
       payload.Report_Date = rawValue ? addDaysToDateStr(rawValue, -21) : payload.Report_Date;
+    }
+    // Programs and mandates from the data table's window: the plan, plus
+    // Program (and any service a mandate covers) kept in step.
+    if (columnKey === 'program_plan') {
+      payload.Program = rawValue.programs.map(p => p.program).join(', ');
+      const services = new Set(splitMultiValue(patient.Services));
+      rawValue.programs.forEach(p => p.mandates.forEach(m => services.add(m.service)));
+      payload.Services = [...services].join(', ');
     }
     // Case Manager is edited here as a real staff link (a username), not
     // free text -- the backend derives the display text from that link,

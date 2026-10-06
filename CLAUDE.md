@@ -128,5 +128,5 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 
 ## Patient programs and mandates (Oct 2026)
 
-- In the patient form, clicking a program opens its mandate per service (`src/ProgramPlanEditor.jsx`, helpers in `src/programPlan.js`): sessions per week × minutes, and a service can only be under one program at a time. Editing an existing patient's programs asks "Program changes start on" (default today). Earlier appointments keep the old program and mandate for billing. The patient chart lists the history under "Programs and mandates".
+- In the patient form, clicking a program opens its mandate per service (`src/ProgramPlanEditor.jsx`, helpers in `src/programPlan.js`): sessions per week × minutes, and a service can only be under one program at a time. Editing an existing patient's programs asks "Program changes start on" (default today). Earlier appointments keep the old program and mandate for billing. The patient chart lists the history under "Programs and mandates". In the Patients data table, the Program and Mandate cells open the same editor in a window (`ProgramPlanDialog`), saved through the table's password-confirmed patient save as `program_plan`.
 - Before the API has `PatientPrograms`, `getPatientPrograms` returns `available: false` and the form falls back to the old Program chips and Mandate box.
