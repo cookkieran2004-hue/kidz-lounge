@@ -123,7 +123,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 ## Billing (Oct 2026)
 
 - `/billing` (`src/pages/BillingPage.jsx`, nav "Billing"): one provider's month laid out like the paper billing invoice, from `api.getBillingSheet` (kidz-lounge-api `routes/billing.js`). Same access as the Weekly view. Key: X provided, A child absent, PA provider absent, H holiday, Z emergency closure, M make-up; a dot = booked, day not over. Rate and $ columns are blank for now. Admin/Developer tick Reviewed.
-- **Past dates are locked** (API `lib/pastLock.js`): only the status can change. For anyone other than Admin/Developer, `src/api.js` catches the 409 `pastLocked` answer, `src/PastLockDialog.jsx` asks for a reason, and the change is filed for approval (202 `{ pending: true }`; one reason is reused for 15 s across a multi-call save). They're approved under Admin → Schedule changes (`src/pages/admin/ScheduleChangesTab.jsx`).
+- Past appointments can be edited and deleted by anyone; changing one keeps the patient on that month's billing sheet (API `lib/pastLock.js`). An approval step for past-date changes (`PastLockDialog`, Admin → Schedule changes) was tried and removed in Oct 2026.
 - Office closures have a type (Holiday / Emergency closure) in Admin → Office hours, which sets H vs Z on the sheet.
 
 ## Patient programs and mandates (Oct 2026)

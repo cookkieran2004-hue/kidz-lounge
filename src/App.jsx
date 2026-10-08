@@ -25,7 +25,6 @@ import SupportPage from './pages/SupportPage';
 import SupportTicketsPage from './pages/SupportTicketsPage';
 import Footer from './Footer';
 import SupportNotifier from './SupportNotifier';
-import PastLockDialog from './PastLockDialog';
 import BillingPage from './pages/BillingPage';
 
 function AppShell() {
@@ -64,7 +63,6 @@ function AppShell() {
           <Footer />
           </div>
           <SupportNotifier />
-          <PastLockDialog />
         </ChatProvider>
       </TasksProvider>
     </PendingTimeOffProvider>
