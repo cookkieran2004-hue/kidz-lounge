@@ -11,7 +11,7 @@ export function planFromRows(rows) {
   const byProgram = new Map();
   for (const r of rows || []) {
     if (r.end_date) continue;
-    if (!byProgram.has(r.program)) byProgram.set(r.program, { program: r.program, mandates: [], legacy: r.legacy_mandate || null });
+    if (!byProgram.has(r.program)) byProgram.set(r.program, { program: r.program, billing_code: r.billing_code || '', mandates: [], legacy: r.legacy_mandate || null });
     if (r.service) byProgram.get(r.program).mandates.push({ service: r.service, sessions: r.sessions, minutes: r.minutes });
   }
   return [...byProgram.values()];
@@ -19,7 +19,7 @@ export function planFromRows(rows) {
 
 // Plans compared by what's saved (order doesn't matter).
 export function planKey(plan) {
-  return JSON.stringify((plan || []).map(p => ({ program: p.program, m: [...p.mandates].map(m => `${m.service}:${m.sessions}x${m.minutes}`).sort() })).sort((a, b) => a.program.localeCompare(b.program)));
+  return JSON.stringify((plan || []).map(p => ({ program: p.program, c: p.billing_code || '', m: [...p.mandates].map(m => `${m.service}:${m.sessions}x${m.minutes}`).sort() })).sort((a, b) => a.program.localeCompare(b.program)));
 }
 
 export const mandateLabel = (m) => `${m.service} ${m.sessions}x${m.minutes}`;
@@ -38,3 +38,12 @@ export function programHistoryAvailable(api) {
 export function isFirstChange(rows) {
   return (rows || []).every(r => !r.service && !r.end_date && r.created_by === 'migration');
 }
+
+// Insurance, P and PP programs have a billing code, shown as the program on
+// the billing sheet (kidz-lounge-api lib/patientPrograms.js). Optional: with
+// none, billing shows a red # so someone fills it in.
+export const BILLING_CODES = ['C-1', 'C-2', 'C-3', 'C-4', 'C-5', 'C-6', 'C-#'];
+const NO_CODE_PROGRAMS = new Set(['EI', 'CPSE', 'CSE', 'DOE', 'NONE']);
+export const takesBillingCode = (program) => !NO_CODE_PROGRAMS.has(String(program || '').trim().toUpperCase());
+// What the form sends for a plan.
+export const planPayload = (plan) => plan.map(({ program, billing_code, mandates }) => ({ program, billing_code: billing_code || null, mandates }));

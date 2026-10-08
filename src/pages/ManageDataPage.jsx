@@ -10,7 +10,7 @@ import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoice
 import SpecialtyPicker from '../SpecialtyPicker';
 import TimeOffBalanceEditor from '../TimeOffBalanceEditor';
 import ProgramPlanEditor, { ProgramPlanDialog, ChangeStartChoice } from '../ProgramPlanEditor';
-import { planFromRows, planKey, programHistoryAvailable, isFirstChange } from '../programPlan';
+import { planFromRows, planKey, programHistoryAvailable, isFirstChange, planPayload } from '../programPlan';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -843,7 +843,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
     return {
       ...payload,
       Program: plan.map(p => p.program).join(', '),
-      program_plan: { effective_from: existing && !allDates ? effectiveFrom : null, programs: plan.map(({ program, mandates }) => ({ program, mandates })) },
+      program_plan: { effective_from: existing && !allDates ? effectiveFrom : null, programs: planPayload(plan) },
     };
   };
 

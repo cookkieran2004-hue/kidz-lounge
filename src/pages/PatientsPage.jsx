@@ -13,6 +13,9 @@ import { useIsMobile } from '../useIsMobile';
 import { PageHeader } from '../dashboardUi';
 import { INK, MUTED, HAIRLINE, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 
+// Programs that aren't insurance; anything else is an insurer (shown as "INS").
+const NON_INSURANCE_PROGRAMS = new Set(['EI', 'CPSE', 'CSE', 'DOE', 'P', 'PP', 'NONE']);
+
 export default function PatientsPage() {
   const { user } = useAuth();
   const isAdmin = canManage(user);
@@ -149,10 +152,12 @@ export default function PatientsPage() {
                   {s}
                 </span>
               ))}
-              {splitMultiValue(p.Program).map(prog => (
+              {/* Insurers (BCBS/Anthem, CIGNA, GHI, ...) show as one "INS" bubble;
+                  EI, CPSE, CSE, P, PP and NONE show as themselves. */}
+              {[...new Set(splitMultiValue(p.Program).map(prog => (NON_INSURANCE_PROGRAMS.has(prog.toUpperCase()) ? prog : 'INS')))].map(prog => (
                 <span key={'prog-' + prog} style={{
                   fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
-                  background: programColor(prog) + '20', color: programColor(prog),
+                  background: programColor(prog === 'INS' ? 'GHI' : prog) + '20', color: programColor(prog === 'INS' ? 'GHI' : prog),
                 }}>
                   {prog}
                 </span>

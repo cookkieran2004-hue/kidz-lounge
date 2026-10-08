@@ -18,7 +18,7 @@ import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 const GROUPS = [
   { key: 'EI', label: 'EI', footer: 'EI Center' },
   { key: 'DOE', label: 'DOE (CPSE / CSE)', footer: 'DOE' },
-  { key: 'Insurance', label: 'Insurance', footer: 'Insurance' },
+  // Insurance, P, PP and no program (Oct 2026: one section).
   { key: 'Other', label: 'Other', footer: 'Other' },
 ];
 const MARK_STYLE = {
@@ -159,7 +159,7 @@ export default function BillingPage() {
   const cell = { borderBottom: `1px solid ${HAIRLINE}`, borderRight: `1px solid ${HAIRLINE}`, padding: '0 4px', height: 34, fontSize: 12.5, color: INK, boxSizing: 'border-box', whiteSpace: 'nowrap' };
   const head = { ...cell, height: 'auto', padding: '6px 4px', fontSize: 11.5, fontWeight: 600, color: MUTED, background: '#FAFAFA', overflow: 'hidden', textOverflow: 'ellipsis' };
   // Fixed column widths, shared by the header strip and the rows.
-  const widths = [NAME_W, 72, 116, 62, ...days.map(() => 26), 48, 58, 70, 56];
+  const widths = [NAME_W, 72, 116, 62, ...days.map(() => 26), 58, 70];
   const tableWidth = widths.reduce((t, w) => t + w, 0);
   const colgroup = <colgroup>{widths.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>;
   const tableStyle = { borderCollapse: 'separate', borderSpacing: 0, width: '100%', minWidth: tableWidth, tableLayout: 'fixed', ...NUMERIC };
@@ -168,7 +168,7 @@ export default function BillingPage() {
   // Sessions provided (X or M) on each day, across every patient.
   const perDay = Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => e.mark === 'X' || e.mark === 'M').length, 0)]));
   const grand = grouped.reduce((t, g) => ({ scheduled: t.scheduled + g.scheduled, total: t.total + g.total }), { scheduled: 0, total: 0 });
-  const colCount = 4 + days.length + 4;
+  const colCount = 4 + days.length + 2;
 
   return (
     <div style={{ background: PAGE_BG, minHeight: '100%', fontFamily: FONT }}>
@@ -232,10 +232,8 @@ export default function BillingPage() {
                         {d}
                       </th>
                     ))}
-                    <th style={{ ...head, textAlign: 'right' }}>Rate</th>
                     <th style={{ ...head, textAlign: 'right' }} title="Sessions booked this month">Sched.</th>
-                    <th style={{ ...head, textAlign: 'right' }}>Sessions</th>
-                    <th style={{ ...head, textAlign: 'right', borderRight: 'none' }}>Total</th>
+                    <th style={{ ...head, textAlign: 'right', borderRight: 'none' }}>Sessions</th>
                   </tr>
                 </thead>
               </table>
@@ -259,10 +257,8 @@ export default function BillingPage() {
                           {perDay[d] || ''}
                         </td>
                       ))}
-                      <td style={{ ...cell, background: '#F4F4F5', borderTop: `2px solid ${INK}` }} />
                       <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}` }}>{grand.scheduled}</td>
-                      <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}` }}>{grand.total}</td>
-                      <td style={{ ...cell, background: '#F4F4F5', borderTop: `2px solid ${INK}`, borderRight: 'none' }} />
+                      <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}`, borderRight: 'none' }}>{grand.total}</td>
                     </tr>
                   )}
                 </tbody>
@@ -331,13 +327,17 @@ function GroupRows({ group, days, cell, stickyName, dayBg }) {
     <>
       <tr>
         <td colSpan={4} style={{ ...cell, ...stickyName, maxWidth: 'none', background: '#F4F4F5', fontWeight: 600, fontSize: 12, color: MUTED, padding: '0 10px', height: 28 }}>{group.label}</td>
-        <td colSpan={days.length + 4} style={{ ...cell, background: '#F4F4F5', height: 28, borderRight: 'none' }} />
+        <td colSpan={days.length + 2} style={{ ...cell, background: '#F4F4F5', height: 28, borderRight: 'none' }} />
       </tr>
       {group.rows.map(r => (
         <tr key={`${r.patient_name}|${r.program || ''}|${r.mandate || ''}`}>
           <td style={{ ...cell, ...stickyName, padding: '0 10px', fontWeight: 500 }} title={r.patient_name}>{r.patient_name}</td>
           <td style={cell}>{r.mandate || ''}</td>
-          <td style={cell}>{r.program || ''}</td>
+          <td style={cell}>
+            {r.program || ''}
+            {/* Insurance / P / PP with no billing code yet: set it on the patient's program. */}
+            {r.needs_code && <span style={{ color: '#DC2626', fontWeight: 700, marginLeft: 4 }}>#</span>}
+          </td>
           <td style={{ ...cell, textAlign: 'center', fontWeight: 600 }}>{r.setting}</td>
           {days.map(d => (
             <td key={d} style={{ ...cell, textAlign: 'center', padding: '0 2px', background: dayBg(d) }}>
@@ -348,18 +348,15 @@ function GroupRows({ group, days, cell, stickyName, dayBg }) {
               )}
             </td>
           ))}
-          <td style={{ ...cell, textAlign: 'right', color: SUBTLE }} />
           <td style={{ ...cell, textAlign: 'right' }}>{r.scheduled}</td>
-          <td style={{ ...cell, textAlign: 'right', fontWeight: 600 }}>{r.total_sessions}</td>
-          <td style={{ ...cell, textAlign: 'right', borderRight: 'none' }} />
+          <td style={{ ...cell, textAlign: 'right', fontWeight: 600, borderRight: 'none' }}>{r.total_sessions}</td>
         </tr>
       ))}
       <tr>
         <td colSpan={4} style={{ ...cell, ...stickyName, maxWidth: 'none', fontWeight: 600, padding: '0 10px', background: '#FAFAFA' }}>Total</td>
-        <td colSpan={days.length + 1} style={{ ...cell, background: '#FAFAFA' }} />
+        <td colSpan={days.length} style={{ ...cell, background: '#FAFAFA' }} />
         <td style={{ ...cell, textAlign: 'right', fontWeight: 600, background: '#FAFAFA' }}>{group.scheduled}</td>
-        <td style={{ ...cell, textAlign: 'right', fontWeight: 600, background: '#FAFAFA' }}>{group.total}</td>
-        <td style={{ ...cell, background: '#FAFAFA', borderRight: 'none' }} />
+        <td style={{ ...cell, textAlign: 'right', fontWeight: 600, background: '#FAFAFA', borderRight: 'none' }}>{group.total}</td>
       </tr>
     </>
   );

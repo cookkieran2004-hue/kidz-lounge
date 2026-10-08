@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from './api';
 import { DateField, dateToInputValue } from './pages/SchedulePage';
-import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, isFirstChange } from './programPlan';
+import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, isFirstChange, BILLING_CODES, takesBillingCode, planPayload } from './programPlan';
 
 // Program chips for the patient form. Clicking a program opens its mandate:
 // which services it covers, each as sessions per week x minutes. A service
@@ -21,10 +21,10 @@ export default function ProgramPlanEditor({ options, plan, onChange, childServic
   const selected = new Set(plan.map(p => p.program));
   const ownerOf = (service, except) => plan.find(p => p.program !== except && p.mandates.some(m => m.service === service))?.program;
 
-  const save = (program, mandates) => {
+  const save = (program, { mandates, billing_code }) => {
     const next = plan.some(p => p.program === program)
-      ? plan.map(p => (p.program === program ? { ...p, mandates } : p))
-      : [...plan, { program, mandates }];
+      ? plan.map(p => (p.program === program ? { ...p, mandates, billing_code } : p))
+      : [...plan, { program, mandates, billing_code }];
     onChange(next);
     setEditing(null);
   };
@@ -55,6 +55,7 @@ export default function ProgramPlanEditor({ options, plan, onChange, childServic
             <div key={p.program} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderTop: i ? `1px solid ${BORDER}` : 'none', fontSize: 13 }}>
               <strong style={{ color: INK, minWidth: 90 }}>{p.program}</strong>
               <span style={{ color: p.mandates.length ? INK : MUTED, flex: 1 }}>
+                {takesBillingCode(p.program) && <strong style={{ marginRight: 8, color: p.billing_code ? INK : '#B42318' }}>{p.billing_code || '#'}</strong>}
                 {p.mandates.length ? p.mandates.map(mandateLabel).join(' · ') : (p.legacy ? `Old mandate: ${p.legacy}` : 'No mandate entered')}
               </span>
               <button type="button" onClick={() => setEditing(p.program)} style={{ border: 'none', background: 'none', color: PRIMARY, fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Edit</button>
@@ -69,6 +70,7 @@ export default function ProgramPlanEditor({ options, plan, onChange, childServic
         <MandateDialog
           program={editing}
           initial={plan.find(p => p.program === editing)?.mandates || []}
+          initialCode={plan.find(p => p.program === editing)?.billing_code || ''}
           isSelected={selected.has(editing)}
           childServices={childServices}
           ownerOf={(s) => ownerOf(s, editing)}
@@ -118,7 +120,9 @@ export function ChangeStartChoice({ firstChange, replaceAll, onReplaceAll, effec
   );
 }
 
-function MandateDialog({ program, initial, isSelected, childServices, ownerOf, onSave, onRemove, onCancel }) {
+function MandateDialog({ program, initial, initialCode, isSelected, childServices, ownerOf, onSave, onRemove, onCancel }) {
+  const coded = takesBillingCode(program);
+  const [code, setCode] = useState(initialCode || '');
   const order = [...childServices.filter(s => MANDATE_SERVICES.includes(s)), ...MANDATE_SERVICES.filter(s => !childServices.includes(s))];
   const [rows, setRows] = useState(() => Object.fromEntries(order.map(s => {
     const m = initial.find(x => x.service === s);
@@ -136,7 +140,7 @@ function MandateDialog({ program, initial, isSelected, childServices, ownerOf, o
       if (!/^\d{1,2}(-\d{1,2})?$/.test(sessions)) { setError(`Enter sessions per week for ${s}, like 2 or 1-2.`); return; }
       mandates.push({ service: s, sessions, minutes: Number(r.minutes) });
     }
-    onSave(mandates);
+    onSave({ mandates, billing_code: coded ? code : '' });
   };
   const input = { padding: '7px 9px', borderRadius: 7, border: `1.5px solid ${BORDER}`, fontSize: 13.5, fontFamily: 'inherit', boxSizing: 'border-box', background: 'white' };
 
@@ -146,6 +150,17 @@ function MandateDialog({ program, initial, isSelected, childServices, ownerOf, o
       <div role="dialog" aria-modal="true" aria-labelledby="kl-mandate-title" onClick={e => e.stopPropagation()}
         style={{ background: 'white', borderRadius: 12, width: '100%', maxWidth: 440, padding: 20, boxShadow: '0 20px 50px rgba(15,23,42,0.25)' }}>
         <h3 id="kl-mandate-title" style={{ margin: '0 0 12px', fontSize: 16, color: INK }}>{program} mandate</h3>
+        {coded && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, fontSize: 13.5, fontWeight: 600, color: INK }}>
+            Billing code
+            <select value={code} onChange={e => setCode(e.target.value)} aria-label={`${program} billing code`}
+              style={{ padding: '7px 9px', borderRadius: 7, border: `1.5px solid ${BORDER}`, fontSize: 13.5, fontFamily: 'inherit', background: 'white' }}>
+              <option value="">Not set</option>
+              {BILLING_CODES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {!code && <span style={{ fontSize: 12, fontWeight: 500, color: MUTED }}>Billing shows a red # until it's set.</span>}
+          </label>
+        )}
         <div style={{ display: 'grid', gap: 8 }}>
           {order.map(s => {
             const owner = ownerOf(s);
@@ -220,7 +235,7 @@ export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
     if (!allDates && !effectiveFrom) { setError('Choose the date the changes start.'); return; }
     setSaving(true); setError(null);
     try {
-      await onSave({ effective_from: allDates ? null : effectiveFrom, programs: plan.map(({ program, mandates }) => ({ program, mandates })) });
+      await onSave({ effective_from: allDates ? null : effectiveFrom, programs: planPayload(plan) });
       onClose();
     } catch (err) {
       setSaving(false);
