@@ -97,7 +97,12 @@ export function statusColor(status) {
   return map[status] || '#8B8D93';
 }
 
-export const STATUS_OPTIONS = ['Scheduled', 'Confirmed', 'Left Message', 'Emailed', 'Canceled', 'No Show', '*HOLD*', 'Make Up', 'MUS'];
+// Make Up and MUS were retired (Oct 2026): a make-up is now its own
+// appointment linked to the canceled one ("Schedule make up").
+export const STATUS_OPTIONS = ['Scheduled', 'Confirmed', 'Left Message', 'Emailed', 'Canceled', 'No Show', '*HOLD*'];
+// Statuses that can get a make-up.
+const MISSED_STATUSES = ['Canceled', 'No Show'];
+const MAKEUP_GREEN = '#15803D';
 
 // ---------- The "HOLD - see comments" placeholder patient ----------
 // Not a real child: it's booked to hold time on a provider's schedule.
@@ -449,6 +454,8 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
       <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937', display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: compact ? 1 : 0, minWidth: 0, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{apt.patient_name || '(no patient)'}</span>
         {hasComments && <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
+        {apt.makeup && <span title="Make-up scheduled" style={{ color: MAKEUP_GREEN, fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
+        {apt.is_makeup && <span title="Make-up session" style={{ color: MAKEUP_GREEN, fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: `1px solid ${MAKEUP_GREEN}`, borderRadius: 3, padding: '1px 3px', flexShrink: 0 }}>MU</span>}
 
       </div>
       {showTimeLine && (
@@ -2413,6 +2420,15 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const [offsiteLocationText, setOffsiteLocationText] = useState(offsiteLocation(initialArea));
   const treatmentArea = roomChoice === OFFSITE ? makeOffsiteArea(offsiteLocationText) : roomChoice;
   const [status, setStatus] = useState(existing ? (existing.appointment_status || STATUS_OPTIONS[0]) : STATUS_OPTIONS[0]);
+  // prefill.makeupFor: booking a make-up for this canceled / no-show
+  // appointment -- one time only (no repeat), linked to it on save.
+  const makeupFor = !existing ? prefill?.makeupFor || null : null;
+  // "Schedule make up" from a canceled / no-show appointment opens a
+  // second window for the new appointment.
+  const [schedulingMakeup, setSchedulingMakeup] = useState(false);
+  // An old appointment still on a retired status (Make Up / MUS) keeps it
+  // in the list until it's changed.
+  const statusChoices = STATUS_OPTIONS.includes(status) ? STATUS_OPTIONS : [...STATUS_OPTIONS, status];
   const [localComments, setLocalComments] = useState(existing ? (existing.comments || '') : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -2693,6 +2709,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         treatment_area: status === 'Canceled' ? null : (treatmentArea || null),
         appointment_status: status,
         fin: groupFin,
+        ...(makeupFor ? { makeup_for: makeupFor.id } : {}),
       };
       try {
         await api.createAppointment(record);
@@ -2969,11 +2986,18 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             <PatientAlertsInline allergies={headerAlert?.allergies} immunizations={headerAlert?.immunizations} maxWidth="58%" />
           </div>
         ) : (
-          <h2 style={{
-            fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, marginTop: 0, marginBottom: 16, color: '#111827',
-          }}>
-            New Appointment
-          </h2>
+          <>
+            <h2 style={{
+              fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, marginTop: 0, marginBottom: makeupFor ? 6 : 16, color: '#111827',
+            }}>
+              {makeupFor ? 'Schedule Make Up' : 'New Appointment'}
+            </h2>
+            {makeupFor && (
+              <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, margin: '0 0 16px', fontWeight: 600 }}>
+                Make up for the {makeupFor.appointment_status === 'No Show' ? 'no-show' : 'canceled'} session on {new Date(makeupFor.appointment_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {formatSlotLabel(makeupFor.appointment_time.slice(0, 5))} with {makeupFor.provider}. One time only.
+              </p>
+            )}
+          </>
         )}
 
         {existing && (
@@ -3088,12 +3112,28 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 borderLeft: `4px solid ${statusColor(status)}`, fontWeight: 600, color: statusColor(status), cursor: 'pointer',
               }}
             >
-              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              {statusChoices.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             {status === 'Canceled' && (
               <p style={{ fontSize: 11.5, color: BRAND.muted, marginTop: -8, marginBottom: 12 }}>
                 Room assignment will be cleared since this appointment is canceled.
               </p>
+            )}
+            {/* Make-ups: a canceled / no-show appointment (as saved) can get one. */}
+            {existing && !effectiveIsVirtual && MISSED_STATUSES.includes(existing.appointment_status) && (
+              existing.makeup ? (
+                <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '0 0 12px' }}>
+                  * Make up scheduled: {new Date(existing.makeup.appointment_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {formatSlotLabel(String(existing.makeup.appointment_time).slice(0, 5))} with {existing.makeup.provider}
+                </p>
+              ) : (
+                <button type="button" onClick={() => setSchedulingMakeup(true)}
+                  style={{ display: 'block', margin: '0 0 12px', padding: '7px 14px', borderRadius: 6, border: `1.5px solid ${MAKEUP_GREEN}`, background: 'white', color: MAKEUP_GREEN, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  Schedule make up
+                </button>
+              )
+            )}
+            {existing?.is_makeup && (
+              <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '0 0 12px' }}>MU · This is a make-up session.</p>
             )}
 
             {existing ? (
@@ -3112,7 +3152,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
               </p>
             )}
 
-            {!existing && (
+            {!existing && !makeupFor && (
               <div style={{ border: '1px solid #e2e4e9', borderRadius: 8, padding: 12, marginBottom: 12 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#374151' }}>
                   <input type="checkbox" checked={repeatWeekly} onChange={e => setRepeatWeekly(e.target.checked)} />
@@ -3224,6 +3264,19 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           </div>
         )}
       </div>
+      {schedulingMakeup && (
+        // Its own window on top. Clicks inside it mustn't reach this one's
+        // backdrop (which would close this appointment).
+        <div onClick={e => e.stopPropagation()}>
+          <AppointmentModal
+            providers={providers}
+            defaultDate={new Date()}
+            prefill={{ patientName: existing.patient_name, provider: existing.provider, makeupFor: existing }}
+            onClose={() => setSchedulingMakeup(false)}
+            onSaved={() => { setSchedulingMakeup(false); onSaved(); }}
+          />
+        </div>
+      )}
     </div>
   );
 }
