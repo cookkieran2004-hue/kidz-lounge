@@ -256,6 +256,8 @@ export const api = {
   getMyProfile: () => request('/staff/me'),
   updateMyProfile: (record) => request('/staff/me', { method: 'PUT', body: JSON.stringify(record) }),
   getMyCredentials: () => request('/staff/credentials'),
+  // Admin / Developer: someone else's credentials (their staff profile).
+  getCredentialsFor: (username) => request(`/staff/credentials?username=${encodeURIComponent(username)}`),
   addCredential: (record) => request('/staff/credentials', { method: 'POST', body: JSON.stringify(record) }),
   updateCredential: (id, record) => request(`/staff/credentials/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
   deleteCredential: (id) => request(`/staff/credentials/${id}`, { method: 'DELETE' }),

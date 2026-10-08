@@ -21,6 +21,8 @@ import {
 import { ROLES, ROLE_LABELS, ROLE_HINTS, roleLabel } from '../../roles';
 import SpecialtyPicker from '../../SpecialtyPicker';
 import { EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_HINTS, employmentLabel } from '../../employment';
+import { CredentialsPanel } from '../MyProfilePage';
+import { phoneDigits, formatPhone } from '../../phone';
 
 const SECTIONS = [
   { key: 'account', label: 'Account and role' },
@@ -95,6 +97,7 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
     setForm({
       first_name: staff.first_name || '', middle_name: staff.middle_name || '', last_name: staff.last_name || '',
       preferred_name: staff.preferred_name || '', position: staff.position || '', hire_date: dateOnly(staff.hire_date), role: staff.role, employment_type: staff.employment_type || 'neither',
+      phone: staff.phone ? (phoneDigits(staff.phone).length === 10 ? formatPhone(staff.phone) : staff.phone) : '', email: staff.email || '',
     });
     setEditing(true); setNotice(null); setError(null);
   };
@@ -108,6 +111,11 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
   const requestSave = () => {
     if (!form.first_name.trim() || !form.last_name.trim() || !form.position.trim()) {
       setError('First name, last name, and position can\'t be empty.');
+      return;
+    }
+    const digits = phoneDigits(form.phone).length;
+    if (form.phone !== (staff.phone || '') && digits !== 0 && digits !== 10) {
+      setError('Enter a full 10-digit phone number, or leave it blank.');
       return;
     }
     if (clashes) {
@@ -139,6 +147,7 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
   const col = isMobile ? '1fr' : '1fr 1fr';
 
   return (
+    <>
     <SectionCard
       title="Account and role"
       actions={!editing && <button type="button" onClick={startEdit} style={btn('secondary')}>Edit</button>}
@@ -160,6 +169,8 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
           <Detail label="Hire date" value={formatLongDate(staff.hire_date)} />
           <Detail label="Role" value={roleLabel(staff.role)} />
           <Detail label="Employment type" value={employmentLabel(staff.employment_type)} />
+          <Detail label="Phone" value={staff.phone ? (phoneDigits(staff.phone).length === 10 ? formatPhone(staff.phone) : staff.phone) : null} />
+          <Detail label="Email" value={staff.email} />
           <div>
             <p style={{ margin: 0, fontSize: 12, color: BRAND.muted }}>Username</p>
             <p style={{ margin: '2px 0 0', fontSize: 14, color: INK, fontFamily: 'ui-monospace, Menlo, monospace' }}>{staff.username}</p>
@@ -197,6 +208,15 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
               </label>
               <p style={{ ...hintStyle(), fontSize: 11.5 }}>{EMPLOYMENT_HINTS[form.employment_type]}</p>
             </div>
+            <label style={{ display: 'block' }}>
+              <span style={labelStyle()}>Phone</span>
+              <input style={inputStyle()} type="tel" inputMode="numeric" maxLength={14} value={form.phone} placeholder="(555) 555-5555"
+                onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))} />
+            </label>
+            <label style={{ display: 'block' }}>
+              <span style={labelStyle()}>Email</span>
+              <input style={inputStyle()} type="email" value={form.email} onChange={set('email')} placeholder="name@example.com" />
+            </label>
           </div>
           {renames && (
             <p style={{ fontSize: 12.5, color: clashes ? DANGER : '#93370D', background: clashes ? DANGER_BG : '#FFFAEB', borderRadius: 8, padding: '9px 12px', margin: '14px 0 0' }}>
@@ -268,6 +288,27 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
         />
       )}
     </SectionCard>
+    <StaffCredentials staff={staff} isMobile={isMobile} />
+    </>
+  );
+}
+
+// Their licences and certifications -- the same list they keep on My profile,
+// so an admin can add or update them (these drive the credential-expiring
+// tasks).
+function StaffCredentials({ staff, isMobile }) {
+  const [credentials, setCredentials] = useState(null);
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    api.getCredentialsFor(staff.username).then(c => { if (alive) setCredentials(c || []); }).catch(() => { if (alive) setCredentials([]); });
+    return () => { alive = false; };
+  }, [staff.username, version]);
+  if (!credentials) return null;
+  return (
+    <div style={{ marginTop: 16 }}>
+      <CredentialsPanel credentials={credentials} isMobile={isMobile} username={staff.username} onChanged={() => setVersion(v => v + 1)} />
+    </div>
   );
 }
 

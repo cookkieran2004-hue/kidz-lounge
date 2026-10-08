@@ -44,7 +44,8 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - `style` (match the surrounding inputs)
 - **Web addresses in typed text are clickable.** Wrap anything people typed (comments, notes, chat, task details, agendas, tickets) in `<Linkify text={...} />` (`src/Linkify.jsx`, which opens links in a new tab and never renders HTML). Don't use it inside a `<button>` (a link can't go inside one) or in editable fields.
 - **No zoom on phones:** iOS zooms in when a field under 16px is focused. `src/index.css` forces inputs, selects and textareas to 16px below 1024px wide and on touch screens. Don't fight it with smaller inline sizes, and never set `maximum-scale` on the viewport (it blocks pinch-zoom).
-- **Phone numbers** are US 10-digit, formatted as you type, `(555) 555-5555`, never free text.
+- **Phone numbers** are US 10-digit, formatted as you type, `(555) 555-5555`, never free text. Use `phoneDigits` / `formatPhone` from `src/phone.js`.
+- **Staff profile → Account and role** (Admin and Developer) also shows and edits phone and email, and lists their credentials with `CredentialsPanel` (from `MyProfilePage.jsx`, `username` prop) to add, edit or remove.
 - **Deleting** asks inline ("Delete this? Delete / Keep"), not a browser `confirm()`.
 - **Professional, not playful.** This is a business tool. Kieran rejected an earlier design as "too fun" and "very AI". Avoid:
   - descriptions under page or section titles (e.g. "Time off balances, your schedule and requests."). Headers are just the title. Leave out `PageHeader`'s `subtitle`, `Card`'s `subtitle` and `SectionCard`'s `hint` unless they carry real information, such as "Week of Sep 28"

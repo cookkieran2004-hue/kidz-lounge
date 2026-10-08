@@ -104,6 +104,10 @@ export function staffSavePayload(staff, overrides, adminPassword) {
     preferred_name: (merged.preferred_name || '').trim(),
     position: (merged.position || '').trim() || undefined,
     hire_date: dateOnly(merged.hire_date),
+    // Phone and email only when the edit changed them, so an older
+    // free-text phone doesn't block an unrelated save.
+    ...(overrides && 'phone' in overrides && (overrides.phone || '') !== (staff.phone || '') ? { phone: overrides.phone } : {}),
+    ...(overrides && 'email' in overrides && (overrides.email || '').trim() !== (staff.email || '') ? { email: (overrides.email || '').trim() } : {}),
     admin_password: adminPassword,
   };
 }

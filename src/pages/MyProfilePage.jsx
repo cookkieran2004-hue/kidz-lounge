@@ -9,6 +9,7 @@ import { Card, Tag, PageHeader, StatStrip, Stat, UnderlineTabs } from '../dashbo
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 import { roleLabel } from '../roles';
 import Linkify from '../Linkify';
+import { phoneDigits, formatPhone } from '../phone';
 
 // My profile: who you are at the practice (a summary up top), the details
 // you can change yourself, and your licences/certifications. Position,
@@ -24,21 +25,6 @@ const toDate = (s) => new Date(s + 'T00:00:00');
 const longDate = (s) => toDate(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 const shortDate = (s) => toDate(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const daysFromToday = (s) => Math.round((toDate(s) - toDate(dateToInputValue(new Date()))) / 86400000);
-
-// Phone numbers are US 10-digit numbers, always stored as (555) 555-5555.
-// Only digits can be typed; a leading country code 1 is dropped.
-function phoneDigits(value) {
-  let d = String(value || '').replace(/\D/g, '');
-  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
-  return d.slice(0, 10);
-}
-function formatPhone(value) {
-  const d = phoneDigits(value);
-  if (d.length === 0) return '';
-  if (d.length < 4) return `(${d}`;
-  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
-  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
-}
 
 // Days until the next anniversary of the hire date (0 on the day).
 function daysToAnniversary(hireDate) {
@@ -245,10 +231,11 @@ function CredentialRow({ c, isMobile, onEdit, onRemove }) {
   );
 }
 
-function CredentialsPanel({ credentials, isMobile, onChanged }) {
+// Also used on a staff profile in Admin (`username`: whose credentials).
+export function CredentialsPanel({ credentials, isMobile, onChanged, username }) {
   const [mode, setMode] = useState(null); // null | 'new' | credential being edited
   const sorted = [...credentials].sort((a, b) => (a.expiration_date || '9999').localeCompare(b.expiration_date || '9999'));
-  const add = async (record) => { await api.addCredential({ ...record, notes: record.notes || null }); setMode(null); onChanged(); };
+  const add = async (record) => { await api.addCredential({ ...record, notes: record.notes || null, ...(username ? { username } : {}) }); setMode(null); onChanged(); };
   const save = async (record) => { await api.updateCredential(mode.id, record); setMode(null); onChanged(); };
   const remove = async (id) => { await api.deleteCredential(id); onChanged(); };
 
