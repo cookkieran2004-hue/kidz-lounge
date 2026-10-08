@@ -13,6 +13,7 @@ import { DISCIPLINES, DISCIPLINE_NAMES, disciplinesOf } from '../disciplines';
 import Linkify from '../Linkify';
 import LinkTextarea from '../LinkTextarea';
 import { PatientLinksList } from '../PatientLinksView';
+import { canceledLane, isCanceledAppt } from '../scheduleLanes';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -458,7 +459,10 @@ const ClockIcon = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="9" /><p
 
 // `setRoom`: the session has no room yet -- the badge becomes a "Set room"
 // button (same look as the Unassigned view's), opening the room menu.
-export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColor, heightPx, onRoomClick, onStatusClick, stackIndex = 0, hasConflict, offsetWithinSlot = 0, setRoom = false }) {
+// `lane` (src/scheduleLanes.js): 'left' = the left three quarters of the
+// column, 'right' = the right quarter, beside a canceled appointment it
+// overlaps; null = full width.
+export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColor, heightPx, onRoomClick, onStatusClick, stackIndex = 0, hasConflict, offsetWithinSlot = 0, setRoom = false, lane = null }) {
   const color = statusColor(apt.appointment_status);
   const isCanceled = apt.appointment_status === 'Canceled';
   const isNoShow = apt.appointment_status === 'No Show';
@@ -476,14 +480,38 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
   // A 15-minute card is half a row: one line, name then status, so the name
   // isn't clipped by the room and status lines stacked under it.
   const compact = heightPx < 50;
+  // The narrow right-quarter strip beside a rebooked slot: just the name
+  // (wrapping), in the canceled colour -- no room, status or time.
+  if (lane === 'right') {
+    return (
+      <div
+        onClick={onClick}
+        style={{
+          position: 'absolute', top: offsetWithinSlot + CARD_MARGIN, left: `calc(75% + ${CARD_MARGIN}px)`, right: CARD_MARGIN, height: heightPx,
+          boxSizing: 'border-box', zIndex: 5, borderRadius: 6, cursor: 'pointer', overflow: 'hidden',
+          background: `color-mix(in srgb, ${color} 30%, white)`, borderLeft: `3px solid ${color}`,
+          padding: compact ? '1px 4px' : '4px 5px',
+          boxShadow: hasConflict ? '0 0 0 2px #dc2626' : '0 0 0 1px white, 0 1px 3px rgba(0,0,0,0.1)',
+        }}
+      >
+        <div style={{
+          fontSize: 10.5, fontWeight: 600, color: '#1f2937', lineHeight: 1.2, overflowWrap: 'anywhere',
+          display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: compact ? 1 : Math.max(1, Math.floor((heightPx - 8) / 13)), overflow: 'hidden',
+        }}>
+          {apt.patient_name || '(no patient)'}
+        </div>
+        {apt.makeup && <span style={{ display: 'inline-block', marginTop: 2, color: '#15803D', fontWeight: 700, fontSize: 9, border: '1px solid #15803D', borderRadius: 3, padding: '0 2px' }}>MUS</span>}
+      </div>
+    );
+  }
   return (
     <div
       onClick={onClick}
       style={{
         position: 'absolute',
         top: offsetWithinSlot + CARD_MARGIN + stackIndex * 10,
-        left: CARD_MARGIN + stackIndex * 10,
-        right: CARD_MARGIN,
+        left: lane === 'right' ? `calc(75% + ${CARD_MARGIN}px)` : CARD_MARGIN + stackIndex * 10,
+        right: lane === 'left' ? `calc(25% + ${CARD_MARGIN}px)` : CARD_MARGIN,
         height: heightPx,
         boxSizing: 'border-box',
         zIndex: 5 + (10 - Math.min(stackIndex, 9)),
@@ -2179,7 +2207,9 @@ function ScheduleApp() {
                             // sits exactly at its own time.
                             const span = (x) => { const st = timeToMinutes(x.appointment_time.slice(0, 5)); return [st, st + (Number(x.duration) || 30)]; };
                             const [aStart, aEnd] = span(apt);
-                            const stackIndex = cellAppointments.slice(0, cellIndex).filter(o => { const [s2, e2] = span(o); return s2 < aEnd && aStart < e2; }).length;
+                            // A canceled appointment booked over sits beside it (lanes) instead of stacking.
+                            const lane = canceledLane(apt, Object.values(sourceGrid[colKey] || {}).flat());
+                            const stackIndex = cellAppointments.slice(0, cellIndex).filter(o => { const [s2, e2] = span(o); return s2 < aEnd && aStart < e2 && (!lane || isCanceledAppt(o) === isCanceledAppt(apt)); }).length;
                             const duration = Number(apt.duration) || 30;
                             // True length (a 15-minute visit is half a row), so a card never covers
                             // the next appointment starting a quarter hour later.
@@ -2193,6 +2223,7 @@ function ScheduleApp() {
                                 apt={apt}
                                 heightPx={heightPx}
                                 stackIndex={stackIndex}
+                                lane={lane}
                                 offsetWithinSlot={offsetWithinSlot}
                                 hasConflict={activeConflicts.ids.has(apt.id)}
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}

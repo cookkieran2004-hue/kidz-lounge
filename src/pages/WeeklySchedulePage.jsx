@@ -16,6 +16,7 @@ import {
 } from './SchedulePage';
 import { canManage } from '../roles';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
+import { canceledLane, isCanceledAppt } from '../scheduleLanes';
 
 function startOfWeek(date) {
   // The Monday of the date's week, where weeks run Sunday to Saturday: on
@@ -570,7 +571,9 @@ export default function WeeklySchedulePage() {
                             // sits exactly at its own time.
                             const span = (x) => { const st = timeToMinutes(x.appointment_time.slice(0, 5)); return [st, st + (Number(x.duration) || 30)]; };
                             const [aStart, aEnd] = span(apt);
-                            const stackIndex = cellAppointments.slice(0, cellIndex).filter(o => { const [s2, e2] = span(o); return s2 < aEnd && aStart < e2; }).length;
+                            // A canceled appointment booked over sits beside it (lanes) instead of stacking.
+                            const lane = canceledLane(apt, Object.values(grid[d.dateStr] || {}).flat());
+                            const stackIndex = cellAppointments.slice(0, cellIndex).filter(o => { const [s2, e2] = span(o); return s2 < aEnd && aStart < e2 && (!lane || isCanceledAppt(o) === isCanceledAppt(apt)); }).length;
                             const duration = Number(apt.duration) || 30;
                             // True length (a 15-minute visit is half a row), so a card never covers
                             // the next appointment starting a quarter hour later.
@@ -584,6 +587,7 @@ export default function WeeklySchedulePage() {
                                 apt={apt}
                                 heightPx={heightPx}
                                 stackIndex={stackIndex}
+                                lane={lane}
                                 offsetWithinSlot={offsetWithinSlot}
                                 hasConflict={conflictIds.has(apt.id)}
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
