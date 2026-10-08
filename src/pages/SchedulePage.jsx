@@ -103,6 +103,8 @@ export const STATUS_OPTIONS = ['Scheduled', 'Confirmed', 'Left Message', 'Emaile
 // Statuses that can get a make-up.
 const MISSED_STATUSES = ['Canceled', 'No Show'];
 const MAKEUP_GREEN = '#15803D';
+// Evals: booked from the patient chart only, one time; billing shows E.
+const EVAL_BLUE = '#1D4ED8';
 
 // ---------- The "HOLD - see comments" placeholder patient ----------
 // Not a real child: it's booked to hold time on a provider's schedule.
@@ -489,6 +491,7 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{apt.patient_name || '(no patient)'}</span>
         {hasComments && <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
         {apt.makeup && <span title="Make-up scheduled" style={{ color: MAKEUP_GREEN, fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: `1px solid ${MAKEUP_GREEN}`, borderRadius: 3, padding: '1px 3px', flexShrink: 0 }}>MUS</span>}
+        {apt.is_eval && <span title="Evaluation" style={{ color: EVAL_BLUE, fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: `1px solid ${EVAL_BLUE}`, borderRadius: 3, padding: '1px 3px', flexShrink: 0 }}>Eval</span>}
         {apt.is_makeup && <span title="Make-up session" style={{ color: MAKEUP_GREEN, fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: `1px solid ${MAKEUP_GREEN}`, borderRadius: 3, padding: '1px 3px', flexShrink: 0 }}>MU</span>}
 
       </div>
@@ -2461,6 +2464,8 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   // prefill.makeupFor: booking a make-up for this canceled / no-show
   // appointment -- one time only (no repeat), linked to it on save.
   const makeupFor = !existing ? prefill?.makeupFor || null : null;
+  // prefill.isEval: booking an eval from the patient chart (one time only).
+  const bookingEval = !existing && !makeupFor && !!prefill?.isEval;
   // "Schedule make up" from a canceled / no-show appointment opens a
   // second window for the new appointment.
   const [schedulingMakeup, setSchedulingMakeup] = useState(false);
@@ -2753,6 +2758,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         appointment_status: status,
         fin: groupFin,
         ...(makeupFor ? { makeup_for: makeupFor.id } : {}),
+        ...(bookingEval ? { is_eval: true } : {}),
       };
       try {
         await api.createAppointment(record);
@@ -3033,7 +3039,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             <h2 style={{
               fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, marginTop: 0, marginBottom: makeupFor ? 6 : 16, color: '#111827',
             }}>
-              {makeupFor ? 'Schedule Make Up' : 'New Appointment'}
+              {makeupFor ? 'Schedule Make Up' : bookingEval ? 'Book Eval' : 'New Appointment'}
             </h2>
             {makeupFor && (
               <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, margin: '0 0 16px', fontWeight: 600 }}>
@@ -3181,6 +3187,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 </button>
               )
             )}
+            {existing?.is_eval && (
+              <p style={{ fontSize: 12.5, color: EVAL_BLUE, fontWeight: 600, margin: '0 0 12px' }}>Eval · This is an evaluation.</p>
+            )}
             {existing?.is_makeup && (
               <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '0 0 12px' }}>MU · This is a make-up session.</p>
             )}
@@ -3201,7 +3210,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
               </p>
             )}
 
-            {!existing && !makeupFor && (
+            {!existing && !makeupFor && !bookingEval && (
               <div style={{ border: '1px solid #e2e4e9', borderRadius: 8, padding: 12, marginBottom: 12 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#374151' }}>
                   <input type="checkbox" checked={repeatWeekly} onChange={e => setRepeatWeekly(e.target.checked)} />

@@ -139,3 +139,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 ## Offsite setting (Oct 2026)
 
 - Picking Offsite (appointment window or the card's quick room menu) requires Center, School or Home (`OffsiteSettingButtons`). It's stored in `treatment_area` as "Offsite (School): location" / "Offsite (Home)" (`makeOffsiteArea(location, setting)`, parsed by `isOffsite` / `offsiteLocation` / `offsiteSetting`); older "Offsite" / "Offsite: location" values still read as offsite with no setting. Billing's Setting column shows C / S / H from it (in-office rooms are C).
+
+## Evals (Oct 2026)
+
+- Booked only from the patient chart's Appointments tab (**Book eval** opens `AppointmentModal` with `prefill.isEval`: title "Book Eval", no repeat, sent with `is_eval: true`). Cards and chart rows show a blue **Eval** tag (`apt.is_eval`); billing shows **E** (key "Eval").

@@ -12,6 +12,9 @@ import { roomDisplayText, AppointmentModal, STATUS_OPTIONS, dateToInputValue } f
 import Linkify from '../Linkify';
 import { canAdminister } from '../roles';
 
+// The Eval tag, same on the schedule (SchedulePage.jsx).
+const EVAL_BLUE = '#1D4ED8';
+
 const PATIENT_CHART_PHONE_BREAKPOINT = 768;
 
 const BRAND = { forest: '#6D28D9', brass: '#7C3AED', brassText: '#5B21B6', tint: '#F5F3FF', muted: '#6B6280', box: '#D6CCEF' };
@@ -151,6 +154,7 @@ function AppointmentRow({ apt, onOpen }) {
           {hasComments && <span title="Has comments" aria-label="Has comments" style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
           {/* Make-ups, same marks as the schedule: MUS = a make-up is booked for this one; MU = this is a make-up. */}
           {apt.makeup && <span title="Make-up scheduled" style={{ color: '#15803D', fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: '1px solid #15803D', borderRadius: 3, padding: '1px 3px' }}>MUS</span>}
+          {apt.is_eval && <span title="Evaluation" style={{ color: EVAL_BLUE, fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: `1px solid ${EVAL_BLUE}`, borderRadius: 3, padding: '1px 3px' }}>Eval</span>}
           {apt.is_makeup && <span title="Make-up session" style={{ color: '#15803D', fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: '1px solid #15803D', borderRadius: 3, padding: '1px 3px' }}>MU</span>}
         </div>
         <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>
@@ -451,6 +455,8 @@ function AppointmentsTab({ patient, appointments, onChanged }) {
   const [statusFilter, setStatusFilter] = useState('');
   const [openAppt, setOpenAppt] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Evals are only booked from here (one time; billing shows them as E).
+  const [bookingEval, setBookingEval] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -498,6 +504,10 @@ function AppointmentsTab({ patient, appointments, onChanged }) {
             Clear filters
           </button>
         )}
+        <button type="button" onClick={() => setBookingEval(true)}
+          style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${EVAL_BLUE}`, background: 'white', color: EVAL_BLUE }}>
+          Book eval
+        </button>
       </div>
 
       <p style={sectionHeaderStyle()}>Upcoming (Next 2 Weeks)</p>
@@ -520,6 +530,15 @@ function AppointmentsTab({ patient, appointments, onChanged }) {
         )}
       </div>
 
+      {bookingEval && (
+        <AppointmentModal
+          providers={providers.filter(p => !p.archived)}
+          defaultDate={new Date()}
+          prefill={{ patientName: patient.Name, isEval: true }}
+          onClose={() => setBookingEval(false)}
+          onSaved={() => { setBookingEval(false); setReloadKey(k => k + 1); onChanged?.(); }}
+        />
+      )}
       {openAppt && (
         <AppointmentModal
           providers={providers.filter(p => !p.archived)}

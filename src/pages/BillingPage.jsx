@@ -28,6 +28,7 @@ const MARK_STYLE = {
   H: { bg: '#7C3AED', fg: 'white', title: 'Holiday' },
   Z: { bg: '#0F766E', fg: 'white', title: 'Emergency closure' },
   M: { bg: '#2563EB', fg: 'white', title: 'Make-up' },
+  E: { bg: '#BE185D', fg: 'white', title: 'Eval' },
 };
 // US Letter landscape (11in) less 0.3in margins each side, in CSS px.
 const PRINTABLE_WIDTH_PX = 10.4 * 96;
@@ -165,8 +166,8 @@ export default function BillingPage() {
   const tableStyle = { borderCollapse: 'separate', borderSpacing: 0, width: '100%', minWidth: tableWidth, tableLayout: 'fixed', ...NUMERIC };
   const stickyName = { position: 'sticky', left: 0, zIndex: 1, background: 'white', minWidth: NAME_W, maxWidth: NAME_W, overflow: 'hidden', textOverflow: 'ellipsis' };
   const dayBg = (d) => (sheet?.closures?.[dateOf(d)] ? '#F5F3FF' : (weekday(d) === 0 || weekday(d) === 6) ? '#F4F4F5' : dateOf(d) === sheet?.today ? '#FFFBEB' : undefined);
-  // Sessions provided (X or M) on each day, across every patient.
-  const perDay = Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => e.mark === 'X' || e.mark === 'M').length, 0)]));
+  // Sessions provided (X, M or E) on each day, across every patient.
+  const perDay = Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => e.mark === 'X' || e.mark === 'M' || e.mark === 'E').length, 0)]));
   const grand = grouped.reduce((t, g) => ({ scheduled: t.scheduled + g.scheduled, total: t.total + g.total }), { scheduled: 0, total: 0 });
   const colCount = 4 + days.length + 2;
 
@@ -251,7 +252,7 @@ export default function BillingPage() {
                   {grouped.length > 0 && (
                     <tr>
                       <td colSpan={4} style={{ ...cell, ...stickyName, maxWidth: 'none', fontWeight: 700, padding: '0 10px', background: '#F4F4F5', borderTop: `2px solid ${INK}` }}
-                        title="Sessions provided (X or M) each day">Daily total</td>
+                        title="Sessions provided (X, M or E) each day">Daily total</td>
                       {days.map(d => (
                         <td key={d} style={{ ...cell, textAlign: 'center', padding: '0 2px', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}`, color: perDay[d] ? INK : SUBTLE }}>
                           {perDay[d] || ''}
