@@ -149,8 +149,8 @@ function AppointmentRow({ apt, onOpen }) {
         <div style={{ fontSize: 13, fontWeight: 600, color: '#241A33', display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span>{formatDate(apt.appointment_date)} &middot; {formatTime(apt.appointment_time)}</span>
           {hasComments && <span title="Has comments" aria-label="Has comments" style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
-          {/* Make-ups, same marks as the schedule: green * = a make-up is booked for this one; MU = this is a make-up. */}
-          {apt.makeup && <span title="Make-up scheduled" aria-label="Make-up scheduled" style={{ color: '#15803D', fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
+          {/* Make-ups, same marks as the schedule: MUS = a make-up is booked for this one; MU = this is a make-up. */}
+          {apt.makeup && <span title="Make-up scheduled" style={{ color: '#15803D', fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: '1px solid #15803D', borderRadius: 3, padding: '1px 3px' }}>MUS</span>}
           {apt.is_makeup && <span title="Make-up session" style={{ color: '#15803D', fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: '1px solid #15803D', borderRadius: 3, padding: '1px 3px' }}>MU</span>}
         </div>
         <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>

@@ -488,7 +488,7 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
       <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937', display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: compact ? 1 : 0, minWidth: 0, lineHeight: 1.2, position: 'relative', zIndex: 1 }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{apt.patient_name || '(no patient)'}</span>
         {hasComments && <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
-        {apt.makeup && <span title="Make-up scheduled" style={{ color: MAKEUP_GREEN, fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
+        {apt.makeup && <span title="Make-up scheduled" style={{ color: MAKEUP_GREEN, fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: `1px solid ${MAKEUP_GREEN}`, borderRadius: 3, padding: '1px 3px', flexShrink: 0 }}>MUS</span>}
         {apt.is_makeup && <span title="Make-up session" style={{ color: MAKEUP_GREEN, fontWeight: 700, fontSize: 9.5, lineHeight: 1, border: `1px solid ${MAKEUP_GREEN}`, borderRadius: 3, padding: '1px 3px', flexShrink: 0 }}>MU</span>}
 
       </div>
@@ -3172,7 +3172,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             {existing && !effectiveIsVirtual && MISSED_STATUSES.includes(existing.appointment_status) && (
               existing.makeup ? (
                 <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '0 0 12px' }}>
-                  * Make up scheduled: {new Date(existing.makeup.appointment_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {formatSlotLabel(String(existing.makeup.appointment_time).slice(0, 5))} with {existing.makeup.provider}
+                  MUS · Make up scheduled: {new Date(existing.makeup.appointment_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {formatSlotLabel(String(existing.makeup.appointment_time).slice(0, 5))} with {existing.makeup.provider}
                 </p>
               ) : (
                 <button type="button" onClick={() => setSchedulingMakeup(true)}
