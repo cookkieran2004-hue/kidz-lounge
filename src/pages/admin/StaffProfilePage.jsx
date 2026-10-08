@@ -506,7 +506,9 @@ function TimeOffSection({ staff, isMobile, onChanged }) {
 }
 
 // ---------------------------------------------------------------------------
-// Caseload (next two weeks of appointments)
+// Caseload: the patients on this provider's caseload (any appointment with
+// them from today on, or this calendar month -- kidz-lounge-api
+// lib/caseload.js), beside the next two weeks of appointments.
 // ---------------------------------------------------------------------------
 function isoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -517,8 +519,19 @@ function formatTime(t) {
 }
 
 function CaseloadSection({ staff, providerExists, goTo }) {
+  const isMobile = useIsMobile(900);
   const [appts, setAppts] = useState(null);
+  const [patients, setPatients] = useState(null);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!providerExists) return;
+    let alive = true;
+    api.getProviderCaseload(staff.provider_name)
+      .then(rows => { if (alive) setPatients(rows || []); })
+      .catch(err => { if (alive) { setPatients([]); setError(err.message); } });
+    return () => { alive = false; };
+  }, [staff.provider_name, providerExists]);
 
   useEffect(() => {
     if (!providerExists) return;
@@ -548,38 +561,56 @@ function CaseloadSection({ staff, providerExists, goTo }) {
     );
   }
 
+  const shortDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const colHead = { margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: INK };
   return (
     <SectionCard title="Caseload">
       {error && <Notice kind="error">The caseload couldn't be loaded ({error}).</Notice>}
-      {!appts && !error && <p style={{ fontSize: 13.5, color: BRAND.muted }}>Loading...</p>}
-      {appts && (
-        <>
-          <div style={{ display: 'flex', gap: 28, marginBottom: 18 }}>
-            <div><p style={{ margin: 0, fontFamily: BRAND_SERIF, fontSize: 26, fontWeight: 700, color: INK }}>{appts.length}</p><p style={{ margin: 0, fontSize: 12.5, color: BRAND.muted }}>appointments</p></div>
-            <div><p style={{ margin: 0, fontFamily: BRAND_SERIF, fontSize: 26, fontWeight: 700, color: INK }}>{patientCount}</p><p style={{ margin: 0, fontSize: 12.5, color: BRAND.muted }}>patients</p></div>
-          </div>
-          {byDay.length === 0 && <EmptyState title="Nothing booked in the next two weeks" />}
-          {byDay.map(([date, list]) => (
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, alignItems: 'start' }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={colHead}>Patients{patients ? ` (${patients.length})` : ''}</p>
+          {!patients && <p style={{ fontSize: 13.5, color: BRAND.muted }}>Loading...</p>}
+          {patients && patients.length === 0 && <EmptyState title="No patients on this caseload" body="Patients appear here once they have an appointment this month or later." />}
+          {patients && patients.length > 0 && (
+            <div style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 10, overflow: 'hidden' }}>
+              {patients.map((p, i) => (
+                <div key={p.patient_name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', borderTop: i ? `1px solid ${HAIRLINE}` : 'none', fontSize: 13.5 }}>
+                  <Link to={`/patients/${encodeURIComponent(p.patient_name)}`} style={{ flex: 1, minWidth: 0, color: INK, textDecoration: 'none', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.patient_name}</Link>
+                  {p.program && <span style={pill('neutral')}>{p.program}</span>}
+                  <span style={{ fontSize: 12.5, color: BRAND.muted, whiteSpace: 'nowrap', minWidth: 120, textAlign: 'right' }}>
+                    {p.next_appointment ? `Next ${shortDate(p.next_appointment.date)}, ${formatTime(p.next_appointment.time)}` : 'Nothing booked ahead'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <p style={colHead}>Next two weeks{appts ? ` (${appts.length} appointment${appts.length === 1 ? '' : 's'}, ${patientCount} patient${patientCount === 1 ? '' : 's'})` : ''}</p>
+          {!appts && !error && <p style={{ fontSize: 13.5, color: BRAND.muted }}>Loading...</p>}
+          {appts && byDay.length === 0 && <EmptyState title="Nothing booked in the next two weeks" />}
+          {appts && byDay.map(([date, list]) => (
             <div key={date} style={{ marginBottom: 14 }}>
               <p style={{ margin: '0 0 6px', fontSize: 12.5, fontWeight: 700, color: BRAND.brassText }}>
                 {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
               </p>
               <div style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 10, overflow: 'hidden' }}>
                 {list.map((a, i) => (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '9px 12px', borderTop: i ? `1px solid ${HAIRLINE}` : 'none', fontSize: 13.5 }}>
-                    <span style={{ width: 70, color: BODY, fontWeight: 600, flexShrink: 0 }}>{formatTime(a.appointment_time)}</span>
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', borderTop: i ? `1px solid ${HAIRLINE}` : 'none', fontSize: 13.5 }}>
+                    <span style={{ width: 66, color: BODY, fontWeight: 600, flexShrink: 0 }}>{formatTime(a.appointment_time)}</span>
                     {a.patient_name
-                      ? <Link to={`/patients/${encodeURIComponent(a.patient_name)}`} style={{ flex: 1, color: INK, textDecoration: 'none', fontWeight: 500 }}>{a.patient_name}</Link>
+                      ? <Link to={`/patients/${encodeURIComponent(a.patient_name)}`} style={{ flex: 1, minWidth: 0, color: INK, textDecoration: 'none', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.patient_name}</Link>
                       : <span style={{ flex: 1, color: BRAND.muted }}>No patient</span>}
-                    <span style={{ fontSize: 12.5, color: BRAND.muted }}>{a.treatment_area ? roomDisplayText(a.treatment_area) : 'No room'}</span>
+                    <span style={{ fontSize: 12.5, color: BRAND.muted, whiteSpace: 'nowrap' }}>{a.treatment_area ? roomDisplayText(a.treatment_area) : 'No room'}</span>
                     <span style={pill('neutral')}>{a.appointment_status}</span>
                   </div>
                 ))}
               </div>
             </div>
           ))}
-        </>
-      )}
+        </div>
+      </div>
     </SectionCard>
   );
 }

@@ -903,9 +903,12 @@ function CareTeamTab({ patient, appointments }) {
   const { openDrawerWithPrefill } = useTasks();
   const { openNewChat } = useChat();
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Current providers: whose caseload the patient is on -- any appointment
+  // with them from today on, or this calendar month, any status (worked out
+  // by the API, kidz-lounge-api lib/caseload.js, weekly series included).
+  // Anyone else they've been booked with is a past provider.
   const providerNames = [...new Set(appointments.map(a => a.provider).filter(Boolean))];
-  const currentProviders = providerNames.filter(p => appointments.some(a => a.provider === p && a.appointment_date >= todayStr && a.appointment_status !== 'Canceled'));
+  const currentProviders = patient.care_team || [];
   const pastOnlyProviders = providerNames.filter(p => !currentProviders.includes(p));
 
   return (
@@ -935,7 +938,7 @@ function CareTeamTab({ patient, appointments }) {
       <p style={sectionHeaderStyle()}>Current Providers</p>
       <div style={cardStyle()}>
         {currentProviders.length === 0 ? (
-          <EmptyNote>No upcoming appointments with a provider on file.</EmptyNote>
+          <EmptyNote>Not on any provider's caseload: no appointments this month or later.</EmptyNote>
         ) : (
           currentProviders.map(p => <InfoRow key={p} label="Provider" value={p} />)
         )}
@@ -1034,7 +1037,8 @@ export default function PatientChartPage() {
             if (saved && saved.Name && saved.Name !== patient.Name) {
               navigate(`/patients/${encodeURIComponent(saved.Name)}`, { replace: true });
             } else {
-              setPatient(saved || patient);
+              // A save returns the bare patient; keep the care team from the load.
+              setPatient(saved ? { ...saved, care_team: patient.care_team } : patient);
             }
           }}
         />

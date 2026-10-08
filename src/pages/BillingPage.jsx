@@ -13,7 +13,7 @@ import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 // Each day shows the key letter once the day has ended:
 //   X session provided, A child absent, PA provider absent, H holiday,
 //   Z emergency closure, M make-up. A dot = booked, day not over yet.
-// Patients seen on a day that has ended stay on the sheet for the month.
+// Rows: the provider's caseload that month (kidz-lounge-api lib/caseload.js).
 
 const GROUPS = [
   { key: 'EI', label: 'EI', footer: 'EI Center' },
@@ -335,7 +335,7 @@ function GroupRows({ group, days, cell, stickyName, dayBg }) {
       </tr>
       {group.rows.map(r => (
         <tr key={`${r.patient_name}|${r.program || ''}|${r.mandate || ''}`}>
-          <td style={{ ...cell, ...stickyName, padding: '0 10px', fontWeight: 500 }} title={r.locked ? `${r.patient_name} · on this sheet for the month` : r.patient_name}>{r.patient_name}</td>
+          <td style={{ ...cell, ...stickyName, padding: '0 10px', fontWeight: 500 }} title={r.patient_name}>{r.patient_name}</td>
           <td style={cell}>{r.mandate || ''}</td>
           <td style={cell}>{r.program || ''}</td>
           <td style={{ ...cell, textAlign: 'center', fontWeight: 600 }}>{r.setting}</td>

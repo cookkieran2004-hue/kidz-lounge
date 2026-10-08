@@ -268,6 +268,8 @@ export const api = {
   addOfficeClosure: (closureDate, reason, closureType = 'holiday') => request('/office-closures', { method: 'POST', body: JSON.stringify({ closure_date: closureDate, reason, closure_type: closureType }) }),
 
   // ---- Billing (routes/billing.js) ----
+  // A provider's caseload now: patient, program, status, next appointment.
+  getProviderCaseload: (provider) => request(`/providers/${encodeURIComponent(provider)}/caseload`),
   getBillingSheet: (provider, month) => request(`/billing?provider=${encodeURIComponent(provider || '')}&month=${month}`),
   setBillingReviewed: (provider, month, reviewed) => request('/billing/review', { method: 'PUT', body: JSON.stringify({ provider, month, reviewed }) }),
   deleteOfficeClosure: (id) => request(`/office-closures/${id}`, { method: 'DELETE' }),
