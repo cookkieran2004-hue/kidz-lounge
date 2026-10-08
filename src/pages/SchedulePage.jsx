@@ -174,6 +174,21 @@ export function roomDisplayText(area) {
   return [OFFSITE, offsiteSetting(area), offsiteLocation(area)].filter(Boolean).join(' \u00b7 ');
 }
 
+// The setting last used with each offsite location (any patient), so typing
+// or picking a location fills its setting in. Loaded when an offsite picker
+// opens; returns a lookup function.
+const locationKey = (loc) => String(loc || '').trim().replace(/\s+/g, ' ').toLowerCase();
+function useOffsiteSettingLookup(active = true) {
+  const [map, setMap] = useState({});
+  useEffect(() => {
+    if (!active) return undefined;
+    let alive = true;
+    api.getOffsiteSettings().then(m => { if (alive) setMap(m || {}); }).catch(() => {});
+    return () => { alive = false; };
+  }, [active]);
+  return useCallback((loc) => map[locationKey(loc)] || '', [map]);
+}
+
 // Center / School / Home buttons for an offsite session (required).
 export function OffsiteSettingButtons({ value, onChange, size = 'normal' }) {
   return (
@@ -1084,6 +1099,9 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
   const [location, setLocation] = useState(offsiteLocation(current));
   const [setting, setSetting] = useState(offsiteSetting(current));
   const suggestions = useOffsiteLocationSuggestions(apt.patient_name, offsiteMode);
+  const settingFor = useOffsiteSettingLookup(offsiteMode);
+  // A location used before brings its setting with it (still changeable).
+  const pickLocation = (loc) => { setLocation(loc); const known = settingFor(loc); if (known) setSetting(known); };
   const listId = `kl-offsite-suggestions-${apt.id || apt.series_id || 'new'}`;
   const itemStyle = (active) => ({
     padding: '7px 10px', fontSize: 13, borderRadius: 6, cursor: 'pointer',
@@ -1140,7 +1158,7 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
             list={listId}
             autoFocus
             value={location}
-            onChange={e => setLocation(e.target.value)}
+            onChange={e => pickLocation(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveOffsite(); } }}
             placeholder="e.g. Sunnyside Elementary"
             style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
@@ -1151,7 +1169,7 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
           {suggestions.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
               {suggestions.slice(0, 4).map(loc => (
-                <button key={loc} type="button" onClick={() => setLocation(loc)} title="Used before for this patient"
+                <button key={loc} type="button" onClick={() => pickLocation(loc)} title="Used before for this patient"
                   style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, border: '1px solid #cfe0e7', background: '#F0F7FA', color: '#2F6479', cursor: 'pointer', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {loc}
                 </button>
@@ -2454,6 +2472,13 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const [roomChoice, setRoomChoice] = useState(isOffsite(initialArea) ? OFFSITE : initialArea);
   const [offsiteLocationText, setOffsiteLocationText] = useState(offsiteLocation(initialArea));
   const [offsiteSettingChoice, setOffsiteSettingChoice] = useState(offsiteSetting(initialArea));
+  const offsiteSettingFor = useOffsiteSettingLookup(roomChoice === OFFSITE);
+  // A location used before brings its setting with it (still changeable).
+  const changeOffsiteLocation = (loc) => {
+    setOffsiteLocationText(loc);
+    const known = offsiteSettingFor(loc);
+    if (known) setOffsiteSettingChoice(known);
+  };
   const treatmentArea = roomChoice === OFFSITE ? makeOffsiteArea(offsiteLocationText, offsiteSettingChoice) : roomChoice;
   const [status, setStatus] = useState(existing ? (existing.appointment_status || STATUS_OPTIONS[0]) : STATUS_OPTIONS[0]);
   // prefill.makeupFor: booking a make-up for this canceled / no-show
@@ -3133,7 +3158,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
               <OffsiteLocationField
                 patientName={patientConfirmed ? patientSearch : ''}
                 value={offsiteLocationText}
-                onChange={setOffsiteLocationText}
+                onChange={changeOffsiteLocation}
                 inputStyle={inputStyle()}
                 labelStyle={labelStyle()}
               />

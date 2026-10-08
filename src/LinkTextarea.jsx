@@ -6,6 +6,9 @@ import { markdownLink, MARKDOWN_LINK_RE } from './patientLinks';
 // src/Linkify.jsx shows as just the text, clickable. With the cursor on an
 // existing link the button edits it instead. Pass the same props as a
 // textarea; onChange gets { target: { value } } when a link is inserted.
+// A box that's also where the text is read (a meeting agenda) would only
+// show "[text](address)", so the links in the text are listed under it,
+// clickable, by their text.
 export default function LinkTextarea({ value, onChange, style, ...props }) {
   const ref = useRef(null);
   const [panel, setPanel] = useState(null); // { start, end, text, url, editing }
@@ -32,6 +35,7 @@ export default function LinkTextarea({ value, onChange, style, ...props }) {
     setPanel(null);
     requestAnimationFrame(() => { const el = ref.current; if (el) { el.focus(); const at = panel.start + link.length; el.setSelectionRange(at, at); } });
   };
+  const named = [...v.matchAll(MARKDOWN_LINK_RE)].map(m => ({ text: m[1], href: /^https?:\/\//i.test(m[2]) ? m[2] : `https://${m[2]}` }));
   const box = { boxSizing: 'border-box', padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, fontFamily: 'inherit', minWidth: 0 };
 
   return (
@@ -50,10 +54,23 @@ export default function LinkTextarea({ value, onChange, style, ...props }) {
           <button type="button" onClick={() => setPanel(null)} style={{ border: 'none', background: 'none', color: '#6b7280', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
         </div>
       ) : (
-        <button type="button" onMouseDown={e => e.preventDefault()} onClick={open}
-          style={{ display: 'block', margin: '2px 0 0 auto', border: 'none', background: 'none', color: '#6D28D9', fontWeight: 600, fontSize: 11.5, cursor: 'pointer', padding: '2px 0' }}>
-          Insert link
-        </button>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2 }}>
+          {named.length > 0 && (
+            <span style={{ fontSize: 12, color: '#6b7280', minWidth: 0, overflowWrap: 'anywhere' }}>
+              Links:{' '}
+              {named.map((l, i) => (
+                <span key={i}>
+                  {i > 0 && ' · '}
+                  <a href={l.href} target="_blank" rel="noopener noreferrer" style={{ color: '#6D28D9', textDecoration: 'underline' }}>{l.text}</a>
+                </span>
+              ))}
+            </span>
+          )}
+          <button type="button" onMouseDown={e => e.preventDefault()} onClick={open}
+            style={{ marginLeft: 'auto', flexShrink: 0, border: 'none', background: 'none', color: '#6D28D9', fontWeight: 600, fontSize: 11.5, cursor: 'pointer', padding: '2px 0' }}>
+            Insert link
+          </button>
+        </div>
       )}
     </div>
   );

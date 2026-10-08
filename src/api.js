@@ -146,6 +146,8 @@ export const api = {
 
   // ---- Appointments ----
   getAppointments: (date) => request(`/appointments?date=${date}`),
+  // { 'lower-cased location': 'Center' | 'School' | 'Home' }: the setting last saved with each offsite location.
+  getOffsiteSettings: () => request('/appointments/offsite-settings'),
   getAppointmentsRange: (provider, start, end) => request(`/appointments/range?provider=${encodeURIComponent(provider || '')}&start=${start}&end=${end}`),
   getAppointmentsWindow: (start, end, patientName) => request(`/appointments/window?start=${start}&end=${end}${patientName ? `&patient_name=${encodeURIComponent(patientName)}` : ''}`),
   getSeriesMatches: (patientName, provider, time, after) =>

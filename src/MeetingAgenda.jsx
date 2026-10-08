@@ -92,6 +92,9 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
   const [loadError, setLoadError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // { kind: 'saved'|'error', text }
+  // The agenda shows as text, links clickable, until Edit agenda; in the
+  // box a link added with Insert link reads as "[text](address)".
+  const [editing, setEditing] = useState(false);
 
   const apply = useCallback((res) => {
     setData(res);
@@ -138,6 +141,7 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
         : { agenda: single };
       apply(await storeAgenda(record));
       setStatus({ kind: 'saved', text: 'Agenda saved' });
+      setEditing(false);
       onSaved?.();
     } catch (err) {
       setStatus({ kind: 'error', text: err.message });
@@ -164,7 +168,9 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
         {isRecurring ? (
           <>
             <Column title="Recurring agenda" hint="Shows on every week of this meeting">
-              <LinkTextarea aria-label="Recurring agenda" style={textareaStyle} value={recurring} onChange={e => setRecurring(e.target.value)} placeholder="Standing items for every week" />
+              {editing
+                ? <LinkTextarea aria-label="Recurring agenda" style={textareaStyle} value={recurring} onChange={e => setRecurring(e.target.value)} placeholder="Standing items for every week" />
+                : <ReadOnlyText text={recurring} />}
             </Column>
             <Column title="This week only" hint={fixedDate ? formatWeekLabel(data.week_date) : null}>
               {!fixedDate && <select
@@ -175,26 +181,42 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
               >
                 {(data.dates || []).map(d => <option key={d} value={d}>{formatWeekLabel(d)}</option>)}
               </select>}
-              <LinkTextarea aria-label="This week only" style={textareaStyle} value={week} onChange={e => setWeek(e.target.value)} placeholder="Just for this date" />
+              {editing
+                ? <LinkTextarea aria-label="This week only" style={textareaStyle} value={week} onChange={e => setWeek(e.target.value)} placeholder="Just for this date" />
+                : <ReadOnlyText text={week} />}
             </Column>
           </>
         ) : (
           <Column title="Agenda">
-            <LinkTextarea aria-label="Agenda" style={textareaStyle} value={single} onChange={e => setSingle(e.target.value)} placeholder="What this meeting covers" />
+            {editing
+              ? <LinkTextarea aria-label="Agenda" style={textareaStyle} value={single} onChange={e => setSingle(e.target.value)} placeholder="What this meeting covers" />
+              : <ReadOnlyText text={single} />}
           </Column>
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-        <button
-          type="button"
-          onClick={() => save()}
-          disabled={saving || !dirty}
-          style={{ padding: '7px 14px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, cursor: saving || !dirty ? 'default' : 'pointer', background: saving || !dirty ? '#C4B5FD' : PURPLE, color: 'white' }}
-        >
-          {saving ? 'Saving...' : 'Save agenda'}
-        </button>
+        {!editing ? (
+          <button type="button" onClick={() => { setEditing(true); setStatus(null); }}
+            style={{ padding: '7px 14px', borderRadius: 6, border: `1px solid ${PURPLE}`, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'white', color: PURPLE }}>
+            Edit agenda
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => save()}
+              disabled={saving || !dirty}
+              style={{ padding: '7px 14px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, cursor: saving || !dirty ? 'default' : 'pointer', background: saving || !dirty ? '#C4B5FD' : PURPLE, color: 'white' }}
+            >
+              {saving ? 'Saving...' : 'Save agenda'}
+            </button>
+            <button type="button" disabled={saving} onClick={() => { apply(data); setEditing(false); setStatus(null); }}
+              style={{ padding: '7px 14px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'white', color: INK }}>
+              Cancel
+            </button>
+          </>
+        )}
         {status && <span role="status" style={{ fontSize: 12.5, fontWeight: 600, color: status.kind === 'saved' ? '#067647' : '#b91c1c' }}>{status.text}</span>}
-        {!status && !dirty && <span style={{ fontSize: 12, color: '#9ca3af' }}>Agenda changes save right away &mdash; no approval needed.</span>}
       </div>
     </div>
   );
