@@ -131,29 +131,63 @@ export const TREATMENT_AREA_OPTIONS = ['Green', 'Yellow', 'Orange A', 'Orange B'
 // never gets a Room-view column, and because it isn't empty the Unassigned
 // list skips it. It's never a room double-booking either: two children
 // can be offsite at the same time, even at the same school.
+//
+// Oct 2026: an offsite session also says where it is -- Center, School or
+// Home -- for billing's Setting column (C / S / H). It's written into the
+// same field, "Offsite (School): Sunnyside Elementary" or "Offsite (Home)",
+// so it still needs no backend change. Older values without it still read
+// as offsite, with no setting.
 export const OFFSITE = 'Offsite';
-const OFFSITE_PREFIX = 'Offsite: ';
+const OFFSITE_SETTINGS = ['Center', 'School', 'Home'];
+const OFFSITE_RE = /^Offsite(?: \((Center|School|Home)\))?(?::\s*(.*))?$/;
 export function isOffsite(area) {
-  return area === OFFSITE || (typeof area === 'string' && area.startsWith(OFFSITE_PREFIX));
+  return typeof area === 'string' && OFFSITE_RE.test(area);
 }
 export function offsiteLocation(area) {
-  return isOffsite(area) && area.startsWith(OFFSITE_PREFIX) ? area.slice(OFFSITE_PREFIX.length).trim() : '';
+  if (!isOffsite(area)) return '';
+  return (area.match(OFFSITE_RE)[2] || '').trim();
 }
-export function makeOffsiteArea(location) {
+function offsiteSetting(area) {
+  if (!isOffsite(area)) return '';
+  return area.match(OFFSITE_RE)[1] || '';
+}
+export function makeOffsiteArea(location, setting = '') {
   const loc = (location || '').trim();
-  return loc ? `${OFFSITE_PREFIX}${loc}` : OFFSITE;
+  const head = OFFSITE_SETTINGS.includes(setting) ? `${OFFSITE} (${setting})` : OFFSITE;
+  return loc ? `${head}: ${loc}` : head;
 }
-// Short label for badges on the grid: just the location, or "Offsite".
+// Short label for badges on the grid: "School · location", "Home", or "Offsite".
 export function roomBadgeLabel(area) {
   if (!area) return area;
-  return isOffsite(area) ? (offsiteLocation(area) || OFFSITE) : area;
+  if (!isOffsite(area)) return area;
+  const parts = [offsiteSetting(area), offsiteLocation(area)].filter(Boolean);
+  return parts.length ? parts.join(' \u00b7 ') : OFFSITE;
 }
-// Longer label for lists (patient chart, caseload): "Offsite · location".
+// Longer label for lists (patient chart, caseload): "Offsite · School · location".
 export function roomDisplayText(area) {
   if (!area) return area;
   if (!isOffsite(area)) return area;
-  const loc = offsiteLocation(area);
-  return loc ? `${OFFSITE} \u00b7 ${loc}` : OFFSITE;
+  return [OFFSITE, offsiteSetting(area), offsiteLocation(area)].filter(Boolean).join(' \u00b7 ');
+}
+
+// Center / School / Home buttons for an offsite session (required).
+export function OffsiteSettingButtons({ value, onChange, size = 'normal' }) {
+  return (
+    <div role="radiogroup" aria-label="Offsite setting" style={{ display: 'flex', gap: 6 }}>
+      {OFFSITE_SETTINGS.map(opt => {
+        const on = value === opt;
+        return (
+          <button key={opt} type="button" role="radio" aria-checked={on} onClick={() => onChange(opt)}
+            style={{
+              flex: 1, padding: size === 'small' ? '5px 8px' : '7px 10px', borderRadius: 6, fontSize: size === 'small' ? 12 : 13, fontWeight: 600, cursor: 'pointer',
+              border: `1.5px solid ${on ? '#3F7F9A' : '#d1d5db'}`, background: on ? '#E8F2F6' : 'white', color: on ? '#2F6479' : '#374151',
+            }}>
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 // A patient's past offsite locations, most recent first, for suggestions.
@@ -1050,6 +1084,7 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
   const current = apt.treatment_area || '';
   const [offsiteMode, setOffsiteMode] = useState(false);
   const [location, setLocation] = useState(offsiteLocation(current));
+  const [setting, setSetting] = useState(offsiteSetting(current));
   const suggestions = useOffsiteLocationSuggestions(apt.patient_name, offsiteMode);
   const listId = `kl-offsite-suggestions-${apt.id || apt.series_id || 'new'}`;
   const itemStyle = (active) => ({
@@ -1060,7 +1095,7 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
     onMouseEnter: e => { e.currentTarget.style.background = '#f9fafb'; },
     onMouseLeave: e => { e.currentTarget.style.background = active ? '#f3f4f6' : 'transparent'; },
   });
-  const saveOffsite = () => onPick(makeOffsiteArea(location));
+  const saveOffsite = () => { if (setting) onPick(makeOffsiteArea(location, setting)); };
 
   return (
     <div
@@ -1097,6 +1132,8 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
         </>
       ) : (
         <div style={{ padding: 6 }}>
+          <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Setting</span>
+          <div style={{ marginBottom: 10 }}><OffsiteSettingButtons value={setting} onChange={setSetting} size="small" /></div>
           <label htmlFor={`${listId}-input`} style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#374151', marginBottom: 4 }}>
             Offsite location <span style={{ fontWeight: 500, color: '#9ca3af' }}>(optional)</span>
           </label>
@@ -1124,7 +1161,7 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <button type="button" onClick={saveOffsite} style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: 'none', background: '#6D28D9', color: 'white', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+            <button type="button" onClick={saveOffsite} disabled={!setting} title={setting ? undefined : 'Choose Center, School or Home first'} style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: 'none', background: '#6D28D9', color: 'white', fontSize: 12.5, fontWeight: 600, cursor: setting ? 'pointer' : 'not-allowed', opacity: setting ? 1 : 0.5 }}>
               Save
             </button>
             <button type="button" onClick={() => setOffsiteMode(false)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e4e9', background: 'white', color: '#374151', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
@@ -2418,7 +2455,8 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const initialArea = existing ? (existing.treatment_area || '') : (prefill?.treatmentArea || '');
   const [roomChoice, setRoomChoice] = useState(isOffsite(initialArea) ? OFFSITE : initialArea);
   const [offsiteLocationText, setOffsiteLocationText] = useState(offsiteLocation(initialArea));
-  const treatmentArea = roomChoice === OFFSITE ? makeOffsiteArea(offsiteLocationText) : roomChoice;
+  const [offsiteSettingChoice, setOffsiteSettingChoice] = useState(offsiteSetting(initialArea));
+  const treatmentArea = roomChoice === OFFSITE ? makeOffsiteArea(offsiteLocationText, offsiteSettingChoice) : roomChoice;
   const [status, setStatus] = useState(existing ? (existing.appointment_status || STATUS_OPTIONS[0]) : STATUS_OPTIONS[0]);
   // prefill.makeupFor: booking a make-up for this canceled / no-show
   // appointment -- one time only (no repeat), linked to it on save.
@@ -2557,6 +2595,11 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const handleSave = async () => {
     if (!patientConfirmed || !appointmentDate || !appointmentTime || !provider) {
       setError('Patient (selected from the list), date, time, and provider are required.');
+      return;
+    }
+    // Billing needs to know where an offsite session is (C / S / H).
+    if (roomChoice === OFFSITE && status !== 'Canceled' && !offsiteSettingChoice) {
+      setError('Choose whether this offsite session is at a center, school or home.');
       return;
     }
     setSaving(true);
@@ -3079,6 +3122,12 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
               {TREATMENT_AREA_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               <option value={OFFSITE}>Offsite</option>
             </select>
+            {roomChoice === OFFSITE && (
+              <div style={{ marginTop: -6, marginBottom: 12 }}>
+                <span style={{ ...labelStyle(), display: 'block' }}>Setting *</span>
+                <OffsiteSettingButtons value={offsiteSettingChoice} onChange={setOffsiteSettingChoice} />
+              </div>
+            )}
             {roomChoice === OFFSITE && (
               <OffsiteLocationField
                 patientName={patientConfirmed ? patientSearch : ''}

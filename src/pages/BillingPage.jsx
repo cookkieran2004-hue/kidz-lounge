@@ -225,7 +225,7 @@ export default function BillingPage() {
                     <th style={{ ...head, ...stickyName, background: '#FAFAFA', zIndex: 3, textAlign: 'left', padding: '6px 10px' }}>Name</th>
                     <th style={{ ...head, textAlign: 'left' }}>Mandate</th>
                     <th style={{ ...head, textAlign: 'left' }}>Program</th>
-                    <th style={head} title="C = center (an in-office room)">Setting</th>
+                    <th style={head} title="C center (a room, or offsite at a center), S school, H home">Setting</th>
                     {days.map(d => (
                       <th key={d} style={{ ...head, minWidth: 24, textAlign: 'center', padding: '6px 2px', background: dayBg(d) || head.background }}
                         title={sheet.closures[dateOf(d)] ? `Office closed${sheet.closures[dateOf(d)].reason ? `: ${sheet.closures[dateOf(d)].reason}` : ''}` : undefined}>
@@ -275,7 +275,7 @@ export default function BillingPage() {
                 <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: k, time: '00:00', status: '' }} /> {s.title}</span>
               ))}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: null, time: '00:00', status: '' }} /> Booked, day not over</span>
-              <span>C = center</span>
+              <span>Setting: C center, S school, H home</span>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '12px 16px', borderTop: `1px solid ${HAIRLINE}`, background: '#FAFAFA', fontSize: 13, ...NUMERIC }}>

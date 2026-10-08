@@ -134,3 +134,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 ## Make-ups (Oct 2026)
 
 - Make Up and MUS are no longer statuses. A Canceled or No Show appointment's window has **Schedule make up** (`AppointmentModal` opens a second `AppointmentModal` with `prefill.makeupFor`: same patient and provider by default, one time only, no repeat), saved with `makeup_for`. Cards and chart rows show a green * on an appointment with a live make-up (`apt.makeup`) and a green MU on a make-up (`apt.is_makeup`). Billing counts a completed make-up as a session but not as scheduled, and leaves out a missed one (API CLAUDE.md).
+
+## Offsite setting (Oct 2026)
+
+- Picking Offsite (appointment window or the card's quick room menu) requires Center, School or Home (`OffsiteSettingButtons`). It's stored in `treatment_area` as "Offsite (School): location" / "Offsite (Home)" (`makeOffsiteArea(location, setting)`, parsed by `isOffsite` / `offsiteLocation` / `offsiteSetting`); older "Offsite" / "Offsite: location" values still read as offsite with no setting. Billing's Setting column shows C / S / H from it (in-office rooms are C).
