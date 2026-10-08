@@ -10,6 +10,7 @@ import { PatientAlertsInline } from '../patientAlerts';
 import { useStaffNames } from '../staffDirectory';
 import { roomDisplayText, AppointmentModal, STATUS_OPTIONS, dateToInputValue } from './SchedulePage';
 import Linkify from '../Linkify';
+import { canAdminister } from '../roles';
 
 const PATIENT_CHART_PHONE_BREAKPOINT = 768;
 
@@ -65,15 +66,35 @@ function InfoRow({ label, value }) {
 // Programs and mandates over time (kidz-lounge-api lib/patientPrograms.js):
 // current first, then past, with the dates each applied. Billing uses
 // whatever was in effect on each appointment's date.
-function ProgramHistory({ patient }) {
+function ProgramHistory({ patient, onChanged }) {
+  const { user } = useAuth();
+  const canDelete = canAdminister(user);
   const [rows, setRows] = useState(null);
+  const [confirming, setConfirming] = useState(null); // entry id
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [version, setVersion] = useState(0);
   useEffect(() => {
     let alive = true;
     api.getPatientPrograms(patient.id)
       .then(res => { if (alive) setRows(res?.available ? res.rows : []); })
       .catch(() => { if (alive) setRows([]); });
     return () => { alive = false; };
-  }, [patient]);
+  }, [patient, version]);
+  // Admin / Developer: delete an entry entered by mistake. Deleting a
+  // current one brings back the entry it replaced (kidz-lounge-api deleteEntry).
+  const remove = async (id) => {
+    setBusy(true); setError(null);
+    try {
+      await api.deletePatientProgram(patient.id, id);
+      setConfirming(null);
+      setVersion(v => v + 1);
+      onChanged?.();
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusy(false);
+  };
   if (!rows || !rows.length) return null;
   const fmt = (d) => new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const span = (r) => (r.end_date ? `${r.start_date ? fmt(r.start_date) : 'From the start'} – ${fmt(r.end_date)}` : r.start_date ? `From ${fmt(r.start_date)}` : 'From the start');
@@ -87,8 +108,18 @@ function ProgramHistory({ patient }) {
             <span style={{ fontWeight: 600, minWidth: 90 }}>{r.program}</span>
             <span style={{ flex: 1 }}>{mandate(r)}</span>
             <span style={{ fontSize: 12.5 }}>{span(r)}{!r.end_date && <span style={{ marginLeft: 6, fontWeight: 600, color: '#067647' }}>Current</span>}</span>
+            {canDelete && (confirming === r.id ? (
+              <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 12.5 }}>
+                <span style={{ color: '#241A33' }}>{r.end_date ? 'Delete this entry?' : 'Delete this and bring back what it replaced?'}</span>
+                <button type="button" disabled={busy} onClick={() => remove(r.id)} style={{ border: 'none', background: '#B42318', color: 'white', borderRadius: 4, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{busy ? 'Deleting...' : 'Delete'}</button>
+                <button type="button" disabled={busy} onClick={() => setConfirming(null)} style={{ border: '1px solid #E4E4E7', background: 'white', borderRadius: 4, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Keep</button>
+              </span>
+            ) : (
+              <button type="button" onClick={() => { setConfirming(r.id); setError(null); }} style={{ border: 'none', background: 'none', color: '#B42318', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>Delete</button>
+            ))}
           </div>
         ))}
+        {error && <p role="alert" style={{ fontSize: 12.5, color: '#B42318', margin: '8px 0 0' }}>{error}</p>}
       </div>
     </>
   );
@@ -315,7 +346,7 @@ function Sidebar({ activeTab, setActiveTab, onBack, onEdit }) {
   );
 }
 
-function OverviewTab({ patient, isMobile }) {
+function OverviewTab({ patient, isMobile, onPatientChanged }) {
   return (
     <div>
       <p style={sectionHeaderStyle()}>Demographics</p>
@@ -329,7 +360,7 @@ function OverviewTab({ patient, isMobile }) {
         {!patient.Date_of_Birth && !patient.ID_Number && !patient.Services && <EmptyNote>None on file</EmptyNote>}
       </div>
 
-      <ProgramHistory patient={patient} />
+      <ProgramHistory patient={patient} onChanged={onPatientChanged} />
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
         <div>
@@ -1022,7 +1053,7 @@ export default function PatientChartPage() {
           padding: activeTab === 'documents' ? (isMobile ? '12px 12px' : '20px 24px') : (isMobile ? '16px 16px 40px' : '28px 32px 60px'),
           maxWidth: activeTab === 'documents' || isMobile ? 'none' : 820,
         }}>
-          {activeTab === 'overview' && <OverviewTab patient={patient} isMobile={isMobile} />}
+          {activeTab === 'overview' && <OverviewTab patient={patient} isMobile={isMobile} onPatientChanged={() => api.getPatient(name).then(p => p && setPatient(p)).catch(() => {})} />}
           {activeTab === 'appointments' && <AppointmentsTab patient={patient} appointments={appointments} onChanged={reloadAppointments} />}
           {activeTab === 'documents' && <DocumentsTab patient={patient} isMobile={isMobile} />}
           {activeTab === 'care-team' && <CareTeamTab patient={patient} appointments={appointments} />}

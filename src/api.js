@@ -117,6 +117,8 @@ export const api = {
   updatePatient: (id, record) => request(`/patients/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
   // Program history with a mandate per service ('new' = a patient not saved yet).
   getPatientPrograms: (id) => request(`/patients/${id || 'new'}/programs`),
+  // Fix a mistake: delete one history entry (Admin / Developer). A current one brings back what it replaced.
+  deletePatientProgram: (patientId, entryId) => request(`/patients/${patientId}/programs/${entryId}`, { method: 'DELETE' }),
   deletePatient: (id, force = false) => request(`/patients/${id}${force ? '?force=true' : ''}`, { method: 'DELETE' }),
 
   // ---- Waitlist ----
