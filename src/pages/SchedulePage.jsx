@@ -480,9 +480,12 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
   // A 15-minute card is half a row: one line, name then status, so the name
   // isn't clipped by the room and status lines stacked under it.
   const compact = heightPx < 50;
-  // The narrow right-quarter strip beside a rebooked slot: just the name
-  // (wrapping), in the canceled colour -- no room, status or time.
+  // The narrow right-quarter strip beside a rebooked slot: just
+  // "Canceled", written vertically and sized to the session's length
+  // (8 letters at about 0.62em each, with a little padding). Clicking it
+  // opens the canceled appointment as usual.
   if (lane === 'right') {
+    const fontSize = Math.max(7, Math.min(15, (heightPx - 6) / 5.4));
     return (
       <div
         onClick={onClick}
@@ -490,17 +493,16 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
           position: 'absolute', top: offsetWithinSlot + CARD_MARGIN, left: `calc(75% + ${CARD_MARGIN}px)`, right: CARD_MARGIN, height: heightPx,
           boxSizing: 'border-box', zIndex: 5, borderRadius: 6, cursor: 'pointer', overflow: 'hidden',
           background: `color-mix(in srgb, ${color} 30%, white)`, borderLeft: `3px solid ${color}`,
-          padding: compact ? '1px 4px' : '4px 5px',
           boxShadow: hasConflict ? '0 0 0 2px #dc2626' : '0 0 0 1px white, 0 1px 3px rgba(0,0,0,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
-        <div style={{
-          fontSize: 10.5, fontWeight: 600, color: '#1f2937', lineHeight: 1.2, overflowWrap: 'anywhere',
-          display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: compact ? 1 : Math.max(1, Math.floor((heightPx - 8) / 13)), overflow: 'hidden',
+        <span style={{
+          writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap',
+          fontSize, fontWeight: 700, letterSpacing: '0.04em', color: `color-mix(in srgb, ${color} 75%, black)`, lineHeight: 1,
         }}>
-          {apt.patient_name || '(no patient)'}
-        </div>
-        {apt.makeup && <span style={{ display: 'inline-block', marginTop: 2, color: '#15803D', fontWeight: 700, fontSize: 9, border: '1px solid #15803D', borderRadius: 3, padding: '0 2px' }}>MUS</span>}
+          Canceled
+        </span>
       </div>
     );
   }
