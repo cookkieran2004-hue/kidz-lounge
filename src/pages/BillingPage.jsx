@@ -6,6 +6,7 @@ import { canManage, canAdminister } from '../roles';
 import { PageHeader } from '../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
+import { statusColor } from './SchedulePage';
 
 // Billing: one provider's month, laid out like the paper billing invoice
 // (kidz-lounge-api routes/billing.js). Same access as the Weekly view:
@@ -23,12 +24,14 @@ const GROUPS = [
 ];
 const MARK_STYLE = {
   X: { bg: '#52525B', fg: 'white', title: 'Session provided' },
-  A: { bg: '#DC2626', fg: 'white', title: 'Child absent' },
+  // Same as the schedule: A = the Canceled status color, M = the make-up
+  // green (MU), E = the eval blue (Eval tag) -- SchedulePage.jsx.
+  A: { bg: statusColor('Canceled'), fg: 'white', title: 'Child absent' },
   PA: { bg: '#D97706', fg: 'white', title: 'Provider absent' },
   H: { bg: '#7C3AED', fg: 'white', title: 'Holiday' },
   Z: { bg: '#0F766E', fg: 'white', title: 'Emergency closure' },
-  M: { bg: '#2563EB', fg: 'white', title: 'Make-up' },
-  E: { bg: '#BE185D', fg: 'white', title: 'Eval' },
+  M: { bg: '#15803D', fg: 'white', title: 'Make-up' },
+  E: { bg: '#1D4ED8', fg: 'white', title: 'Eval' },
 };
 // US Letter landscape (11in) less 0.3in margins each side, in CSS px.
 const PRINTABLE_WIDTH_PX = 10.4 * 96;

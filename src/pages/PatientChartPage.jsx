@@ -506,7 +506,7 @@ function AppointmentsTab({ patient, appointments, onChanged }) {
         )}
         <button type="button" onClick={() => setBookingEval(true)}
           style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${EVAL_BLUE}`, background: 'white', color: EVAL_BLUE }}>
-          Book eval
+          Book Eval
         </button>
       </div>
 
