@@ -159,7 +159,7 @@ export default function BillingPage() {
   const cell = { borderBottom: `1px solid ${HAIRLINE}`, borderRight: `1px solid ${HAIRLINE}`, padding: '0 4px', height: 34, fontSize: 12.5, color: INK, boxSizing: 'border-box', whiteSpace: 'nowrap' };
   const head = { ...cell, height: 'auto', padding: '6px 4px', fontSize: 11.5, fontWeight: 600, color: MUTED, background: '#FAFAFA', overflow: 'hidden', textOverflow: 'ellipsis' };
   // Fixed column widths, shared by the header strip and the rows.
-  const widths = [NAME_W, 72, 116, 62, ...days.map(() => 26), 58, 70];
+  const widths = [NAME_W, 72, 60, 62, ...days.map(() => 26), 58, 70];
   const tableWidth = widths.reduce((t, w) => t + w, 0);
   const colgroup = <colgroup>{widths.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>;
   const tableStyle = { borderCollapse: 'separate', borderSpacing: 0, width: '100%', minWidth: tableWidth, tableLayout: 'fixed', ...NUMERIC };
@@ -333,10 +333,10 @@ function GroupRows({ group, days, cell, stickyName, dayBg }) {
         <tr key={`${r.patient_name}|${r.program || ''}|${r.mandate || ''}`}>
           <td style={{ ...cell, ...stickyName, padding: '0 10px', fontWeight: 500 }} title={r.patient_name}>{r.patient_name}</td>
           <td style={cell}>{r.mandate || ''}</td>
-          <td style={cell}>
-            {r.program || ''}
-            {/* Insurance / P / PP with no billing code yet: set it on the patient's program. */}
-            {r.needs_code && <span style={{ color: '#DC2626', fontWeight: 700, marginLeft: 4 }}>#</span>}
+          {/* Program: EI, CPSE, CSE, NONE or a billing code (C-1 ... C-#). An
+              insurance / P / PP program with no code yet shows just a red #. */}
+          <td style={{ ...cell, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {r.needs_code ? <span style={{ color: '#DC2626', fontWeight: 700 }}>#</span> : (r.program || '')}
           </td>
           <td style={{ ...cell, textAlign: 'center', fontWeight: 600 }}>{r.setting}</td>
           {days.map(d => (
