@@ -9,8 +9,8 @@ import { useIsMobile } from '../useIsMobile';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoices } from '../roles';
 import SpecialtyPicker from '../SpecialtyPicker';
 import TimeOffBalanceEditor from '../TimeOffBalanceEditor';
-import ProgramPlanEditor, { ProgramPlanDialog } from '../ProgramPlanEditor';
-import { planFromRows, planKey, programHistoryAvailable } from '../programPlan';
+import ProgramPlanEditor, { ProgramPlanDialog, ChangeStartChoice } from '../ProgramPlanEditor';
+import { planFromRows, planKey, programHistoryAvailable, isFirstChange } from '../programPlan';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -800,7 +800,11 @@ export function PatientModal({ existing, onClose, onSaved }) {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
+  // First change while only the old mandate exists: may replace it for all dates.
+  const [firstChange, setFirstChange] = useState(false);
+  const [replaceAll, setReplaceAll] = useState(true);
   const planChanged = programsAvailable && planKey(plan) !== originalPlanKey;
+  const allDates = firstChange && replaceAll;
 
   useEffect(() => {
     api.getStaffDirectory().then(setStaffDirectory).catch(() => {});
@@ -817,6 +821,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
         if (!p.length && existing) p = splitMultiValue(existing.Program).map(program => ({ program, mandates: [], legacy: existing.Mandate || null }));
         setPlan(p);
         setOriginalPlanKey(planKey(p));
+        setFirstChange(isFirstChange(res.rows));
         setProgramsAvailable(true);
       })
       .catch(() => { if (alive) setProgramsAvailable(false); });
@@ -838,7 +843,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
     return {
       ...payload,
       Program: plan.map(p => p.program).join(', '),
-      program_plan: { effective_from: existing ? effectiveFrom : null, programs: plan.map(({ program, mandates }) => ({ program, mandates })) },
+      program_plan: { effective_from: existing && !allDates ? effectiveFrom : null, programs: plan.map(({ program, mandates }) => ({ program, mandates })) },
     };
   };
 
@@ -864,7 +869,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
 
   const handleSave = async () => {
     if (!form.Name.trim()) { setError('Name is required.'); return; }
-    if (existing && planChanged && !effectiveFrom) { setError('Choose the date the program changes start.'); return; }
+    if (existing && planChanged && !allDates && !effectiveFrom) { setError('Choose the date the program changes start.'); return; }
     // Only editing an EXISTING patient requires password confirmation --
     // creating a brand-new one does not.
     if (existing) {
@@ -965,11 +970,8 @@ export function PatientModal({ existing, onClose, onSaved }) {
               <>
                 <ProgramPlanEditor options={PROGRAM_OPTIONS} plan={plan} onChange={changePlan} childServices={form.Services} legacyMandate={form.Mandate} />
                 {existing && planChanged && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 10, padding: '10px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8 }}>
-                    <span style={{ fontSize: 13, color: EMR_INK, fontWeight: 600 }}>Program changes start on</span>
-                    <DateField style={{ ...emrInputStyle(), width: 190 }} ariaLabel="Program changes start on" value={effectiveFrom} onChange={v => setEffectiveFrom(v)} />
-                    <span style={{ fontSize: 12, color: EMR_MUTED }}>Appointments before this date keep the old program and mandate.</span>
-                  </div>
+                  <ChangeStartChoice firstChange={firstChange} replaceAll={replaceAll} onReplaceAll={setReplaceAll}
+                    effectiveFrom={effectiveFrom} onEffectiveFrom={setEffectiveFrom} inputStyle={emrInputStyle()} label="Program changes start on" />
                 )}
               </>
             ) : programsAvailable === false ? (

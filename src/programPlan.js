@@ -31,3 +31,10 @@ export function programHistoryAvailable(api) {
   if (!availablePromise) availablePromise = api.getPatientPrograms(null).then(r => !!r?.available).catch(() => { availablePromise = null; return false; });
   return availablePromise;
 }
+
+// True while a patient only has what the migration brought over (programs
+// with the old free-text mandate, never changed). The first change can then
+// replace them for all dates (kidz-lounge-api onlyOldMandates).
+export function isFirstChange(rows) {
+  return (rows || []).every(r => !r.service && !r.end_date && r.created_by === 'migration');
+}

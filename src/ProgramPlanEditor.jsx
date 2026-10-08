@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from './api';
 import { DateField, dateToInputValue } from './pages/SchedulePage';
-import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey } from './programPlan';
+import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, isFirstChange } from './programPlan';
 
 // Program chips for the patient form. Clicking a program opens its mandate:
 // which services it covers, each as sessions per week x minutes. A service
@@ -77,6 +77,43 @@ export default function ProgramPlanEditor({ options, plan, onChange, childServic
           onCancel={() => setEditing(null)}
         />
       )}
+    </div>
+  );
+}
+
+// When a program/mandate change applies. Normally from a date (earlier
+// appointments keep the old program for billing). For a patient's first
+// change, while they only have the old free-text mandate, it can instead
+// replace the old mandate for all dates (`replaceAll`).
+export function ChangeStartChoice({ firstChange, replaceAll, onReplaceAll, effectiveFrom, onEffectiveFrom, inputStyle, label = 'Changes start on' }) {
+  const box = { display: 'grid', gap: 8, marginTop: 10, padding: '10px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8, fontSize: 13, color: INK };
+  const dateRow = (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <span style={{ fontWeight: 600 }}>{label}</span>
+      <DateField style={{ ...inputStyle, width: 190 }} ariaLabel={label} value={effectiveFrom} onChange={onEffectiveFrom} />
+    </span>
+  );
+  if (!firstChange) {
+    return (
+      <div style={box}>
+        {dateRow}
+        <span style={{ fontSize: 12, color: MUTED }}>Appointments before this date keep the old program and mandate.</span>
+      </div>
+    );
+  }
+  return (
+    <div style={box} role="radiogroup" aria-label="When this applies">
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+        <input type="radio" name="kl-change-start" checked={replaceAll} onChange={() => onReplaceAll(true)} style={{ marginTop: 3 }} />
+        <span><strong>Replace the old mandate for all dates</strong><br /><span style={{ fontSize: 12, color: MUTED }}>Past and future appointments use what you entered. Only possible for this first change.</span></span>
+      </label>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+        <input type="radio" name="kl-change-start" checked={!replaceAll} onChange={() => onReplaceAll(false)} style={{ marginTop: 3 }} />
+        <span style={{ display: 'grid', gap: 6 }}>
+          <strong>Start on a date</strong>
+          {!replaceAll && dateRow}
+        </span>
+      </label>
     </div>
   );
 }
@@ -157,6 +194,8 @@ export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
   const [plan, setPlan] = useState(null);
   const [originalKey, setOriginalKey] = useState('[]');
   const [effectiveFrom, setEffectiveFrom] = useState(() => dateToInputValue(new Date()));
+  const [firstChange, setFirstChange] = useState(false);
+  const [replaceAll, setReplaceAll] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -169,6 +208,7 @@ export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
         if (!p.length) p = String(patient.Program || '').split(',').map(s => s.trim()).filter(Boolean).map(program => ({ program, mandates: [], legacy: patient.Mandate || null }));
         setPlan(p);
         setOriginalKey(planKey(p));
+        setFirstChange(isFirstChange(res?.rows));
       })
       .catch(err => { if (alive) { setPlan([]); setError(err.message); } });
     return () => { alive = false; };
@@ -176,10 +216,11 @@ export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
 
   const changed = plan && planKey(plan) !== originalKey;
   const save = async () => {
-    if (!effectiveFrom) { setError('Choose the date the changes start.'); return; }
+    const allDates = firstChange && replaceAll;
+    if (!allDates && !effectiveFrom) { setError('Choose the date the changes start.'); return; }
     setSaving(true); setError(null);
     try {
-      await onSave({ effective_from: effectiveFrom, programs: plan.map(({ program, mandates }) => ({ program, mandates })) });
+      await onSave({ effective_from: allDates ? null : effectiveFrom, programs: plan.map(({ program, mandates }) => ({ program, mandates })) });
       onClose();
     } catch (err) {
       setSaving(false);
@@ -200,12 +241,9 @@ export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
             childServices={String(patient.Services || '').split(',').map(s => s.trim()).filter(Boolean)} legacyMandate={patient.Mandate} />
         )}
         {changed && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 14, padding: '10px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8 }}>
-            <span style={{ fontSize: 13, color: INK, fontWeight: 600 }}>Changes start on</span>
-            <DateField style={{ padding: '7px 9px', borderRadius: 7, border: `1.5px solid ${BORDER}`, fontSize: 13.5, width: 190, boxSizing: 'border-box', background: 'white' }}
-              ariaLabel="Changes start on" value={effectiveFrom} onChange={v => setEffectiveFrom(v)} />
-            <span style={{ fontSize: 12, color: MUTED }}>Appointments before this date keep the old program and mandate.</span>
-          </div>
+          <ChangeStartChoice firstChange={firstChange} replaceAll={replaceAll} onReplaceAll={setReplaceAll}
+            effectiveFrom={effectiveFrom} onEffectiveFrom={setEffectiveFrom}
+            inputStyle={{ padding: '7px 9px', borderRadius: 7, border: `1.5px solid ${BORDER}`, fontSize: 13.5, boxSizing: 'border-box', background: 'white' }} />
         )}
         {error && <p role="alert" style={{ color: '#B42318', fontSize: 12.5, margin: '10px 0 0' }}>{error}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
