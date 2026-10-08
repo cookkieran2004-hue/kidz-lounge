@@ -13,6 +13,7 @@ import { canAdminister } from '../roles';
 import TimeOffBalancesBoard from '../TimeOffBalancesBoard';
 import Linkify from '../Linkify';
 import { allowedBalanceTypes } from '../employment';
+import LinkTextarea from '../LinkTextarea';
 
 // Building blocks for the pages under the username menu (My profile,
 // My time, ADMIN). This file used to be the single "/me" page; the pages
@@ -403,7 +404,7 @@ function RequestForm({ onSubmitted, onCancel, isMobile, editingRequest, adminFor
         <label htmlFor="kl-timeoff-notes" style={labelStyle}>
           {requestType === 'Other' ? <>Please specify <span style={{ color: '#b91c1c' }}>*</span></> : 'Notes (optional)'}
         </label>
-        <textarea
+        <LinkTextarea
           id="kl-timeoff-notes"
           style={{ ...inputStyle, minHeight: 50, resize: 'vertical', ...(requestType === 'Other' && !notes.trim() ? { borderColor: '#FCA5A5' } : {}) }}
           value={notes}

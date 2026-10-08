@@ -5,6 +5,7 @@ import { useStaffNames } from './staffDirectory';
 import { DateField } from './pages/SchedulePage';
 import { canManage } from './roles';
 import Linkify from './Linkify';
+import LinkTextarea from './LinkTextarea';
 
 const BRAND_PURPLE = '#6D28D9';
 const BORDER = '#E2E4E9';
@@ -76,7 +77,7 @@ function CommentRow({ comment, isAdmin, currentUsername, onEdit, onDelete, isMob
       </div>
       {editing ? (
         <div style={{ marginTop: 4 }}>
-          <textarea
+          <LinkTextarea
             value={text}
             onChange={e => setText(e.target.value)}
             style={{ width: '100%', minHeight: isMobile ? 56 : 44, padding: isMobile ? '8px 10px' : '6px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 14.5 : 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }}
@@ -195,7 +196,7 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
         {editingTask ? (
           <div style={{ marginTop: 8 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Description</label>
-            <textarea
+            <LinkTextarea
               value={editDescription}
               onChange={e => setEditDescription(e.target.value)}
               style={{ width: '100%', minHeight: isMobile ? 60 : 50, padding: isMobile ? '9px 10px' : '7px 9px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 15 : 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }}
@@ -275,7 +276,7 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 8, alignItems: isMobile ? 'stretch' : 'flex-start' }}>
-          <textarea
+          <LinkTextarea
             value={newComment}
             onChange={e => setNewComment(e.target.value)}
             placeholder="Add a comment..."

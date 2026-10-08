@@ -9,6 +9,7 @@ import { DISCIPLINES, DISCIPLINE_NAMES, disciplinesOf } from '../disciplines';
 import { DateField, TimeField, AppointmentModal, dateToInputValue, formatSlotLabel } from './SchedulePage';
 import { PatientModal } from './ManageDataPage';
 import Linkify from '../Linkify';
+import LinkTextarea from '../LinkTextarea';
 
 // Waitlist: patients waiting to start a service, one entry per patient per
 // specialty (kidz-lounge-api/routes/waitlist.js), longest wait first.
@@ -257,7 +258,7 @@ function EntryModal({ existing, patients, providers, onPatientCreated, onClose, 
 
             <div>
               <label htmlFor="kl-wl-notes" style={labelStyle}>Notes</label>
-              <textarea id="kl-wl-notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Referral source, calls made, anything the scheduler should know" style={{ ...inputStyle, resize: 'vertical' }} />
+              <LinkTextarea id="kl-wl-notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Referral source, calls made, anything the scheduler should know" style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
 
             {error && <p style={{ fontSize: 13, color: TONES.danger.fg, background: TONES.danger.bg, borderRadius: 6, padding: '8px 10px', margin: 0 }}>{error}</p>}

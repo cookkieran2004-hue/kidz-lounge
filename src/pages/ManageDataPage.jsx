@@ -11,6 +11,9 @@ import SpecialtyPicker from '../SpecialtyPicker';
 import TimeOffBalanceEditor from '../TimeOffBalanceEditor';
 import ProgramPlanEditor, { ProgramPlanDialog, ChangeStartChoice } from '../ProgramPlanEditor';
 import { planFromRows, planKey, programHistoryAvailable, isFirstChange, planPayload } from '../programPlan';
+import LinkTextarea from '../LinkTextarea';
+import { PatientLinksEditor } from '../PatientLinksView';
+import { parseLinks, linkLabel } from '../patientLinks';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
@@ -105,7 +108,7 @@ export const PATIENT_FILTER_COLUMNS = [
   { key: 'Allergies', label: 'Allergies' },
   { key: 'Immunizations', label: 'Immunizations' },
   { key: 'Scheduling_Notes', label: 'Notes' },
-  { key: 'Google_Link', label: 'Google Link' },
+  { key: 'Google_Link', label: 'Links' },
 ];
 
 function patientFieldToString(patient, key) {
@@ -1036,7 +1039,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
           </div>
 
           <label style={emrLabelStyle()}>Notes</label>
-          <textarea
+          <LinkTextarea
             style={{ ...emrInputStyle(), minHeight: 64, resize: 'vertical', marginBottom: 14 }}
             value={form.Scheduling_Notes}
             onChange={e => setField('Scheduling_Notes', e.target.value)}
@@ -1122,8 +1125,8 @@ export function PatientModal({ existing, onClose, onSaved }) {
               </select>
             </div>
             <div>
-              <label style={emrLabelStyle()}>Google Link</label>
-              <input style={emrInputStyle()} value={form.Google_Link} onChange={e => setField('Google_Link', e.target.value)} placeholder="https://..." />
+              <label style={emrLabelStyle()}>Links</label>
+              <PatientLinksEditor value={form.Google_Link} onChange={v => setField('Google_Link', v)} inputStyle={emrInputStyle()} />
             </div>
           </div>
 
@@ -1621,6 +1624,8 @@ function formatCellValue(patient, key) {
   const val = patient[key];
   if (val === null || val === undefined || val === '') return '';
   if (key === 'Picture_Consent') return val === true ? 'Yes' : val === false ? 'No' : '';
+  // Links are stored as JSON (src/patientLinks.js); show their text.
+  if (key === 'Google_Link') return parseLinks(val).map(linkLabel).join(', ');
   if (Array.isArray(val)) return val.join(', ');
   return String(val);
 }
@@ -1641,6 +1646,33 @@ function cellValueToPayloadValue(key, rawValue) {
     return rawValue === 'Yes' ? true : rawValue === 'No' ? false : null;
   }
   return rawValue;
+}
+
+function LinksCell({ patient, cellStyle, onCommit }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  return (
+    <>
+      <button type="button" onClick={() => { setDraft(patient.Google_Link || ''); setOpen(true); }} title="Edit links"
+        style={{ ...cellStyle, textAlign: 'left', cursor: 'pointer', minWidth: 140, color: patient.Google_Link ? '#1D4ED8' : '#9ca3af' }}>
+        {patient.Google_Link ? parseLinks(patient.Google_Link).map(linkLabel).join(', ') : '--'}
+      </button>
+      {open && createPortal(
+        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 10005, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+          <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, width: '100%', maxWidth: 560, padding: 20, boxShadow: '0 20px 50px rgba(15,23,42,0.25)' }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16, color: '#0F172A' }}>{patient.Name}: links</h3>
+            <PatientLinksEditor value={draft} onChange={setDraft} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <button type="button" onClick={() => setOpen(false)} style={{ padding: '7px 14px', borderRadius: 7, border: '1.5px solid #E2E8F0', background: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { setOpen(false); if (draft !== (patient.Google_Link || '')) onCommit(draft); }}
+                style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: '#6D28D9', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Save</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
 }
 
 function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory, isMobile }) {
@@ -1681,6 +1713,20 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
     padding: isMobile ? '8px 8px' : '4px 6px', fontSize: isMobile ? 16 : 11.5, borderRadius: 4, fontFamily: 'inherit', boxSizing: 'border-box',
     background: status === 'saving' ? '#FEF9C3' : status === 'error' ? '#FEF2F2' : status === 'saved' ? '#F0FDF4' : 'transparent',
   };
+
+  // Links: a window to add, rename or remove them (src/PatientLinksView.jsx).
+  if (columnKey === 'Google_Link') {
+    return <LinksCell patient={patient} cellStyle={cellStyle} onCommit={async (v) => {
+      setStatus('saving');
+      try {
+        await onCommit(patient, 'Google_Link', v);
+        setStatus('saved');
+        setTimeout(() => setStatus(s => (s === 'saved' ? 'idle' : s)), 900);
+      } catch (err) {
+        setStatus(err.message === 'PASSWORD_REQUIRED' ? 'idle' : 'error');
+      }
+    }} />;
+  }
 
   if (usesPlan && historyOn) {
     const programs = splitMultiValue(patient.Program);

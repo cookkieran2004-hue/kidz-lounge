@@ -4,13 +4,15 @@ import { api } from '../api';
 import { useTasks } from '../TasksContext';
 import { useChat } from '../ChatContext';
 import { useAuth } from '../AuthContext';
-import { PatientModal } from './ManageDataPage';
+import { PatientModal, PasswordConfirmModal } from './ManageDataPage';
 import { useIsMobile } from '../useIsMobile';
 import { PatientAlertsInline } from '../patientAlerts';
 import { useStaffNames } from '../staffDirectory';
 import { roomDisplayText, AppointmentModal, STATUS_OPTIONS, dateToInputValue } from './SchedulePage';
 import Linkify from '../Linkify';
 import { canAdminister } from '../roles';
+import LinkTextarea from '../LinkTextarea';
+import { PatientLinksEditor, PatientLinksList } from '../PatientLinksView';
 
 // The Eval tag, same on the schedule (SchedulePage.jsx).
 const EVAL_BLUE = '#1D4ED8';
@@ -63,6 +65,66 @@ function InfoRow({ label, value }) {
       <span style={{ color: BRAND.muted }}>{label}</span>
       <span style={{ color: '#241A33', fontWeight: 500, textAlign: 'right' }}>{value}</span>
     </div>
+  );
+}
+
+// The patient's links (src/patientLinks.js), each with its own text. Edit
+// adds, renames or removes them here; saving asks for your password like
+// any patient edit.
+function ChartLinks({ patient, onChanged }) {
+  const { user } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState(null);
+  const save = async (password) => {
+    await api.updatePatient(patient.id, { Google_Link: draft, admin_password: password });
+    setConfirming(false); setEditing(false); setError(null);
+    onChanged?.();
+  };
+  const hasLinks = !!patient.Google_Link;
+  if (!hasLinks && !editing) {
+    return (
+      <button type="button" onClick={() => { setDraft(''); setEditing(true); }}
+        style={{ marginTop: 18, border: 'none', background: 'none', color: BRAND.forest, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+        + Add a link
+      </button>
+    );
+  }
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <p style={sectionHeaderStyle()}>Links</p>
+        {!editing && (
+          <button type="button" onClick={() => { setDraft(patient.Google_Link || ''); setEditing(true); }}
+            style={{ border: 'none', background: 'none', color: BRAND.forest, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+            Edit links
+          </button>
+        )}
+      </div>
+      <div style={cardStyle()}>
+        {editing ? (
+          <>
+            <PatientLinksEditor value={draft} onChange={setDraft} />
+            {error && <p role="alert" style={{ fontSize: 12.5, color: '#B42318', margin: '8px 0 0' }}>{error}</p>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button type="button" onClick={() => { setEditing(false); setError(null); }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #E4E4E7', background: 'white', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => setConfirming(true)} style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: BRAND.forest, color: 'white', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Save links</button>
+            </div>
+          </>
+        ) : (
+          <PatientLinksList value={patient.Google_Link} color={BRAND.forest} />
+        )}
+      </div>
+      {confirming && (
+        <PasswordConfirmModal
+          expectedUsername={user?.username}
+          actionLabel="Confirm your identity to save this patient's links."
+          onConfirm={save}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -414,21 +476,7 @@ function OverviewTab({ patient, isMobile, onPatientChanged }) {
         </>
       )}
 
-      {patient.Google_Link && (
-        <>
-          <p style={sectionHeaderStyle()}>Google Link</p>
-          <div style={cardStyle()}>
-            <a
-              href={patient.Google_Link}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: 13, color: BRAND.forest, fontWeight: 600, wordBreak: 'break-all' }}
-            >
-              {patient.Google_Link}
-            </a>
-          </div>
-        </>
-      )}
+      <ChartLinks patient={patient} onChanged={onPatientChanged} />
     </div>
   );
 }
@@ -633,7 +681,7 @@ function DocumentEditorModal({ patient, existing, onClose, onSaved }) {
           />
 
           <label style={sectionHeaderStyle()}>Document Body</label>
-          <textarea
+          <LinkTextarea
             value={body}
             onChange={e => setBody(e.target.value)}
             placeholder="Enter clinical documentation..."

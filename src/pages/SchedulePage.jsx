@@ -11,6 +11,8 @@ import { canManage } from '../roles';
 import { useStickyHeight, stickyStackHeight, STACK_TOP } from '../stickyLayout';
 import { DISCIPLINES, DISCIPLINE_NAMES, disciplinesOf } from '../disciplines';
 import Linkify from '../Linkify';
+import LinkTextarea from '../LinkTextarea';
+import { PatientLinksList } from '../PatientLinksView';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -719,15 +721,8 @@ function PatientDetailsPanel({ patientName }) {
 
       {patient.Google_Link && (
         <div style={{ marginTop: 16 }}>
-          {sectionHeader('Google Link')}
-          <a
-            href={patient.Google_Link}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: 13, color: BRAND.forest, fontWeight: 600, wordBreak: 'break-all' }}
-          >
-            {patient.Google_Link}
-          </a>
+          {sectionHeader('Links')}
+          <PatientLinksList value={patient.Google_Link} color={BRAND.forest} />
         </div>
       )}
     </div>
@@ -1048,7 +1043,7 @@ function CommentsThread({ table, recordId, comments, currentUser, onUpdated, isV
         )}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        <textarea
+        <LinkTextarea
           value={newComment}
           onChange={e => setNewComment(e.target.value)}
           placeholder="Add a comment..."

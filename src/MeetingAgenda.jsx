@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from './api';
 import Linkify from './Linkify';
+import LinkTextarea from './LinkTextarea';
 
 // Meeting agendas. One component, used in three places:
 //   - the schedule's out-of-office view: one week (`fixedDate`), editable
@@ -163,7 +164,7 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
         {isRecurring ? (
           <>
             <Column title="Recurring agenda" hint="Shows on every week of this meeting">
-              <textarea aria-label="Recurring agenda" style={textareaStyle} value={recurring} onChange={e => setRecurring(e.target.value)} placeholder="Standing items for every week" />
+              <LinkTextarea aria-label="Recurring agenda" style={textareaStyle} value={recurring} onChange={e => setRecurring(e.target.value)} placeholder="Standing items for every week" />
             </Column>
             <Column title="This week only" hint={fixedDate ? formatWeekLabel(data.week_date) : null}>
               {!fixedDate && <select
@@ -174,12 +175,12 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
               >
                 {(data.dates || []).map(d => <option key={d} value={d}>{formatWeekLabel(d)}</option>)}
               </select>}
-              <textarea aria-label="This week only" style={textareaStyle} value={week} onChange={e => setWeek(e.target.value)} placeholder="Just for this date" />
+              <LinkTextarea aria-label="This week only" style={textareaStyle} value={week} onChange={e => setWeek(e.target.value)} placeholder="Just for this date" />
             </Column>
           </>
         ) : (
           <Column title="Agenda">
-            <textarea aria-label="Agenda" style={textareaStyle} value={single} onChange={e => setSingle(e.target.value)} placeholder="What this meeting covers" />
+            <LinkTextarea aria-label="Agenda" style={textareaStyle} value={single} onChange={e => setSingle(e.target.value)} placeholder="What this meeting covers" />
           </Column>
         )}
       </div>
