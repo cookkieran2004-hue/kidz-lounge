@@ -480,29 +480,39 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
   // A 15-minute card is half a row: one line, name then status, so the name
   // isn't clipped by the room and status lines stacked under it.
   const compact = heightPx < 50;
-  // The narrow right-quarter strip beside a rebooked slot: just
-  // "Canceled", written vertically and sized to the session's length
-  // (8 letters at about 0.62em each, with a little padding). Clicking it
-  // opens the canceled appointment as usual.
+  // The narrow right-quarter strip beside a rebooked slot: "Canceled",
+  // written vertically and sized to the session's length (8 letters at
+  // about 0.62em each, with a little padding). With a make-up booked for it,
+  // a green MUS tag sits at the bottom and the edge turns green; a short
+  // (15-minute) strip has room for only one, so it shows MUS alone (which
+  // already means canceled, make-up scheduled). Clicking it opens the
+  // canceled appointment as usual.
   if (lane === 'right') {
-    const fontSize = Math.max(7, Math.min(15, (heightPx - 6) / 5.4));
+    const hasMakeup = !!apt.makeup;
+    const tagRoom = hasMakeup && !compact ? 18 : 0;
+    const fontSize = Math.max(7, Math.min(15, (heightPx - 6 - tagRoom) / 5.4));
+    const vertical = { writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1 };
     return (
       <div
         onClick={onClick}
         style={{
           position: 'absolute', top: offsetWithinSlot + CARD_MARGIN, left: `calc(75% + ${CARD_MARGIN}px)`, right: CARD_MARGIN, height: heightPx,
           boxSizing: 'border-box', zIndex: 5, borderRadius: 6, cursor: 'pointer', overflow: 'hidden',
-          background: `color-mix(in srgb, ${color} 30%, white)`, borderLeft: `3px solid ${color}`,
+          background: `color-mix(in srgb, ${color} 30%, white)`, borderLeft: `3px solid ${hasMakeup ? MAKEUP_GREEN : color}`,
           boxShadow: hasConflict ? '0 0 0 2px #dc2626' : '0 0 0 1px white, 0 1px 3px rgba(0,0,0,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '3px 0',
         }}
       >
-        <span style={{
-          writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap',
-          fontSize, fontWeight: 700, letterSpacing: '0.04em', color: `color-mix(in srgb, ${color} 75%, black)`, lineHeight: 1,
-        }}>
-          Canceled
-        </span>
+        {hasMakeup && compact ? (
+          <span style={{ ...vertical, fontSize: Math.max(8, Math.min(13, (heightPx - 6) / 2.2)), color: MAKEUP_GREEN }}>MUS</span>
+        ) : (
+          <>
+            <span style={{ ...vertical, fontSize, color: `color-mix(in srgb, ${color} 75%, black)` }}>Canceled</span>
+            {hasMakeup && (
+              <span style={{ flexShrink: 0, color: MAKEUP_GREEN, fontWeight: 700, fontSize: 9, lineHeight: 1, border: `1px solid ${MAKEUP_GREEN}`, borderRadius: 3, padding: '1px 2px', background: 'white' }}>MUS</span>
+            )}
+          </>
+        )}
       </div>
     );
   }
