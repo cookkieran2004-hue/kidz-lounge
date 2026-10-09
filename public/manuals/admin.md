@@ -8,6 +8,7 @@ Everything in the Kidz Lounge app, including the Admin area: staff accounts and 
 <!-- include: shared/admin-office-hours.md -->
 <!-- include: shared/schedule.md -->
 <!-- include: shared/weekly.md -->
+<!-- include: shared/billing.md -->
 <!-- include: shared/patients.md -->
 <!-- include: shared/waitlist.md -->
 <!-- include: shared/tasks.md -->

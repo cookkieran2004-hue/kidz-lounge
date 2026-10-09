@@ -17,6 +17,9 @@
 - Coloured blocks are time a provider isn't seeing patients: lunch, meetings, PTO and other time off. Click one to see its details.
 - A blue line marks the current time.
 - A small alert icon on a card means the patient has an allergy or immunization note on their chart.
+- A grey dashed **Set room** on a card means it has no room yet. Click it to pick one.
+- When a canceled appointment's time has been booked again, the canceled one becomes a narrow **Canceled** strip down the right side, so both can be read.
+- Small tags after the patient's name: **MUS** (green) on a canceled session that has a make-up booked, **MU** (green) on a make-up session, and **Eval** (blue) on an evaluation.
 
 ### Booking an appointment
 
@@ -29,7 +32,9 @@
 
 ![Booking an appointment](../img/schedule-new-appointment.png)
 
-> Times run from 8:00 AM to 6:00 PM in 15-minute steps. For a session away from the clinic, choose **Offsite** as the treatment area and type where.
+> Times run from 8:00 AM to 6:00 PM in 15-minute steps.
+
+For a session away from the clinic, choose **Offsite** as the treatment area. Then choose **Center**, **School** or **Home** (billing needs it), and type where, for example the school's name. If a place has been used before, its setting fills in by itself. You can still change it. Offsite is also in the room menu on a card.
 
 If the patient or room is already booked at that time, a yellow **Possible scheduling conflict** box appears. You can still save if it's intentional.
 
@@ -48,7 +53,9 @@ Click any appointment card to open it. You can then:
 
 ![An appointment's details](../img/schedule-appointment-details.png)
 
-For a repeating appointment, you're asked whether a change applies to **this one only** or to **this and all future** appointments.
+For a repeating appointment, you're asked whether a change applies to **this one only** or to **this and all future** appointments. A change to just the room or status only ever applies to that one appointment.
+
+Past appointments can be changed or deleted like any other.
 
 ### Moving an appointment by dragging
 
@@ -74,14 +81,27 @@ Dragging a **Canceled** or **No Show** appointment doesn't move it. It books a m
 | Left Message / Emailed | You've reached out but haven't heard back. |
 | Canceled | The appointment won't happen. It stays on the record but is greyed out. |
 | No Show | The patient didn't come. |
-| Make Up / MUS | A make-up session. |
 | \*HOLD\* | Time held on a provider's schedule. |
 
 **HOLD - see comments** is a placeholder patient used to hold time on a provider's schedule. Put the reason in the comments. A hold can be booked with several providers at once without counting as a conflict.
 
+### Make-up sessions
+
+Make-ups are booked from the session that was missed. Make Up and MUS are no longer statuses.
+
+1. Open the **Canceled** or **No Show** appointment.
+2. Click **Schedule make up**.
+3. A booking window opens with the same patient and provider. Change the provider if someone else will see them, choose the date and time, then click **Create**.
+
+- A make-up is booked once, and it doesn't repeat.
+- The missed session then shows a green **MUS** tag, and its window says when the make-up is. The make-up shows a green **MU** tag.
+- Each missed session can have one make-up. If the make-up is itself canceled, you can book another.
+- You can also drag a canceled card to an empty spot to book its make-up there (see [Moving an appointment by dragging](#moving-an-appointment-by-dragging)).
+- A canceled HOLD can't have a make-up, because it isn't a real session.
+
 ### Meetings and time off on the schedule
 
-Click a coloured block to see who it's for, when, and any notes. Meetings also show who's invited, the agenda, and comments shared with everyone in the meeting.
+Click a coloured block to see who it's for, when, and any notes. Meetings also show who's invited, the agenda, and comments shared with everyone in the meeting. To change the agenda, click **Edit agenda**, make your changes, then **Save agenda**.
 
 ![A meeting's details](../img/schedule-meeting.png)
 

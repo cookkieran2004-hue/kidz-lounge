@@ -7,6 +7,7 @@ Reception can do everything an admin can, except the Admin area (staff accounts,
 <!-- include: shared/getting-started.md -->
 <!-- include: shared/schedule.md -->
 <!-- include: shared/weekly.md -->
+<!-- include: shared/billing.md -->
 <!-- include: shared/waitlist.md -->
 <!-- include: shared/patients.md -->
 <!-- include: shared/tasks.md -->

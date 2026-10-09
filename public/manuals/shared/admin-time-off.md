@@ -31,11 +31,11 @@ To correct a PTO balance, click the number, type the new total, add a reason if 
 
 One person's balances are also on their profile, under **Time off**, then **Balances**.
 
-### Setting a PTO balance as of a date
+### Entering someone's starting PTO
 
 1. Open their profile, go to **Time off**, then the **Balances** tab.
-2. Click **Set as of a date**.
-3. Choose the date and enter their PTO hours on that date.
+2. Click **Enter starting PTO**.
+3. Choose the **As of** date and enter their **Starting PTO hours** on that date.
 4. Click **Save**.
 
 Approved PTO taken from that date on is subtracted automatically, and the result becomes their balance. **Adjust** sets the balance directly instead.

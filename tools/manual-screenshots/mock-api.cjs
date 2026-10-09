@@ -32,7 +32,7 @@ const pt = (i, Name, Program, Status, Services, extra = {}) => ({
   Report_Date: addDays(MON, 30 + i * 5), Picture_Consent: i % 3 !== 0, ...extra,
 });
 const PATIENTS = [
-  pt(1, 'Ava Brown', 'EI', 'On Program', 'ST, OT', { allergies: 'Peanuts' }),
+  pt(1, 'Ava Brown', 'EI', 'On Program', 'ST, OT', { allergies: 'Peanuts', Google_Link: JSON.stringify([{ text: 'Intake folder', url: 'https://example.com/intake' }, { text: 'Home program', url: 'https://example.com/home-program' }]) }),
   pt(2, 'Leo Park', 'CPSE', 'On Program', 'PT'),
   pt(3, 'Mia Chen', 'BCBS/Anthem', 'On Program', 'ST'),
   pt(4, 'Sam Diaz', 'EI', 'On Program', 'SI, ST'),
@@ -64,12 +64,13 @@ function dayAppointments(date) {
     apt(date, 'Jordan Reyes', 'Noah Kim', '08:00', 45, 'Orange A', 'Confirmed'),
     apt(date, 'Jordan Reyes', 'Ella Grant', '09:00', 30, 'Orange A', 'Scheduled'),
     apt(date, 'Jordan Reyes', 'Ava Brown', '10:30', 30, 'Orange B', 'Scheduled'),
-    apt(date, 'Jordan Reyes', 'Ethan Cruz', '13:30', 45, 'Orange A', 'Canceled'),
+    { ...apt(date, 'Jordan Reyes', 'Ethan Cruz', '13:30', 45, null, 'Canceled'), makeup: { id: 1, appointment_date: addDays(date, 1), appointment_time: '15:00:00', provider: 'Jordan Reyes' } },
     apt(date, 'Priya Shah', 'Leo Park', '08:30', 60, 'Gym A', 'Confirmed'),
     apt(date, 'Priya Shah', 'Ella Grant', '10:00', 45, 'Gym A', 'Scheduled'),
-    apt(date, 'Priya Shah', e === 'Zoe Patel' ? 'Leo Park' : 'Ella Grant', '14:00', 30, 'Gym B', 'Make Up'),
+    // A make-up (MU) for Ethan Cruz's canceled 1:30 with Jordan, below.
+    { ...apt(date, 'Priya Shah', e === 'Zoe Patel' ? 'Leo Park' : 'Ella Grant', '14:00', 30, 'Gym B', 'Scheduled'), is_makeup: true },
     apt(date, 'Tom Reed', 'Sam Diaz', '09:00', 60, 'Purple', 'Confirmed'),
-    apt(date, 'Tom Reed', f, '11:00', 45, null, 'Scheduled'),
+    { ...apt(date, 'Tom Reed', f, '11:00', 45, null, 'Scheduled'), is_eval: true },
     apt(date, 'Tom Reed', 'Lily Moore', '14:30', 30, 'Purple', 'No Show'),
   ].map((a, i) => ({ ...a, id: Number(date.replace(/-/g, '').slice(4)) * 100 + i }));
 }
@@ -116,6 +117,7 @@ const LEDGER = [
   { id: 30, balance_after: 39.3, balance_type: 'PTO', entry_date: '2026-09-20', kind: 'accrual', hours: 2.56, period_start: '2026-09-14', worked_hours: 32, note: '32h worked x 0.08', details: { rate: 0.08, days: days.map(d => ({ ...d, date: addDays(d.date, -7), worked: d.date.endsWith('25') ? 0 : 8, noPatients: d.date.endsWith('25') })) } },
   { id: 29, balance_after: 36.74, balance_type: 'PTO', entry_date: '2026-09-15', kind: 'used', hours: -8, note: 'PTO on Sep 15' },
   { id: 28, balance_after: 44.74, balance_type: 'PTO', entry_date: '2026-09-13', kind: 'accrual', hours: 3.2, period_start: '2026-09-07', worked_hours: 40, note: '40h worked x 0.08', details: { rate: 0.08, days } },
+  { id: 27, balance_after: 41.54, balance_type: 'PTO', entry_date: '2026-09-01', kind: 'reset', hours: 41.54, note: 'Starting PTO 41.54 h as of Sep 1, 2026' },
 ];
 
 const TASKS = (me) => [
@@ -134,7 +136,58 @@ const MESSAGES = [
   { id: 3, sender_username: 'cmorgan', text: 'Ava Brown’s mom called — running 10 minutes late.', created_at: '2026-09-28T13:20:00Z' },
 ];
 
+// Billing sheet (BillingPage.jsx): one provider's month, made up.
+function billingSheet(provider, month) {
+  const [y, m] = month.split('-').map(Number);
+  const daysIn = new Date(y, m, 0).getDate();
+  const today = '2026-10-08';
+  const rowsDef = [
+    ['Ava Brown', 'EI', '2x30', 'EI', [1, 3], 'X'],
+    ['Sam Diaz', 'EI', '1x30', 'EI', [2], 'X'],
+    ['Owen Hayes', 'DOE', '2x30', 'CSE', [1, 4], 'X'],
+    ['Mia Chen', 'Other', '1x45', 'C-2', [5], 'X'],
+    ['Zoe Patel', 'Other', '1x30', null, [3], 'X'],
+  ];
+  let id = 1;
+  const rows = rowsDef.map(([name, group, mandate, program, weekdays], ri) => {
+    const daysMap = {};
+    let scheduled = 0; let total = 0;
+    for (let d = 1; d <= daysIn; d++) {
+      const date = `${month}-${String(d).padStart(2, '0')}`;
+      const wd = new Date(date + 'T12:00:00').getDay();
+      if (!weekdays.includes(wd)) continue;
+      let mark = date < today ? 'X' : null;
+      if (mark && ri === 0 && d === 7) mark = 'A';
+      if (mark && ri === 2 && d === 2) mark = 'PA';
+      if (mark && ri === 3 && d === 2) mark = 'E';
+      daysMap[d] = [{ id: id++, mark, time: '10:00', status: mark === 'A' ? 'Canceled' : 'Scheduled' }];
+      scheduled++;
+      if (mark === 'X' || mark === 'E') total++;
+      if (ri === 0 && d === 7) { daysMap[9] = [{ id: id++, mark: null, time: '15:00', status: 'Scheduled' }]; }
+    }
+    if (ri === 0) { daysMap[6] = [{ id: id++, mark: 'M', time: '15:00', status: 'Scheduled' }]; total++; }
+    return { patient_name: name, group, mandate, program, needs_code: program === null, setting: ri === 3 ? 'C, H' : 'C', days: daysMap, scheduled, total_sessions: total };
+  });
+  return {
+    provider, discipline: 'ST', phone: '(555) 201-1001', start: `${month}-01`, end: `${month}-${daysIn}`, days_in_month: daysIn, today,
+    closures: { [`${month}-12`]: { reason: 'Columbus Day', closure_type: 'holiday' } },
+    time_off: { PTO: 8, UPTO: 0, requests: [{ type: 'PTO', start_date: `${month}-23`, end_date: `${month}-23`, hours: 8 }] },
+    rows, reviewed: null,
+  };
+}
+
 const handlers = [
+  [/^\/billing$/, (role, q) => billingSheet(q.get('provider') || 'Amy Lee', q.get('month') || '2026-10')],
+  [/^\/office-closures$/, () => [
+    { id: 1, closure_date: '2026-10-12', reason: 'Columbus Day', closure_type: 'holiday' },
+    { id: 2, closure_date: '2026-11-26', reason: 'Thanksgiving', closure_type: 'holiday' },
+    { id: 3, closure_date: '2026-10-29', reason: 'Power outage', closure_type: 'emergency' },
+  ]],
+  [/^\/patients\/[^/]+\/programs$/, () => ({ available: true, rows: [
+    { id: 3, program: 'EI', service: 'ST', sessions: '2', minutes: 30, start_date: '2026-09-01', end_date: null },
+    { id: 2, program: 'EI', service: 'OT', sessions: '1', minutes: 30, start_date: '2026-09-01', end_date: null },
+    { id: 1, program: 'EI', service: 'ST', sessions: '1', minutes: 30, start_date: null, end_date: '2026-08-31' },
+  ] })],
   [/^\/auth\/me$/, (role) => { const s = STAFF.find(x => x.username === WHO[role]); return { id: s.id, username: s.username, role: s.role, mustResetPassword: false, providerName: s.provider_name, firstName: s.first_name, lastName: s.last_name, position: s.position }; }],
   [/^\/auth\/users$/, () => STAFF.map(s => ({ ...s, archived: false, must_reset_password: false, created_at: '2024-01-01T00:00:00Z', last_login: '2026-09-26T13:00:00Z' }))],
   [/^\/staff\/directory$/, () => STAFF.map(s => ({ username: s.username, display_name: nameOf(s.username), role: s.role, archived: false, can_case_manage: s.role !== 'developer' }))],

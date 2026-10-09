@@ -18,4 +18,4 @@ Click the provider's name at the top left to switch to another provider.
 - Drag an appointment to another day or time to move it, as on the daily schedule. Hold it over **‹** or **›** to carry it to another week.
 - **Create Appointment** and **Request Time Off** work the same way as on the daily schedule.
 - Greyed-out time is outside the provider's contracted hours.
-- On a phone, the weekly view shows one day at a time. The arrows skip weekends.
+- On a phone, the weekly view shows one day at a time. The arrows skip weekends. (The daily **Schedule** page needs a larger screen, so use the weekly view on a phone.)

@@ -69,6 +69,7 @@ const ACTIONS = {
   openTask: async () => { const t = $$m('div').find(d => d.style.cursor === 'pointer' && /Send progress report/.test(d.textContent) && d.textContent.length < 200); t && t.click(); await sleep(900); },
   dataTable: async () => { btn(/Data table/i).click(); await sleep(500); },
   pending: async () => { btn(/^Pending/).click(); await sleep(600); },
+  officeHours: async () => { btn(/^Office hours/).click(); await sleep(900); },
   balances: async () => { btn(/^Balances/).click(); await sleep(900); },
   balanceEdit: async () => { btn(/^Balances/).click(); await sleep(900); const b = $$('button').find(x => /^PTO 31/.test(x.getAttribute('aria-label') || '')); b && b.click(); await sleep(300); },
   newStaff: async () => { btn(/Add staff/i).click(); await sleep(800); },
@@ -77,7 +78,8 @@ const ACTIONS = {
 f.addEventListener('load', async () => {
   const doc = f.contentDocument;
   const st = doc.createElement('style');
-  st.textContent = '[style*="z-index: 9990"],[style*="z-index: 9991"]{display:none!important} *{scrollbar-width:none} ::-webkit-scrollbar{display:none}';
+  // Also hides the What's new pop-up (WhatsNewNotifier.jsx), which would otherwise cover every shot.
+  st.textContent = '[style*="z-index: 9990"],[style*="z-index: 9991"],div:has(> [aria-labelledby="kl-whats-new-title"]){display:none!important} *{scrollbar-width:none} ::-webkit-scrollbar{display:none}';
   doc.head.appendChild(st);
   await sleep(3500);
   if (!/^chat/.test(action || 'none')) { const b = chatBubble(); if (b) b.parentElement.style.display = 'none'; }

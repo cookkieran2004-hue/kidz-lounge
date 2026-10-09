@@ -14,9 +14,9 @@ The **bell** in the top bar opens your task list, and the red number shows how m
 
 Some tasks are created automatically, marked **Assigned by system**:
 
-- **Credential expiring:** one of your credentials expires within 14 days.
-- **Report due:** a progress report is due for a patient you're currently seeing.
-- **RX expiring / IFSP ending:** sent to the patient's case manager.
+- **Credential expiring:** one of your credentials expires within 30 days.
+- **Report due:** a progress report is due within 14 days for a patient you're currently seeing.
+- **RX expiring / IFSP ending:** within 14 days. Sent to the patient's case manager.
 <!-- only: staff -->
   If a patient has no case manager, these go to reception and admins.
 <!-- end -->
@@ -25,7 +25,7 @@ Some tasks are created automatically, marked **Assigned by system**:
 <!-- end -->
 
 <!-- only: admin -->
-- **Staff credential expiring:** a staff member's credential expires within 14 days. Every admin gets one of these.
+- **Staff credential expiring:** a staff member's credential expires within 30 days. Every admin gets one of these.
 <!-- end -->
 
 <!-- only: reception, admin -->

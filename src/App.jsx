@@ -25,6 +25,7 @@ import SupportPage from './pages/SupportPage';
 import SupportTicketsPage from './pages/SupportTicketsPage';
 import Footer from './Footer';
 import SupportNotifier from './SupportNotifier';
+import WhatsNewNotifier from './WhatsNewNotifier';
 import BillingPage from './pages/BillingPage';
 
 function AppShell() {
@@ -62,6 +63,7 @@ function AppShell() {
           </main>
           <Footer />
           </div>
+          <WhatsNewNotifier />
           <SupportNotifier />
         </ChatProvider>
       </TasksProvider>

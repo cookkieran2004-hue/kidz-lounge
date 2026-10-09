@@ -118,6 +118,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 
 - Staff display names: preferred name, then first + last, then username.
 - **Roles** (`src/roles.js`, mirroring the API's `lib/roles.js`): Staff, Reception, Admin, Developer. Use `canManage(user)` for admin-level work outside the Admin area (Reception included) and `canAdminister(user)` for the Admin area and time-off approvals. Never compare `user.role` to a string. Show roles with `roleLabel`. Case manager pickers use `caseManagerChoices` (no Developers).
+- **What's new pop-up** (`src/whatsNew.js`, `src/WhatsNewNotifier.jsx`): shown once per person per browser after sign-in. To announce new features, replace the items and change its `id`; run the wording by Kieran first. The manual screenshot tool hides it.
 - The support inbox is for **Developers only** (`canSeeSupportTickets` in `src/supportCount.js`, mirrored in the API).
 - **Comments explain *why*,** often including the bug a line prevents. Keep that style.
 - `.env` is tracked in git despite being a secrets file. It currently holds only `VITE_API_URL`. Never add real secrets to it, since `VITE_*` values ship to the browser anyway.

@@ -9,4 +9,4 @@
 - **Credentials:** your licenses and certifications, with their expiration dates.
   - **Add credential** records a new one.
   - When you renew one, edit it and enter the new expiration date.
-  - Credentials expiring soon are flagged, and you'll get a task **14 days before** one expires.
+  - Credentials expiring soon are flagged, and you'll get a task **30 days before** one expires.

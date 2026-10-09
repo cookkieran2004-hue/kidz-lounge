@@ -49,6 +49,6 @@ Your requests are under **Upcoming**, **Pending** and **Past**. **Delete** cance
 
 ### Balance history
 
-**Balance history** lists every change to your PTO balance: the balance an admin set, time off taken, and adjustments. Older entries may include weekly credits and monthly UPTO from before October 2026. Click **Details** on a weekly credit to see the hours worked each day that it was based on.
+**Balance history** lists every change to your PTO balance: your starting PTO set by an admin, time off taken, and adjustments. Older entries may include weekly credits and monthly UPTO from before October 2026. Click **Details** on a weekly credit to see the hours worked each day that it was based on.
 
 ![Balance history with a week's details](../img/my-time-balance-history.png)

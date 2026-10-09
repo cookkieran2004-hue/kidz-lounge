@@ -495,10 +495,11 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
   // a green MUS tag sits at the bottom and the edge turns green; a short
   // (15-minute) strip has room for only one, so it shows MUS alone (which
   // already means canceled, make-up scheduled). Clicking it opens the
-  // canceled appointment as usual.
+  // canceled appointment as usual. Comments still get the red * (at the
+  // top), the same marker as a full card.
   if (lane === 'right') {
     const hasMakeup = !!apt.makeup;
-    const tagRoom = hasMakeup && !compact ? 18 : 0;
+    const tagRoom = (hasMakeup && !compact ? 18 : 0) + (hasComments ? 14 : 0);
     const fontSize = Math.max(7, Math.min(15, (heightPx - 6 - tagRoom) / 5.4));
     const vertical = { writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1 };
     return (
@@ -514,8 +515,9 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '3px 0',
         }}
       >
+        {hasComments && <span title="Has comments" style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1, flexShrink: 0 }}>*</span>}
         {hasMakeup && compact ? (
-          <span style={{ ...vertical, fontSize: Math.max(8, Math.min(13, (heightPx - 6) / 2.2)), color: MAKEUP_GREEN }}>MUS</span>
+          <span style={{ ...vertical, fontSize: Math.max(8, Math.min(13, (heightPx - 6 - (hasComments ? 14 : 0)) / 2.2)), color: MAKEUP_GREEN }}>MUS</span>
         ) : (
           <>
             <span style={{ ...vertical, fontSize, color: `color-mix(in srgb, ${color} 75%, black)` }}>Canceled</span>

@@ -34,13 +34,14 @@ Click anyone to open their profile.
 ![A staff member's profile](../img/admin-staff-profile.png)
 
 - **Account and role:**
-  - **Edit** changes their name, position, hire date, role or employment type. Salaried staff get PTO and UPTO, hourly staff get UPTO only, and Neither gets no PTO or UPTO. You can change your own role, but at least one Admin or Developer must always remain.
+  - **Edit** changes their name, position, hire date, role, employment type, phone or email. Salaried staff get PTO and UPTO, hourly staff get UPTO only, and Neither gets no PTO or UPTO. You can change your own role, but at least one Admin or Developer must always remain.
   - **Reset password** gives them a new temporary password.
   - **Archive account** stops them signing in without deleting their history. It can be restored at any time.
+  - Their **credentials** are listed here too. You can add, edit or remove them for them.
 - **Linked provider:** their provider details, including specialty (ST, OT, PT, SI; tick more than one if needed) and credentials. The provider is always named after the person.
 - **Weekly schedule:** their contracted hours for each day, and scheduled changes to those hours from a future date. Time outside these hours is greyed out on the schedule, and PTO requests are charged for these hours.
 - **Time off:** their requests, balances and balance history. See [Time off approvals and balances](#time-off-approvals-and-balances).
-- **Caseload:** their appointments for the next two weeks.
+- **Caseload:** the patients on their caseload (anyone with an appointment with them this month or later), beside their appointments for the next two weeks.
 - **Tasks:** their open and completed tasks.
 
 Any change you save to someone's account asks you to re-enter your own password.
