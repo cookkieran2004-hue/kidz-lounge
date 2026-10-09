@@ -28,5 +28,8 @@ export const caseManagerChoices = (directory, keep) =>
   directory.filter(s => s.can_case_manage !== false || s.username === keep);
 // The HIPAA audit log tab in Admin (mirrors the API's canViewAuditLog).
 export const canViewAuditLog = (user) => user?.role === 'developer';
+// The EI-Hub entry tab on the Billing page: Developers only for now
+// (Kieran, Oct 2026), while it's being finished. Mirrors the API's canUseEiHub.
+export const canUseEiHub = (user) => user?.role === 'developer';
 // The Admin area: the Admin page and what's behind it.
 export const canAdminister = (user) => ['admin', 'developer'].includes(user?.role);

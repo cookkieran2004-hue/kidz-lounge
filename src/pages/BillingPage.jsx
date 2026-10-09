@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
-import { canManage, canAdminister } from '../roles';
+import { canManage, canAdminister, canUseEiHub } from '../roles';
 import { PageHeader, UnderlineTabs } from '../dashboardUi';
 import EiHubList from '../EiHubList';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
@@ -85,9 +85,11 @@ export default function BillingPage() {
   const [error, setError] = useState(null);
   const [version, setVersion] = useState(0);
   const [savingReview, setSavingReview] = useState(false);
-  // Reception and admins also get the EI-Hub entry list (EiHubList.jsx).
+  // Developers also get the EI-Hub entry list (EiHubList.jsx) -- only them
+  // for now (src/roles.js canUseEiHub).
+  const eiHubAllowed = canUseEiHub(user);
   const [view, setView] = useState('sheet');
-  const eiHub = manager && view === 'eihub';
+  const eiHub = eiHubAllowed && view === 'eihub';
   const headerRef = useRef(null);
   const sheetRef = useRef(null);
   // The column header (Name, Mandate, ... day numbers) is its own strip
@@ -206,7 +208,7 @@ export default function BillingPage() {
               </div>
             }
           />
-          {manager && (
+          {eiHubAllowed && (
             <UnderlineTabs label="Billing views" active={view} onPick={setView} style={{ marginBottom: 12 }}
               tabs={[{ key: 'sheet', label: 'Billing sheets' }, { key: 'eihub', label: 'EI-Hub entry' }]} />
           )}
