@@ -3073,11 +3073,11 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   return (
     <div style={modalOverlayStyle()} onClick={onClose}>
       <div
-        style={{ ...modalBoxStyle(), maxWidth: headerAlert ? 600 : 520 }}
+        style={{ ...modalBoxStyle(), maxWidth: 620, maxHeight: '94vh', padding: '18px 22px' }}
         onClick={e => e.stopPropagation()}
       >
         {existing ? (
-          <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <div style={{ marginBottom: 12, display: 'flex', alignItems: 'flex-start', gap: 14 }}>
             <div style={{ minWidth: 0 }}>
             <div
               onClick={() => navigate(`/patients/${encodeURIComponent(patientSearch)}`)}
@@ -3113,7 +3113,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         )}
 
         {existing && (
-          <div style={{ display: 'inline-flex', gap: 4, background: '#F1F2F4', borderRadius: 8, padding: 3, marginBottom: 18 }}>
+          <div style={{ display: 'inline-flex', gap: 4, background: '#F1F2F4', borderRadius: 8, padding: 3, marginBottom: 12 }}>
             <button
               type="button"
               onClick={() => setActiveTab('details')}
@@ -3169,28 +3169,36 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
               </>
             )}
 
-            <label style={labelStyle()}>Provider *</label>
-            <select style={inputStyle()} value={provider} onChange={e => setProvider(e.target.value)}>
-              {providers.map(p => <option key={p.id} value={p.Name}>{p.Name}</option>)}
-              {existing?.provider && !providers.some(p => p.Name === existing.provider) && <option value={existing.provider}>{existing.provider} (archived)</option>}
-            </select>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <DateField label="Date *" value={appointmentDate} onChange={setAppointmentDate} />
-              <TimeField label="Time *" value={appointmentTime} onChange={setAppointmentTime} />
+            {/* Laid out in rows so the whole window fits a laptop screen
+                without scrolling: provider + room, then date + time + length. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0 12px' }}>
+              <div>
+                <label style={labelStyle()}>Provider *</label>
+                <select style={inputStyle()} value={provider} onChange={e => setProvider(e.target.value)}>
+                  {providers.map(p => <option key={p.id} value={p.Name}>{p.Name}</option>)}
+                  {existing?.provider && !providers.some(p => p.Name === existing.provider) && <option value={existing.provider}>{existing.provider} (archived)</option>}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle()}>Treatment Area</label>
+                <select style={inputStyle()} value={roomChoice} onChange={e => setRoomChoice(e.target.value)}>
+                  <option value="">-- none --</option>
+                  {TREATMENT_AREA_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value={OFFSITE}>Offsite</option>
+                </select>
+              </div>
             </div>
 
-            <label style={labelStyle()}>Duration (minutes)</label>
-            <select style={inputStyle()} value={duration} onChange={e => setDuration(e.target.value)}>
-              {DURATION_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-
-            <label style={labelStyle()}>Treatment Area</label>
-            <select style={inputStyle()} value={roomChoice} onChange={e => setRoomChoice(e.target.value)}>
-              <option value="">-- none --</option>
-              {TREATMENT_AREA_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-              <option value={OFFSITE}>Offsite</option>
-            </select>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.8fr)', gap: '0 12px' }}>
+              <DateField label="Date *" value={appointmentDate} onChange={setAppointmentDate} />
+              <TimeField label="Time *" value={appointmentTime} onChange={setAppointmentTime} />
+              <div>
+                <label style={labelStyle()}>Minutes</label>
+                <select style={inputStyle()} value={duration} onChange={e => setDuration(e.target.value)}>
+                  {DURATION_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
             {roomChoice === OFFSITE && (
               <div style={{ marginTop: -6, marginBottom: 12 }}>
                 <span style={{ ...labelStyle(), display: 'block' }}>Setting *</span>
@@ -3222,6 +3230,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             )}
 
             <label style={labelStyle()}>Status</label>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
             <select
               value={status}
               onChange={e => handleStatusSelect(e.target.value)}
@@ -3240,22 +3249,23 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             {/* Make-ups: a canceled / no-show appointment (as saved) can get one. */}
             {existing && !effectiveIsVirtual && MISSED_STATUSES.includes(existing.appointment_status) && (
               existing.makeup ? (
-                <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '0 0 12px' }}>
+                <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '9px 0 12px', flex: '1 1 200px' }}>
                   MUS · Make up scheduled: {new Date(existing.makeup.appointment_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {formatSlotLabel(String(existing.makeup.appointment_time).slice(0, 5))} with {existing.makeup.provider}
                 </p>
               ) : (
                 <button type="button" onClick={() => setSchedulingMakeup(true)}
-                  style={{ display: 'block', margin: '0 0 12px', padding: '7px 14px', borderRadius: 6, border: `1.5px solid ${MAKEUP_GREEN}`, background: 'white', color: MAKEUP_GREEN, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  style={{ display: 'block', margin: '0 0 12px', padding: '8px 14px', borderRadius: 6, border: `1.5px solid ${MAKEUP_GREEN}`, background: 'white', color: MAKEUP_GREEN, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   Schedule make up
                 </button>
               )
             )}
             {existing?.is_eval && (
-              <p style={{ fontSize: 12.5, color: EVAL_BLUE, fontWeight: 600, margin: '0 0 12px' }}>Eval · This is an evaluation.</p>
+              <p style={{ fontSize: 12.5, color: EVAL_BLUE, fontWeight: 600, margin: '9px 0 12px' }}>Eval · This is an evaluation.</p>
             )}
             {existing?.is_makeup && (
-              <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '0 0 12px' }}>MU · This is a make-up session.</p>
+              <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '9px 0 12px' }}>MU · This is a make-up session.</p>
             )}
+            </div>
 
             {existing ? (
               <CommentsThread
