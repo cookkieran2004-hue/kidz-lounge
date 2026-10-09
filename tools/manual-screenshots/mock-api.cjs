@@ -208,7 +208,8 @@ const handlers = [
     { id: 2, closure_date: '2026-11-26', reason: 'Thanksgiving', closure_type: 'holiday' },
     { id: 3, closure_date: '2026-10-29', reason: 'Power outage', closure_type: 'emergency' },
   ]],
-  [/^\/patients\/[^/]+\/programs$/, () => ({ available: true, rows: [
+  // Ava Brown (p1) only; anyone else (or a new patient) has no history yet.
+  [/^\/patients\/[^/]+\/programs$/, (role, q, path) => (path.split('/')[2] !== 'p1' ? { available: true, rows: [] } : { available: true, rows: [
     { id: 3, program: 'EI', service: 'ST', sessions: '2', minutes: 30, start_date: '2026-09-01', end_date: null, authorization_number: '4471029' },
     { id: 2, program: 'EI', service: 'OT', sessions: '1', minutes: 30, start_date: '2026-09-01', end_date: null, authorization_number: '4471030' },
     { id: 1, program: 'EI', service: 'ST', sessions: '1', minutes: 30, start_date: null, end_date: '2026-08-31' },
