@@ -17,3 +17,7 @@ export function canceledLane(apt, columnAppointments) {
   if (!other) return null;
   return canceled ? 'right' : 'left';
 }
+
+// Statuses that don't need a room: no "Set room" pill on the card, and not
+// on the daily Unassigned list (Canceled, No Show, and *HOLD* -- a held slot).
+export const NO_ROOM_NEEDED = ['Canceled', 'No Show', '*HOLD*'];

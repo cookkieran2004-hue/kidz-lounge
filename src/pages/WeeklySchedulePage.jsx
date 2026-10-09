@@ -16,7 +16,7 @@ import {
 } from './SchedulePage';
 import { canManage } from '../roles';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
-import { canceledLane, isCanceledAppt } from '../scheduleLanes';
+import { canceledLane, isCanceledAppt, NO_ROOM_NEEDED } from '../scheduleLanes';
 
 function startOfWeek(date) {
   // The Monday of the date's week, where weeks run Sunday to Saturday: on
@@ -593,7 +593,7 @@ export default function WeeklySchedulePage() {
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
                                 badgeLabel={roomBadgeLabel(apt.treatment_area)}
                                 badgeColor={apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
-                                setRoom={!apt.treatment_area && !['Canceled', 'No Show'].includes(apt.appointment_status)}
+                                setRoom={!apt.treatment_area && !NO_ROOM_NEEDED.includes(apt.appointment_status)}
                                 badgeIcon={null}
                                 onRoomClick={(e) => {
                                   const rect = e.currentTarget.getBoundingClientRect();

@@ -13,7 +13,7 @@ import { DISCIPLINES, DISCIPLINE_NAMES, disciplinesOf } from '../disciplines';
 import Linkify from '../Linkify';
 import LinkTextarea from '../LinkTextarea';
 import { PatientLinksList } from '../PatientLinksView';
-import { canceledLane, isCanceledAppt } from '../scheduleLanes';
+import { canceledLane, isCanceledAppt, NO_ROOM_NEEDED } from '../scheduleLanes';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -1840,7 +1840,7 @@ function ScheduleApp() {
 
   const unassignedAppointments = useMemo(() => {
     return appointments
-      .filter(apt => apt.appointment_status !== 'Canceled' && !isHoldPatient(apt.patient_name) && (!apt.treatment_area || pinnedUnassignedKeys.has(unassignedPinKey(apt))))
+      .filter(apt => apt.appointment_status !== 'Canceled' && apt.appointment_status !== '*HOLD*' && !isHoldPatient(apt.patient_name) && (!apt.treatment_area || pinnedUnassignedKeys.has(unassignedPinKey(apt))))
       .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
   }, [appointments, pinnedUnassignedKeys]);
 
@@ -2241,7 +2241,7 @@ function ScheduleApp() {
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
                                 badgeLabel={viewMode === 'provider' ? roomBadgeLabel(apt.treatment_area) : apt.provider}
                                 badgeColor={viewMode === 'provider' && apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
-                                setRoom={viewMode === 'provider' && !apt.treatment_area && !['Canceled', 'No Show'].includes(apt.appointment_status)}
+                                setRoom={viewMode === 'provider' && !apt.treatment_area && !NO_ROOM_NEEDED.includes(apt.appointment_status)}
                                 badgeIcon={viewMode === 'provider'
                                   ? <HouseIcon size={10} color="#9ca3af" strokeWidth={2} />
                                   : <UserIcon size={10} color="#9ca3af" strokeWidth={2} />}
