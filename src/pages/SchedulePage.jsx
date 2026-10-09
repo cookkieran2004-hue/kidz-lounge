@@ -372,7 +372,8 @@ export function oooBlockColors(type) {
   };
 }
 
-// OOO blocks draw IN FRONT of appointment cards (cards are z 5-15), PTO and
+// OOO blocks draw IN FRONT of appointment cards (cards are z 5-15) but under
+// the sticky column header (25) so they never cover provider names. PTO and
 // UPTO above every other type.
 const oooLayer = (type) => (type === 'PTO' || type === 'UPTO' ? 1 : 0);
 
@@ -1125,7 +1126,7 @@ function CommentsThread({ table, recordId, comments, currentUser, onUpdated, isV
 // double-click-to-book still works. Stacking: on top of the whole day --
 // shading, OOO blocks, appointment cards (zIndex up to 15) and the current-
 // time line (17), all still visible through the translucent ribbon -- and
-// only below the sticky header (20), so it never covers the column names. It measures its own box so the ribbon always runs
+// only below the sticky header (25), so it never covers the column names. It measures its own box so the ribbon always runs
 // corner to corner -- shallow across the wide daily grid, steep down a
 // single Weekly View column. Position it with `style` (top/left/width...).
 // Quick room menu opened from an appointment card (daily and weekly grids)
@@ -2137,7 +2138,7 @@ function ScheduleApp() {
               <col style={{ width: 64 }} />
               {(viewMode === 'provider' ? gridProviders : TREATMENT_AREA_OPTIONS.map(r => ({ id: r }))).map(c => <col key={c.id} />)}
             </colgroup>
-            <thead style={{ position: 'sticky', top: STACK_TOP, zIndex: 20 }}>
+            <thead style={{ position: 'sticky', top: STACK_TOP, zIndex: 25 }}>
               <tr>
                 <th style={thStyle()}>Time</th>
                 {viewMode === 'provider' && gridProviders.map(p => {
@@ -3246,8 +3247,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 Room assignment will be cleared since this appointment is canceled.
               </p>
             )}
-            {/* Make-ups: a canceled / no-show appointment (as saved) can get one. */}
-            {existing && !effectiveIsVirtual && MISSED_STATUSES.includes(existing.appointment_status) && (
+            {/* Make-ups: a canceled / no-show appointment (as saved) can get one.
+                Not the HOLD placeholder: there's no patient session to make up. */}
+            {existing && !effectiveIsVirtual && MISSED_STATUSES.includes(existing.appointment_status) && !isHoldPatient(existing.patient_name) && (
               existing.makeup ? (
                 <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '9px 0 12px', flex: '1 1 200px' }}>
                   MUS · Make up scheduled: {new Date(existing.makeup.appointment_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {formatSlotLabel(String(existing.makeup.appointment_time).slice(0, 5))} with {existing.makeup.provider}

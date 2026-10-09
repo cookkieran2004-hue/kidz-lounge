@@ -511,7 +511,7 @@ export default function WeeklySchedulePage() {
               <col style={{ width: 64 }} />
               {daysToShow.map(d => <col key={d.dateStr} />)}
             </colgroup>
-            <thead style={{ position: 'sticky', top: STACK_TOP, zIndex: 20 }}>
+            <thead style={{ position: 'sticky', top: STACK_TOP, zIndex: 25 }}>
               <tr>
                 <th style={thStyle()}>Time</th>
                 {daysToShow.map(d => (
