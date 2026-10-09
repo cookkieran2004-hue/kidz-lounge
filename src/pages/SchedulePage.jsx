@@ -14,6 +14,9 @@ import Linkify from '../Linkify';
 import LinkTextarea from '../LinkTextarea';
 import { PatientLinksList } from '../PatientLinksView';
 import { canceledLane, isCanceledAppt, NO_ROOM_NEEDED } from '../scheduleLanes';
+import { useAppointmentDrag } from '../useAppointmentDrag';
+import { AppointmentDragLayer, DropToast } from '../AppointmentDragLayer';
+import { saveDrop, movedFields, isMissedAppt } from '../scheduleDrag';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -463,7 +466,9 @@ const ClockIcon = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="9" /><p
 // `lane` (src/scheduleLanes.js): 'left' = the left three quarters of the
 // column, 'right' = the right quarter, beside a canceled appointment it
 // overlaps; null = full width.
-export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColor, heightPx, onRoomClick, onStatusClick, stackIndex = 0, hasConflict, offsetWithinSlot = 0, setRoom = false, lane = null }) {
+// `dragProps` / `dragSource`: drag-and-drop from useAppointmentDrag.js -- the
+// press handler, and whether this is the card being dragged (faded in place).
+export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColor, heightPx, onRoomClick, onStatusClick, stackIndex = 0, hasConflict, offsetWithinSlot = 0, setRoom = false, lane = null, dragProps, dragSource = false }) {
   const color = statusColor(apt.appointment_status);
   const isCanceled = apt.appointment_status === 'Canceled';
   const isNoShow = apt.appointment_status === 'No Show';
@@ -481,6 +486,9 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
   // A 15-minute card is half a row: one line, name then status, so the name
   // isn't clipped by the room and status lines stacked under it.
   const compact = heightPx < 50;
+  // A long press lifts the card on touch screens; without these, phones
+  // select the name or open the copy menu instead.
+  const dragStyle = { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', opacity: dragSource ? 0.35 : undefined };
   // The narrow right-quarter strip beside a rebooked slot: "Canceled",
   // written vertically and sized to the session's length (8 letters at
   // about 0.62em each, with a little padding). With a make-up booked for it,
@@ -496,7 +504,9 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
     return (
       <div
         onClick={onClick}
+        {...dragProps}
         style={{
+          ...dragStyle,
           position: 'absolute', top: offsetWithinSlot + CARD_MARGIN, left: `calc(75% + ${CARD_MARGIN}px)`, right: CARD_MARGIN, height: heightPx,
           boxSizing: 'border-box', zIndex: 5, borderRadius: 6, cursor: 'pointer', overflow: 'hidden',
           background: `color-mix(in srgb, ${color} 30%, white)`, borderLeft: `3px solid ${hasMakeup ? MAKEUP_GREEN : color}`,
@@ -520,7 +530,9 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
   return (
     <div
       onClick={onClick}
+      {...dragProps}
       style={{
+        ...dragStyle,
         position: 'absolute',
         top: offsetWithinSlot + CARD_MARGIN + stackIndex * 10,
         left: lane === 'right' ? `calc(75% + ${CARD_MARGIN}px)` : CARD_MARGIN + stackIndex * 10,
@@ -1610,8 +1622,12 @@ function ScheduleApp() {
   // for "Loading..." -- used for the 30-second poll and after edits, so the
   // grid doesn't flicker or jump back to the top. Only a date change shows
   // the loading state.
-  const loadDay = useCallback(async (date, { background = false } = {}) => {
+  // `clear`: a new day while a card is being dragged (hovering over the
+  // arrows) -- the grid stays up so the drag can carry on, but the old
+  // day's cards mustn't show under the new date while it loads.
+  const loadDay = useCallback(async (date, { background = false, clear = false } = {}) => {
     if (!background) setLoading(true);
+    if (clear) { setAppointments([]); setOooRecords([]); setClosedInfo(null); }
     setError(null);
     const dateStr = dateToInputValue(date);
 
@@ -1636,13 +1652,46 @@ function ScheduleApp() {
     loadDayRef.current = () => loadDay(selectedDateRef.current, { background: true });
   }, [loadDay]);
 
+  // ---- Drag and drop (scheduleDrag.js) ----
+  const [dropToast, setDropToast] = useState(null);
+  const handleDrop = async (apt, target) => {
+    // Shown in its new place straight away; the reload confirms it (or puts
+    // it back if the save failed).
+    if (!isMissedAppt(apt)) {
+      const moved = movedFields(apt, target);
+      const dayStr = dateToInputValue(selectedDateRef.current);
+      setAppointments(prev => prev.flatMap(a => (a.id !== apt.id ? [a] : moved.appointment_date === dayStr ? [{ ...a, ...moved }] : [])));
+    }
+    try {
+      setDropToast(await saveDrop(apt, target));
+    } catch (err) {
+      setDropToast({ message: err.message, error: true });
+    }
+    loadDayRef.current?.();
+  };
+  const drag = useAppointmentDrag({ onDrop: handleDrop });
+  const isDragging = drag.isDragging;
+  const closeDropToast = useCallback(() => setDropToast(null), []);
+  const undoDrop = async () => {
+    const undo = dropToast?.undo;
+    setDropToast(null);
+    if (!undo) return;
+    try {
+      await undo();
+    } catch (err) {
+      setDropToast({ message: err.message, error: true });
+    }
+    loadDayRef.current?.();
+  };
+
   useEffect(() => {
     loadProviders();
   }, [loadProviders]);
 
   useEffect(() => {
-    loadDay(selectedDate);
-  }, [selectedDate, loadDay]);
+    const dragging = isDragging();
+    loadDay(selectedDate, { background: dragging, clear: dragging });
+  }, [selectedDate, loadDay, isDragging]);
 
   // Used to fire one request per provider in parallel to build this map --
   // with enough providers, that burst of simultaneous requests was large
@@ -1690,10 +1739,12 @@ function ScheduleApp() {
   // No push-based real-time on this backend (unlike Supabase) -- poll instead.
   useEffect(() => {
     const interval = setInterval(() => {
+      // Not mid-drag: the cards would shift under the one being dragged.
+      if (isDragging()) return;
       loadDay(selectedDateRef.current, { background: true });
     }, 30000);
     return () => clearInterval(interval);
-  }, [loadDay]);
+  }, [loadDay, isDragging]);
 
   // The old client-side auto-extend mechanism for Appointments has been
   // The old client-side auto-extend mechanisms for both Appointments and
@@ -1959,7 +2010,7 @@ function ScheduleApp() {
             Today's Appointments
           </h1>
 
-          <button onClick={goToPreviousDay} style={iconBtnStyle()}><ChevronLeft size={14} /></button>
+          <button onClick={goToPreviousDay} style={iconBtnStyle()} data-drag-nav="prev" title="Previous day"><ChevronLeft size={14} /></button>
           <div style={{ position: 'relative' }}>
             <button
               type="button"
@@ -1984,7 +2035,7 @@ function ScheduleApp() {
               </div>
             )}
           </div>
-          <button onClick={goToNextDay} style={iconBtnStyle()}><ChevronRight size={14} /></button>
+          <button onClick={goToNextDay} style={iconBtnStyle()} data-drag-nav="next" title="Next day"><ChevronRight size={14} /></button>
           <button onClick={goToToday} style={secondaryBtnStyle()}>Today</button>
 
           <Dot />
@@ -2181,6 +2232,12 @@ function ScheduleApp() {
                         <td
                           key={colKey}
                           style={tdCellStyle()}
+                          // Drop target for dragged cards (useAppointmentDrag.js);
+                          // nothing new goes to an archived provider.
+                          data-drop-date={dateToInputValue(selectedDate)}
+                          data-drop-provider={viewMode === 'provider' ? colKey : undefined}
+                          data-drop-room={viewMode === 'room' ? colKey : undefined}
+                          data-drop-disabled={viewMode === 'provider' && archivedProviders.some(p => p.Name === colKey) ? '' : undefined}
                           onDoubleClick={(e) => {
                             if (e.target !== e.currentTarget) return;
                             if (viewMode === 'provider' && archivedProviders.some(p => p.Name === colKey)) return; // no new bookings for an archived provider
@@ -2240,6 +2297,8 @@ function ScheduleApp() {
                                 offsetWithinSlot={offsetWithinSlot}
                                 hasConflict={activeConflicts.ids.has(apt.id)}
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
+                                dragProps={drag.cardProps(apt)}
+                                dragSource={drag.draggingId === apt.id}
                                 badgeLabel={viewMode === 'provider' ? roomBadgeLabel(apt.treatment_area) : apt.provider}
                                 badgeColor={viewMode === 'provider' && apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
                                 setRoom={viewMode === 'provider' && !apt.treatment_area && !NO_ROOM_NEEDED.includes(apt.appointment_status)}
@@ -2429,6 +2488,9 @@ function ScheduleApp() {
           onCommentsSynced={() => loadDay(selectedDateRef.current, { background: true })}
         />
       )}
+
+      <AppointmentDragLayer drag={drag} />
+      <DropToast toast={dropToast} onUndo={undoDrop} onClose={closeDropToast} />
 
       {showOOOModal && (
         <OOOModal

@@ -15,6 +15,7 @@ Click the provider's name at the top left to switch to another provider.
 
 - **‹** and **›** move a week back or forward, and **This Week** comes back to the current week. Click the dates to jump to any week.
 - Click an appointment to open it, exactly as on the daily schedule.
+- Drag an appointment to another day or time to move it, as on the daily schedule. Hold it over **‹** or **›** to carry it to another week.
 - **Create Appointment** and **Request Time Off** work the same way as on the daily schedule.
 - Greyed-out time is outside the provider's contracted hours.
 - On a phone, the weekly view shows one day at a time. The arrows skip weekends.

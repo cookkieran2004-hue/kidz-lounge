@@ -42,6 +42,19 @@ const ACTIONS = {
     const pin = $$('input').find(i => /patient/i.test(i.placeholder || '')); pin.focus(); type(pin, 'Ethan'); await sleep(900);
     const opt = $$('div').find(d => d.textContent.trim() === 'Ethan Cruz' && d.style.cursor === 'pointer'); opt && opt.click(); await sleep(700);
   },
+  // Lifts Ava Brown's 1:00 PM card and holds it over Jordan's 2:15 PM, mid-drag.
+  dragCard: async () => {
+    await nextDay(); f.contentWindow.scrollTo(0, 560); await sleep(500);
+    const W = f.contentWindow, D = f.contentDocument;
+    const pe = (type, x, y, t) => (t || D.body).dispatchEvent(new W.PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1 }));
+    const c = $$m('div').filter(d => d.style.position === 'absolute' && d.style.borderLeft && d.textContent.startsWith('Ava Brown')).sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)[0];
+    const td = D.querySelector('tr[data-slot="14:00"] td[data-drop-provider="Jordan Reyes"]');
+    const r = c.getBoundingClientRect(), t = td.getBoundingClientRect();
+    const sx = r.left + 20, sy = r.top + 10, tx = t.left + t.width / 2, ty = t.top + 3 + t.height / 2 + 10;
+    pe('pointerdown', sx, sy, c);
+    for (let i = 1; i <= 8; i++) { pe('pointermove', sx + (tx - sx) * i / 8, sy + (ty - sy) * i / 8); await sleep(30); }
+    await sleep(300);
+  },
   openAppt: async () => { await nextDay(); const c = $$m('div').find(d => d.style.cursor === 'pointer' && /Mia Chen/.test(d.textContent) && d.textContent.length < 90); c && c.click(); await sleep(1200); },
   openOOO: async () => { await nextDay(); const c = $$m('div').find(d => d.style.position === 'absolute' && d.onclick !== null && /Meeting/.test(d.textContent) && d.textContent.length < 60); c && c.click(); await sleep(1500); },
   userMenu: async () => { const u = $$('button').find(b => /^(AL|CM|DW)\s*(alee|cmorgan|dwhitfield)/.test(b.textContent.trim())); if (!u) { document.title = 'ERR no menu'; return; } u.click(); await sleep(500); },

@@ -50,6 +50,21 @@ Click any appointment card to open it. You can then:
 
 For a repeating appointment, you're asked whether a change applies to **this one only** or to **this and all future** appointments.
 
+### Moving an appointment by dragging
+
+Drag a card to a new time, or onto another provider's column, to move it there. On a phone or tablet, press and hold the card until it lifts, then drag it.
+
+- A dashed outline shows where it will land, in 15-minute steps.
+- To move it to another day, hold the card over the **‹** or **›** arrow at the top until the day changes, then drop it.
+- In the **Room** view, dropping a card in another room's column changes its room.
+- It's saved as soon as you let go. Click **Undo** in the bar at the bottom of the window to put it back.
+- For a repeating appointment, only that day's appointment moves. The rest of the series stays as it is.
+- Moving onto time off or another booking is allowed. The usual conflict warnings then appear, so you can fix them.
+
+![Dragging an appointment](../img/schedule-drag.png)
+
+Dragging a **Canceled** or **No Show** appointment doesn't move it. It books a make-up session where you drop it, and the outline turns green. The canceled appointment stays where it was. A canceled appointment that already has a make-up can't be dragged.
+
 ### Appointment statuses
 
 | Status | Use it when |

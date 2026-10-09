@@ -17,6 +17,9 @@ import {
 import { canManage } from '../roles';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 import { canceledLane, isCanceledAppt, NO_ROOM_NEEDED } from '../scheduleLanes';
+import { useAppointmentDrag } from '../useAppointmentDrag';
+import { AppointmentDragLayer, DropToast } from '../AppointmentDragLayer';
+import { saveDrop, movedFields, isMissedAppt } from '../scheduleDrag';
 
 function startOfWeek(date) {
   // The Monday of the date's week, where weeks run Sunday to Saturday: on
@@ -153,13 +156,17 @@ export default function WeeklySchedulePage() {
     }
   };
 
-  const load = useCallback(async () => {
+  // `background`: refresh without swapping the grid for "Loading..." --
+  // after a drop, and when a dragged card flips the week (the drag needs the
+  // grid to stay up). The grid only draws the days in view, so the old
+  // week's cards don't linger.
+  const load = useCallback(async ({ background = false } = {}) => {
     if (!activeProvider) {
       setLoading(false);
       setLoadedFor(activeProvider);
       return;
     }
-    setLoading(true);
+    if (!background) setLoading(true);
     setError(null);
     const start = daysToShow[0].dateStr;
     const end = daysToShow[daysToShow.length - 1].dateStr;
@@ -181,7 +188,40 @@ export default function WeeklySchedulePage() {
     setLoadedFor(activeProvider);
   }, [activeProvider, daysToShow]);
 
-  useEffect(() => { load(); }, [load]);
+  // ---- Drag and drop (scheduleDrag.js) ----
+  const [dropToast, setDropToast] = useState(null);
+  const loadRef = useRef(load);
+  useEffect(() => { loadRef.current = load; }, [load]);
+  const handleDrop = async (apt, target) => {
+    // Shown in its new place straight away; the reload confirms it (or puts
+    // it back if the save failed).
+    if (!isMissedAppt(apt)) {
+      const moved = movedFields(apt, target);
+      setAppointments(prev => prev.map(a => (a.id === apt.id ? { ...a, ...moved } : a)));
+    }
+    try {
+      setDropToast(await saveDrop(apt, target));
+    } catch (err) {
+      setDropToast({ message: err.message, error: true });
+    }
+    loadRef.current({ background: true });
+  };
+  const drag = useAppointmentDrag({ onDrop: handleDrop });
+  const isDragging = drag.isDragging;
+  const closeDropToast = useCallback(() => setDropToast(null), []);
+  const undoDrop = async () => {
+    const undo = dropToast?.undo;
+    setDropToast(null);
+    if (!undo) return;
+    try {
+      await undo();
+    } catch (err) {
+      setDropToast({ message: err.message, error: true });
+    }
+    loadRef.current({ background: true });
+  };
+
+  useEffect(() => { load({ background: isDragging() }); }, [load, isDragging]);
 
   const loadLookaheadConflicts = useCallback(async () => {
     if (!activeProvider) {
@@ -350,9 +390,9 @@ export default function WeeklySchedulePage() {
         )}
 
         {isMobile ? (
-          <button onClick={goPrevDay} style={iconBtnStyle()}><ChevronLeft size={14} /></button>
+          <button onClick={goPrevDay} style={iconBtnStyle()} data-drag-nav="prev" title="Previous day"><ChevronLeft size={14} /></button>
         ) : (
-          <button onClick={goPrevWeek} style={iconBtnStyle()}><ChevronLeft size={14} /></button>
+          <button onClick={goPrevWeek} style={iconBtnStyle()} data-drag-nav="prev" title="Previous week"><ChevronLeft size={14} /></button>
         )}
 
         <div style={{ position: 'relative' }}>
@@ -379,9 +419,9 @@ export default function WeeklySchedulePage() {
         </div>
 
         {isMobile ? (
-          <button onClick={goNextDay} style={iconBtnStyle()}><ChevronRight size={14} /></button>
+          <button onClick={goNextDay} style={iconBtnStyle()} data-drag-nav="next" title="Next day"><ChevronRight size={14} /></button>
         ) : (
-          <button onClick={goNextWeek} style={iconBtnStyle()}><ChevronRight size={14} /></button>
+          <button onClick={goNextWeek} style={iconBtnStyle()} data-drag-nav="next" title="Next week"><ChevronRight size={14} /></button>
         )}
         <button onClick={isMobile ? goToday : goThisWeek} style={secondaryBtnStyle()}>{isMobile ? 'Today' : 'This Week'}</button>
 
@@ -525,7 +565,7 @@ export default function WeeklySchedulePage() {
               {TIME_SLOTS.map(time => {
                 const isHour = time.endsWith(':00');
                 return (
-                  <tr key={time} style={{ borderTop: isHour ? '1px solid #e5e7eb' : '1px solid #f3f4f6', height: ROW_HEIGHT }}>
+                  <tr key={time} data-slot={time} style={{ borderTop: isHour ? '1px solid #e5e7eb' : '1px solid #f3f4f6', height: ROW_HEIGHT }}>
                     <td style={tdTimeStyle(isHour)}>{formatSlotLabel(time)}</td>
                     {daysToShow.map(d => {
                       const cellAppointments = (grid[d.dateStr]?.[time] || [])
@@ -537,6 +577,7 @@ export default function WeeklySchedulePage() {
                         <td
                           key={d.dateStr}
                           style={tdCellStyle()}
+                          data-drop-date={d.dateStr}
                           onDoubleClick={(e) => {
                             if (e.target !== e.currentTarget) return;
                             setEditingAppointment(null);
@@ -591,6 +632,8 @@ export default function WeeklySchedulePage() {
                                 offsetWithinSlot={offsetWithinSlot}
                                 hasConflict={conflictIds.has(apt.id)}
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
+                                dragProps={drag.cardProps(apt)}
+                                dragSource={drag.draggingId === apt.id}
                                 badgeLabel={roomBadgeLabel(apt.treatment_area)}
                                 badgeColor={apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
                                 setRoom={!apt.treatment_area && !NO_ROOM_NEEDED.includes(apt.appointment_status)}
@@ -682,6 +725,9 @@ export default function WeeklySchedulePage() {
           onCommentsSynced={load}
         />
       )}
+
+      <AppointmentDragLayer drag={drag} />
+      <DropToast toast={dropToast} onUndo={undoDrop} onClose={closeDropToast} />
 
       {showOOOModal && (
         <OOOModal
