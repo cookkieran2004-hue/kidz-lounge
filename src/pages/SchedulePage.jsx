@@ -3263,7 +3263,11 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
               <p style={{ fontSize: 12.5, color: EVAL_BLUE, fontWeight: 600, margin: '9px 0 12px' }}>Eval · This is an evaluation.</p>
             )}
             {existing?.is_makeup && (
-              <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '9px 0 12px' }}>MU · This is a make-up session.</p>
+              <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '9px 0 12px', flex: '1 1 220px' }}>
+                {existing.makeup_of
+                  ? <>MU · Make-up for the {existing.makeup_of.appointment_status === 'No Show' ? 'no-show' : 'canceled'} session on {new Date(String(existing.makeup_of.appointment_date).slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at {formatSlotLabel(String(existing.makeup_of.appointment_time).slice(0, 5))}{existing.makeup_of.provider && existing.makeup_of.provider !== existing.provider ? ` with ${existing.makeup_of.provider}` : ''}</>
+                  : 'MU · Make-up session (the date it makes up for wasn\'t recorded)'}
+              </p>
             )}
             </div>
 
