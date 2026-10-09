@@ -4,7 +4,7 @@ import { formatPhone } from './phone';
 import { INK, MUTED, HAIRLINE, TONES, buttonStyle } from './uiTokens';
 import { eiInput, eiLabel, eiGrid as grid } from './eiHubUi';
 
-// EI-Hub billing setup (Developers for now; kidz-lounge-api routes/eiHub.js):
+// EI-Hub billing setup (Admins and Developers; kidz-lounge-api routes/eiHub.js):
 // the agency as billing provider and submitter, and each provider as EI-Hub
 // knows them -- NPI, name, and the codes their sessions bill by default
 // (one code per 15 minutes, so a 30-minute session uses lines 1 and 2).

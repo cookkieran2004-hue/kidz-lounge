@@ -85,8 +85,8 @@ export default function BillingPage() {
   const [error, setError] = useState(null);
   const [version, setVersion] = useState(0);
   const [savingReview, setSavingReview] = useState(false);
-  // Developers also get the EI-Hub entry list (EiHubList.jsx) -- only them
-  // for now (src/roles.js canUseEiHub).
+  // Admins and Developers also get the EI-Hub Entry tab (EiHubPanel.jsx;
+  // src/roles.js canUseEiHub). Not Reception.
   const eiHubAllowed = canUseEiHub(user);
   const [view, setView] = useState('sheet');
   const eiHub = eiHubAllowed && view === 'eihub';

@@ -4,7 +4,7 @@ import { Status } from './EiHubSetup';
 import { eiInput, eiLabel, eiGrid } from './eiHubUi';
 import { INK, MUTED, HAIRLINE, TONES, buttonStyle, NUMERIC } from './uiTokens';
 
-// EI children's billing details (Developers for now; kidz-lounge-api
+// EI children's billing details (Admins and Developers; kidz-lounge-api
 // routes/eiHub.js): what a claim needs about the child -- the EI child ID
 // (the patient's ID #), date of birth, sex, address, county and diagnosis
 // codes -- and, for each current EI service, its authorization number (set

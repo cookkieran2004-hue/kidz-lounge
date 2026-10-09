@@ -281,7 +281,7 @@ export const api = {
   // EI-Hub entry list (Billing page): a month's EI sessions, and ticking one as entered.
   getEiHubSessions: (month) => request(`/billing/ei-hub?month=${month}`),
   setEiHubEntered: (payload) => request('/billing/ei-hub/entered', { method: 'PUT', body: JSON.stringify(payload) }),
-  // EI-Hub billing details (Developers for now): agency, providers, EI children.
+  // EI-Hub billing details (Admins and Developers): agency, providers, EI children.
   getEiSetup: () => request('/ei-hub/setup'),
   saveEiAgency: (data) => request('/ei-hub/setup/agency', { method: 'PUT', body: JSON.stringify(data) }),
   saveEiProvider: (name, data) => request(`/ei-hub/setup/providers/${encodeURIComponent(name)}`, { method: 'PUT', body: JSON.stringify(data) }),

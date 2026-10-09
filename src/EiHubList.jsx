@@ -4,7 +4,7 @@ import { useStaffNames } from './staffDirectory';
 import { Tag } from './dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, NUMERIC, TONES, ACCENT } from './uiTokens';
 
-// EI-Hub entry (Billing page, Developers only for now): every EI
+// EI-Hub entry (Billing page, Admins and Developers): every EI
 // session that took place in a month, with what the state's EI-Hub asks for
 // when it's typed in, and a tick for each one that's been entered
 // (kidz-lounge-api routes/billing.js, GET/PUT /billing/ei-hub).

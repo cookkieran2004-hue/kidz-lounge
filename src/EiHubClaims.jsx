@@ -5,7 +5,7 @@ import { Tag } from './dashboardUi';
 import { eiInput } from './eiHubUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, NUMERIC, TONES, ACCENT, buttonStyle } from './uiTokens';
 
-// EI-Hub claim files (Billing → EI-Hub entry → Claims; Developers for now;
+// EI-Hub claim files (Billing → EI-Hub entry → Claims; Admins and Developers;
 // kidz-lounge-api routes/eiHub.js + lib/ei837.js). Each EI session of the
 // month with its codes (one per 15 minutes, from the provider's defaults,
 // changeable here), its charge, and what's blocking it. Ready sessions can

@@ -5,7 +5,7 @@ import EiHubSetup from './EiHubSetup';
 import EiHubClaims from './EiHubClaims';
 import { HAIRLINE, INK, ACCENT } from './uiTokens';
 
-// The Billing page's EI-Hub tab (Developers for now): the month's EI sessions
+// The Billing page's EI-Hub tab (Admins and Developers): the month's EI sessions
 // (EiHubList.jsx), 837P claim files (EiHubClaims.jsx), each EI child's billing details (EiHubChildren.jsx), and
 // the agency / provider setup (EiHubSetup.jsx) every claim file needs.
 const SECTIONS = [
