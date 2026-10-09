@@ -288,6 +288,10 @@ export const api = {
   getEiChildren: () => request('/ei-hub/children'),
   saveEiChild: (id, data) => request(`/ei-hub/children/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   saveEiReferral: (authorization, data) => request(`/ei-hub/referrals/${encodeURIComponent(authorization)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getEiClaims: (month) => request(`/ei-hub/claims?month=${month}`),
+  saveEiSessionCodes: (data) => request('/ei-hub/claims/codes', { method: 'PUT', body: JSON.stringify(data) }),
+  createEiClaimFile: (data) => request('/ei-hub/claim-files', { method: 'POST', body: JSON.stringify(data) }),
+  getEiClaimFile: (id) => request(`/ei-hub/claim-files/${id}`),
   deleteOfficeClosure: (id) => request(`/office-closures/${id}`, { method: 'DELETE' }),
   getProviderUsualSchedule: (providerName) => request(`/providers/${encodeURIComponent(providerName)}/usual-schedule`),
   // Scheduled changes to contracted hours (start date, optional end date, weekly hours).

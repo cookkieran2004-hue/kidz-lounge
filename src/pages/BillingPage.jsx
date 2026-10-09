@@ -210,7 +210,7 @@ export default function BillingPage() {
           />
           {eiHubAllowed && (
             <UnderlineTabs label="Billing views" active={view} onPick={setView} style={{ marginBottom: 12 }}
-              tabs={[{ key: 'sheet', label: 'Billing sheets' }, { key: 'eihub', label: 'EI-Hub entry' }]} />
+              tabs={[{ key: 'sheet', label: 'Billing sheets' }, { key: 'eihub', label: 'EI-Hub Entry' }]} />
           )}
           {sheet && !eiHub && (
             <div style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12 }}>
