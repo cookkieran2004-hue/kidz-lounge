@@ -4,7 +4,7 @@ import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
 import { canManage, canAdminister, canUseEiHub } from '../roles';
 import { PageHeader, UnderlineTabs } from '../dashboardUi';
-import EiHubList from '../EiHubList';
+import EiHubPanel from '../EiHubPanel';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 import { statusColor } from './SchedulePage';
@@ -219,7 +219,7 @@ export default function BillingPage() {
           )}
         </div>
 
-        {eiHub && <EiHubList month={month} />}
+        {eiHub && <EiHubPanel month={month} />}
         {!eiHub && error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
         {!eiHub && !sheet && !error && <p style={{ fontSize: 13, color: MUTED }}>Loading billing...</p>}
 
