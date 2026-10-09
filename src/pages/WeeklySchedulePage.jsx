@@ -21,6 +21,10 @@ import { useAppointmentDrag } from '../useAppointmentDrag';
 import { AppointmentDragLayer, DropToast } from '../AppointmentDragLayer';
 import { saveDrop, movedFields, isMissedAppt } from '../scheduleDrag';
 
+// Phone/tablet header controls: one height, big enough to tap.
+const MOBILE_CONTROL_H = 38;
+const mobileIconBtn = { ...iconBtnStyle(), width: MOBILE_CONTROL_H, height: MOBILE_CONTROL_H, flexShrink: 0, boxSizing: 'border-box' };
+
 function startOfWeek(date) {
   // The Monday of the date's week, where weeks run Sunday to Saturday: on
   // a Sunday that's the next day, so the view is already on the week
@@ -357,86 +361,151 @@ export default function WeeklySchedulePage() {
     load();
   };
 
+  const shortDayLabel = daysToShow[0].date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const openNewAppointment = () => { setEditingAppointment(null); setPrefill({ provider: activeProvider }); setShowModal(true); };
   const weekRangeLabel = `${daysToShow[0].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} \u2013 ${daysToShow[daysToShow.length - 1].date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-  const dayLabel = daysToShow[0].date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const datePickerValue = isMobile ? dateToInputValue(mobileDay) : dateToInputValue(weekAnchor);
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', padding: isMobile ? '16px' : '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-      <div
-        ref={pageHeaderRef}
-        style={{
-          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, flexShrink: 0,
-          position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: '#f6f7f9',
-          margin: isMobile ? '-16px -16px 0' : '-20px -28px 0', padding: isMobile ? '16px 16px 16px' : '20px 28px 16px',
-        }}
-      >
-        <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
-          {isMobile ? "Today's Schedule" : 'Weekly Schedule'}
-        </h1>
-
-        {isAdmin ? (
-          <select
-            value={selectedProvider}
-            onChange={e => setSelectedProvider(e.target.value)}
-            style={{ padding: '6px 12px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13, fontWeight: 600, color: '#241A33', background: 'white' }}
-          >
-            {providers.map(p => <option key={p.id} value={p.Name}>{p.Name}</option>)}
-          </select>
-        ) : (
-          <span style={{ padding: '6px 12px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13, fontWeight: 600, color: '#241A33', background: BRAND.tint }}>
-            {lockedProvider || 'No provider linked'}
-          </span>
-        )}
-
-        {isMobile ? (
-          <button onClick={goPrevDay} style={iconBtnStyle()} data-drag-nav="prev" title="Previous day"><ChevronLeft size={14} /></button>
-        ) : (
-          <button onClick={goPrevWeek} style={iconBtnStyle()} data-drag-nav="prev" title="Previous week"><ChevronLeft size={14} /></button>
-        )}
-
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            onClick={() => setShowDatePicker(o => !o)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 4,
-              border: `1.5px solid ${BRAND.box}`, background: 'white', fontWeight: 600, fontSize: 13,
-              color: '#241A33', cursor: 'pointer', width: isMobile ? 220 : 210, justifyContent: isMobile ? 'flex-start' : 'center',
-              boxSizing: 'border-box',
-            }}
-          >
-            <CalendarIcon size={14} color={BRAND.forest} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {isMobile ? dayLabel : weekRangeLabel}
-            </span>
-          </button>
-          {showDatePicker && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 50, background: 'white', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', borderRadius: 4 }}>
-              <CalendarPicker value={datePickerValue} onChange={handleDateJump} />
-            </div>
-          )}
-        </div>
-
-        {isMobile ? (
-          <button onClick={goNextDay} style={iconBtnStyle()} data-drag-nav="next" title="Next day"><ChevronRight size={14} /></button>
-        ) : (
-          <button onClick={goNextWeek} style={iconBtnStyle()} data-drag-nav="next" title="Next week"><ChevronRight size={14} /></button>
-        )}
-        <button onClick={isMobile ? goToday : goThisWeek} style={secondaryBtnStyle()}>{isMobile ? 'Today' : 'This Week'}</button>
-
-        <Dot />
-        <button
-          onClick={() => { setEditingAppointment(null); setPrefill({ provider: activeProvider }); setShowModal(true); }}
-          disabled={!activeProvider}
-          style={primaryBtnStyle()}
+      {/* Phones and tablets show one day (daysToShow): a compact header in
+          rows -- title and provider; day navigation; the two actions -- so
+          the sticky header doesn't take a third of a phone screen. */}
+      {isMobile ? (
+        <div
+          ref={pageHeaderRef}
+          style={{
+            display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0,
+            position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: '#f6f7f9',
+            margin: '-16px -16px 0', padding: '14px 16px 12px',
+          }}
         >
-          <PlusIcon size={13} color="white" /> Create Appointment
-        </button>
-        <button onClick={() => navigate('/time')} disabled={!activeProvider} style={secondaryBtnStyle()} title="Out of Office is now requested from My time, so it can go through approval">
-          <PlusIcon size={13} /> Request Time Off
-        </button>
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
+              Schedule
+            </h1>
+            {isAdmin ? (
+              <select
+                value={selectedProvider}
+                onChange={e => setSelectedProvider(e.target.value)}
+                aria-label="Provider"
+                style={{ flex: 1, minWidth: 0, maxWidth: 360, height: MOBILE_CONTROL_H, padding: '0 10px', borderRadius: 8, border: `1.5px solid ${BRAND.box}`, fontWeight: 600, color: '#241A33', background: 'white' }}
+              >
+                {providers.map(p => <option key={p.id} value={p.Name}>{p.Name}</option>)}
+              </select>
+            ) : (
+              <span style={{ flex: 1, minWidth: 0, maxWidth: 360, height: MOBILE_CONTROL_H, display: 'flex', alignItems: 'center', boxSizing: 'border-box', padding: '0 12px', borderRadius: 8, border: `1.5px solid ${BRAND.box}`, fontSize: 14, fontWeight: 600, color: '#241A33', background: BRAND.tint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {lockedProvider || 'No provider linked'}
+              </span>
+            )}
+          </div>
+
+          {/* Day navigation and the two actions; side by side on a tablet,
+              one above the other on a phone. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ flex: '1 1 300px', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <button onClick={goPrevDay} style={mobileIconBtn} data-drag-nav="prev" aria-label="Previous day" title="Previous day"><ChevronLeft size={16} /></button>
+              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDatePicker(o => !o)}
+                  style={{
+                    width: '100%', height: MOBILE_CONTROL_H, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 10px', borderRadius: 8,
+                    border: `1.5px solid ${BRAND.box}`, background: 'white', fontWeight: 600, fontSize: 14, color: '#241A33', cursor: 'pointer', boxSizing: 'border-box',
+                  }}
+                >
+                  <CalendarIcon size={14} color={BRAND.forest} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortDayLabel}</span>
+                </button>
+                {showDatePicker && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 50, background: 'white', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', borderRadius: 4 }}>
+                    <CalendarPicker value={datePickerValue} onChange={handleDateJump} />
+                  </div>
+                )}
+              </div>
+              <button onClick={goNextDay} style={mobileIconBtn} data-drag-nav="next" aria-label="Next day" title="Next day"><ChevronRight size={16} /></button>
+              <button onClick={goToday} style={{ ...secondaryBtnStyle(), height: MOBILE_CONTROL_H, boxSizing: 'border-box', fontSize: 14, flexShrink: 0 }}>Today</button>
+            </div>
+            <div style={{ flex: '1 1 300px', display: 'flex', gap: 8, minWidth: 0 }}>
+              <button onClick={openNewAppointment} disabled={!activeProvider}
+                style={{ ...primaryBtnStyle(), flex: 1, justifyContent: 'center', height: MOBILE_CONTROL_H, boxSizing: 'border-box', fontSize: 14, whiteSpace: 'nowrap' }}>
+                <PlusIcon size={13} color="white" /> Appointment
+              </button>
+              <button onClick={() => navigate('/time')} disabled={!activeProvider} title="Out of Office is now requested from My time, so it can go through approval"
+                style={{ ...secondaryBtnStyle(), flex: 1, justifyContent: 'center', height: MOBILE_CONTROL_H, boxSizing: 'border-box', fontSize: 14, whiteSpace: 'nowrap' }}>
+                <PlusIcon size={13} /> Time off
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          ref={pageHeaderRef}
+          style={{
+            display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, flexShrink: 0,
+            position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: '#f6f7f9',
+            margin: '-20px -28px 0', padding: '20px 28px 16px',
+          }}
+        >
+          <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
+            Weekly Schedule
+          </h1>
+
+          {isAdmin ? (
+            <select
+              value={selectedProvider}
+              onChange={e => setSelectedProvider(e.target.value)}
+              style={{ padding: '6px 12px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13, fontWeight: 600, color: '#241A33', background: 'white' }}
+            >
+              {providers.map(p => <option key={p.id} value={p.Name}>{p.Name}</option>)}
+            </select>
+          ) : (
+            <span style={{ padding: '6px 12px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13, fontWeight: 600, color: '#241A33', background: BRAND.tint }}>
+              {lockedProvider || 'No provider linked'}
+            </span>
+          )}
+
+          <button onClick={goPrevWeek} style={iconBtnStyle()} data-drag-nav="prev" title="Previous week"><ChevronLeft size={14} /></button>
+
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setShowDatePicker(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 4,
+                border: `1.5px solid ${BRAND.box}`, background: 'white', fontWeight: 600, fontSize: 13,
+                color: '#241A33', cursor: 'pointer', width: 210, justifyContent: 'center',
+                boxSizing: 'border-box',
+              }}
+            >
+              <CalendarIcon size={14} color={BRAND.forest} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {weekRangeLabel}
+              </span>
+            </button>
+            {showDatePicker && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 50, background: 'white', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', borderRadius: 4 }}>
+                <CalendarPicker value={datePickerValue} onChange={handleDateJump} />
+              </div>
+            )}
+          </div>
+
+          <button onClick={goNextWeek} style={iconBtnStyle()} data-drag-nav="next" title="Next week"><ChevronRight size={14} /></button>
+          <button onClick={goThisWeek} style={secondaryBtnStyle()}>This Week</button>
+
+          <Dot />
+          <button
+            onClick={openNewAppointment}
+            disabled={!activeProvider}
+            style={primaryBtnStyle()}
+          >
+            <PlusIcon size={13} color="white" /> Create Appointment
+          </button>
+          <button onClick={() => navigate('/time')} disabled={!activeProvider} style={secondaryBtnStyle()} title="Out of Office is now requested from My time, so it can go through approval">
+            <PlusIcon size={13} /> Request Time Off
+          </button>
+        </div>
+      )}
 
       {futureLookaheadConflicts.length > 0 && (
         <div style={{ marginBottom: 10, borderRadius: 10, background: '#FFF7ED', border: '1px solid #FDBA74', padding: 12, flexShrink: 0 }}>
