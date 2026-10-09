@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from './api';
 import { DateField, dateToInputValue } from './pages/SchedulePage';
-import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, isFirstChange, BILLING_CODES, takesBillingCode, planPayload } from './programPlan';
+import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, takesAuthorization, isFirstChange, BILLING_CODES, takesBillingCode, planPayload } from './programPlan';
 
 // Program chips for the patient form. Clicking a program opens its mandate:
 // which services it covers, each as sessions per week x minutes. A service
@@ -122,11 +122,12 @@ export function ChangeStartChoice({ firstChange, replaceAll, onReplaceAll, effec
 
 function MandateDialog({ program, initial, initialCode, isSelected, childServices, ownerOf, onSave, onRemove, onCancel }) {
   const coded = takesBillingCode(program);
+  const authorized = takesAuthorization(program);
   const [code, setCode] = useState(initialCode || '');
   const order = [...childServices.filter(s => MANDATE_SERVICES.includes(s)), ...MANDATE_SERVICES.filter(s => !childServices.includes(s))];
   const [rows, setRows] = useState(() => Object.fromEntries(order.map(s => {
     const m = initial.find(x => x.service === s);
-    return [s, { on: !!m, sessions: m ? String(m.sessions) : '', minutes: m ? Number(m.minutes) : 30 }];
+    return [s, { on: !!m, sessions: m ? String(m.sessions) : '', minutes: m ? Number(m.minutes) : 30, authorization: m?.authorization || '' }];
   })));
   const [error, setError] = useState(null);
   const set = (s, patch) => setRows(r => ({ ...r, [s]: { ...r[s], ...patch } }));
@@ -138,7 +139,7 @@ function MandateDialog({ program, initial, initialCode, isSelected, childService
       if (!r.on) continue;
       const sessions = r.sessions.replace(/\s+/g, '');
       if (!/^\d{1,2}(-\d{1,2})?$/.test(sessions)) { setError(`Enter sessions per week for ${s}, like 2 or 1-2.`); return; }
-      mandates.push({ service: s, sessions, minutes: Number(r.minutes) });
+      mandates.push({ service: s, sessions, minutes: Number(r.minutes), ...(authorized ? { authorization: r.authorization.trim() } : {}) });
     }
     onSave({ mandates, billing_code: coded ? code : '' });
   };
@@ -161,6 +162,9 @@ function MandateDialog({ program, initial, initialCode, isSelected, childService
             {!code && <span style={{ fontSize: 12, fontWeight: 500, color: MUTED }}>Billing shows a red # until it's set.</span>}
           </label>
         )}
+        {authorized && (
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: MUTED }}>Auth # is the EI-Hub authorization number for that service. A new number takes effect from the change date.</p>
+        )}
         <div style={{ display: 'grid', gap: 8 }}>
           {order.map(s => {
             const owner = ownerOf(s);
@@ -182,6 +186,10 @@ function MandateDialog({ program, initial, initialCode, isSelected, childService
                       {MINUTE_OPTIONS.map(m => <option key={m} value={m}>{m} min</option>)}
                     </select>
                     <span style={{ fontSize: 12, color: MUTED }}>per week</span>
+                    {authorized && (
+                      <input value={r.authorization} onChange={e => set(s, { authorization: e.target.value })} placeholder="Auth #" maxLength={40}
+                        aria-label={`${s} EI authorization number`} style={{ ...input, width: 110 }} />
+                    )}
                   </>
                 ) : (
                   <span style={{ fontSize: 12.5, color: MUTED }}>Not covered</span>

@@ -278,6 +278,9 @@ export const api = {
   getProviderCaseload: (provider) => request(`/providers/${encodeURIComponent(provider)}/caseload`),
   getBillingSheet: (provider, month) => request(`/billing?provider=${encodeURIComponent(provider || '')}&month=${month}`),
   setBillingReviewed: (provider, month, reviewed) => request('/billing/review', { method: 'PUT', body: JSON.stringify({ provider, month, reviewed }) }),
+  // EI-Hub entry list (Billing page): a month's EI sessions, and ticking one as entered.
+  getEiHubSessions: (month) => request(`/billing/ei-hub?month=${month}`),
+  setEiHubEntered: (payload) => request('/billing/ei-hub/entered', { method: 'PUT', body: JSON.stringify(payload) }),
   deleteOfficeClosure: (id) => request(`/office-closures/${id}`, { method: 'DELETE' }),
   getProviderUsualSchedule: (providerName) => request(`/providers/${encodeURIComponent(providerName)}/usual-schedule`),
   // Scheduled changes to contracted hours (start date, optional end date, weekly hours).

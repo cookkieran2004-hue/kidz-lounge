@@ -176,7 +176,32 @@ function billingSheet(provider, month) {
   };
 }
 
+// EI-Hub entry list (EiHubList.jsx): the month's EI sessions so far, made up.
+function eiHub(month) {
+  const ei = { 'Ava Brown': ['1023456', { ST: '4471029', OT: '4471030' }], 'Sam Diaz': ['1029981', { ST: '4470112', SI: '4470113' }], 'Lily Moore': [null, {}], 'Zoe Patel': ['1031207', { ST: '4472210' }] };
+  const svc = { 'Amy Lee': 'ST', 'Jordan Reyes': 'OT', 'Priya Shah': 'PT', 'Tom Reed': 'SI' };
+  const sessions = [];
+  for (let d = `${month}-01`; d < '2026-10-09'; d = addDays(d, 1)) {
+    for (const a of dayAppointments(d)) {
+      const info = ei[a.patient_name];
+      if (!info || ['Canceled', 'No Show', '*HOLD*'].includes(a.appointment_status)) continue;
+      const [h, m] = a.appointment_time.split(':').map(Number);
+      const endM = h * 60 + m + a.duration;
+      const service = svc[a.provider];
+      const auth = info[1][service] || null;
+      const setting = a.treatment_area ? (/^Offsite/.test(a.treatment_area) ? 'School' : 'Center') : null;
+      const problems = [!info[0] && 'No ID # (EI child ID) on the patient', !auth && `No EI authorization number for ${service} on this date`, !setting && 'No room or offsite setting'].filter(Boolean);
+      const done = d < '2026-10-06';
+      sessions.push({ key: `appt:${a.id}`, appointment_id: a.id, date: d, start_time: a.appointment_time.slice(0, 5), end_time: `${String(Math.floor(endM / 60)).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`, duration: a.duration,
+        patient_name: a.patient_name, ei_child_id: info[0], provider: a.provider, service, service_options: null, authorization: auth, setting, is_makeup: !!a.is_makeup, is_eval: !!a.is_eval, problems,
+        entered: done ? { by: 'cmorgan', at: `${addDays(d, 1)}T15:00:00Z`, changed: d === '2026-10-05' && a.patient_name === 'Ava Brown' } : null });
+    }
+  }
+  return { month, start: `${month}-01`, end: `${month}-31`, today: '2026-10-09', tracking: true, sessions };
+}
+
 const handlers = [
+  [/^\/billing\/ei-hub$/, (role, q) => eiHub(q.get('month') || '2026-10')],
   [/^\/billing$/, (role, q) => billingSheet(q.get('provider') || 'Amy Lee', q.get('month') || '2026-10')],
   [/^\/office-closures$/, () => [
     { id: 1, closure_date: '2026-10-12', reason: 'Columbus Day', closure_type: 'holiday' },
@@ -184,8 +209,8 @@ const handlers = [
     { id: 3, closure_date: '2026-10-29', reason: 'Power outage', closure_type: 'emergency' },
   ]],
   [/^\/patients\/[^/]+\/programs$/, () => ({ available: true, rows: [
-    { id: 3, program: 'EI', service: 'ST', sessions: '2', minutes: 30, start_date: '2026-09-01', end_date: null },
-    { id: 2, program: 'EI', service: 'OT', sessions: '1', minutes: 30, start_date: '2026-09-01', end_date: null },
+    { id: 3, program: 'EI', service: 'ST', sessions: '2', minutes: 30, start_date: '2026-09-01', end_date: null, authorization_number: '4471029' },
+    { id: 2, program: 'EI', service: 'OT', sessions: '1', minutes: 30, start_date: '2026-09-01', end_date: null, authorization_number: '4471030' },
     { id: 1, program: 'EI', service: 'ST', sessions: '1', minutes: 30, start_date: null, end_date: '2026-08-31' },
   ] })],
   [/^\/auth\/me$/, (role) => { const s = STAFF.find(x => x.username === WHO[role]); return { id: s.id, username: s.username, role: s.role, mustResetPassword: false, providerName: s.provider_name, firstName: s.first_name, lastName: s.last_name, position: s.position }; }],

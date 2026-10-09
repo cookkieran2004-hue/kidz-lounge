@@ -163,7 +163,7 @@ function ProgramHistory({ patient, onChanged }) {
   if (!rows || !rows.length) return null;
   const fmt = (d) => new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const span = (r) => (r.end_date ? `${r.start_date ? fmt(r.start_date) : 'From the start'} – ${fmt(r.end_date)}` : r.start_date ? `From ${fmt(r.start_date)}` : 'From the start');
-  const mandate = (r) => [r.billing_code, r.service ? `${r.service} ${r.sessions}x${r.minutes}` : r.legacy_mandate ? `Old mandate: ${r.legacy_mandate}` : 'No mandate entered'].filter(Boolean).join(' · ');
+  const mandate = (r) => [r.billing_code, r.service ? `${r.service} ${r.sessions}x${r.minutes}` : r.legacy_mandate ? `Old mandate: ${r.legacy_mandate}` : 'No mandate entered', r.authorization_number && `Auth ${r.authorization_number}`].filter(Boolean).join(' · ');
   return (
     <>
       <p style={sectionHeaderStyle()}>Programs and mandates</p>

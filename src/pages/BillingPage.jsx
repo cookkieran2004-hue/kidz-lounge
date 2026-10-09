@@ -3,7 +3,8 @@ import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
 import { canManage, canAdminister } from '../roles';
-import { PageHeader } from '../dashboardUi';
+import { PageHeader, UnderlineTabs } from '../dashboardUi';
+import EiHubList from '../EiHubList';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 import { statusColor } from './SchedulePage';
@@ -84,6 +85,9 @@ export default function BillingPage() {
   const [error, setError] = useState(null);
   const [version, setVersion] = useState(0);
   const [savingReview, setSavingReview] = useState(false);
+  // Reception and admins also get the EI-Hub entry list (EiHubList.jsx).
+  const [view, setView] = useState('sheet');
+  const eiHub = manager && view === 'eihub';
   const headerRef = useRef(null);
   const sheetRef = useRef(null);
   // The column header (Name, Mandate, ... day numbers) is its own strip
@@ -188,7 +192,7 @@ export default function BillingPage() {
             isMobile={isMobile}
             actions={
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {manager && (
+                {manager && !eiHub && (
                   <select value={provider} onChange={e => setProvider(e.target.value)} aria-label="Provider"
                     style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${HAIRLINE}`, fontSize: 13, fontFamily: 'inherit', background: 'white' }}>
                     {providers.map(p => <option key={p.Name} value={p.Name}>{p.Name}</option>)}
@@ -198,22 +202,27 @@ export default function BillingPage() {
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: INK, minWidth: 130, textAlign: 'center' }}>{monthLabel(month)}</span>
                 <button type="button" aria-label="Next month" onClick={() => setMonth(m => shiftMonth(m, 1))} style={buttonStyle('secondary', { padding: '6px 10px' })}>›</button>
                 {month !== monthKey(new Date()) && <button type="button" onClick={() => setMonth(monthKey(new Date()))} style={buttonStyle('secondary')}>This month</button>}
-                <button type="button" onClick={() => window.print()} style={buttonStyle('secondary')}>Print</button>
+                {!eiHub && <button type="button" onClick={() => window.print()} style={buttonStyle('secondary')}>Print</button>}
               </div>
             }
           />
-          {sheet && (
+          {manager && (
+            <UnderlineTabs label="Billing views" active={view} onPick={setView} style={{ marginBottom: 12 }}
+              tabs={[{ key: 'sheet', label: 'Billing sheets' }, { key: 'eihub', label: 'EI-Hub entry' }]} />
+          )}
+          {sheet && !eiHub && (
             <div style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12 }}>
               <SheetInfo sheet={sheet} isMobile={isMobile} />
             </div>
           )}
         </div>
 
-        {error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
-        {!sheet && !error && <p style={{ fontSize: 13, color: MUTED }}>Loading billing...</p>}
+        {eiHub && <EiHubList month={month} />}
+        {!eiHub && error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
+        {!eiHub && !sheet && !error && <p style={{ fontSize: 13, color: MUTED }}>Loading billing...</p>}
 
         <style>{PRINT_CSS}</style>
-        {sheet && (
+        {sheet && !eiHub && (
           <div ref={sheetRef} className="kl-billing-print" style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: 'clip' }}>
             <div className="kl-print-only" style={{ display: 'none', padding: '12px 16px 0', fontSize: 16, fontWeight: 600, color: INK }}>Billing Invoice · {monthLabel(month)}</div>
             {/* On screen this line is in the sticky header above; printed here. */}

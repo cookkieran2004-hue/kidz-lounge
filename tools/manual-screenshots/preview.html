@@ -69,6 +69,8 @@ const ACTIONS = {
   openTask: async () => { const t = $$m('div').find(d => d.style.cursor === 'pointer' && /Send progress report/.test(d.textContent) && d.textContent.length < 200); t && t.click(); await sleep(900); },
   dataTable: async () => { btn(/Data table/i).click(); await sleep(500); },
   pending: async () => { btn(/^Pending/).click(); await sleep(600); },
+  eiHub: async () => { btn('EI-Hub entry').click(); await sleep(1200); },
+  eiHubAll: async () => { btn('EI-Hub entry').click(); await sleep(1200); btn(/^All$/).click(); await sleep(500); },
   officeHours: async () => { btn(/^Office hours/).click(); await sleep(900); },
   balances: async () => { btn(/^Balances/).click(); await sleep(900); },
   balanceEdit: async () => { btn(/^Balances/).click(); await sleep(900); const b = $$('button').find(x => /^PTO 31/.test(x.getAttribute('aria-label') || '')); b && b.click(); await sleep(300); },
