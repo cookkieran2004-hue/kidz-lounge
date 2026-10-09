@@ -76,6 +76,10 @@ export const PATIENT_PRESETS = [
   { key: 'all', label: 'All' },
   { key: 'insurance', label: 'Insurance' },
   { key: 'ei', label: 'Early Intervention' },
+  // One pill per case manager: their patients, matched on the case manager's
+  // name (first or preferred name, as shown in Case Manager).
+  { key: 'cm-heather', label: 'Case Manager Heather', caseManager: 'heather' },
+  { key: 'cm-fran', label: 'Case Manager Fran', caseManager: 'fran' },
 ];
 
 export const PATIENT_FILTER_COLUMNS = [
@@ -121,6 +125,8 @@ function patientFieldToString(patient, key) {
 
 export function matchesPreset(patient, presetKey) {
   const programValues = splitMultiValue(patient.Program).map(v => v.toLowerCase());
+  const cm = PATIENT_PRESETS.find(p => p.key === presetKey)?.caseManager;
+  if (cm) return String(patient.Case_Manager || '').trim().toLowerCase().split(/\s+/)[0] === cm;
   switch (presetKey) {
     case 'insurance':
       return INSURANCE_PROGRAM_VALUES.some(v => programValues.includes(v.toLowerCase()));
