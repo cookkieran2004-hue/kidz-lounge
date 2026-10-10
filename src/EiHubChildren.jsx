@@ -4,6 +4,7 @@ import { Status } from './EiHubSetup';
 import { DateField } from './pages/SchedulePage';
 import { useStaffNames } from './staffDirectory';
 import { eiInput, eiLabel, eiGrid } from './eiHubUi';
+import { childProblems, npiProblem } from './eiValidate';
 import { INK, MUTED, HAIRLINE, TONES, buttonStyle, NUMERIC } from './uiTokens';
 
 // EI children's billing details (Admins and Developers; kidz-lounge-api
@@ -57,6 +58,56 @@ const summary = (v) => [
   v.address_line1 && [v.address_line1, v.city, zipText(v.zip)].filter(Boolean).join(', '),
 ].filter(Boolean).join(' · ');
 
+// The fields of a child's EI details, with a message under any that's filled
+// in wrong (src/eiValidate.js). Shared by DetailsForm and the new-patient
+// form's EI tab (ProgramPlanEditor.jsx). `idField`: false when the form
+// already has the ID # (the patient form's own field).
+export function EiDetailsFields({ form, setForm, counties, idField = true, namePlaceholder = {} }) {
+  const problems = childProblems(form);
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+  const note = (k) => problems[k] && <div role="alert" style={{ fontSize: 11.5, color: TONES.danger.fg, marginTop: 3 }}>{problems[k]}</div>;
+  const field = (k, label, extra = {}) => (
+    <div>
+      <label htmlFor={`ei-child-${k}`} style={eiLabel}>{label}</label>
+      <input id={`ei-child-${k}`} style={{ ...eiInput, ...(problems[k] ? { borderColor: TONES.danger.fg } : {}) }} value={form[k] || ''} onChange={set(k)} {...extra} />
+      {note(k)}
+    </div>
+  );
+  return (
+    <>
+      <div style={eiGrid}>
+        {idField && field('ei_child_id', 'ID # (EI child ID)')}
+        {field('first_name', 'First name in EI-Hub', { placeholder: namePlaceholder.first })}
+        {field('last_name', 'Last name in EI-Hub', { placeholder: namePlaceholder.last })}
+        <div>
+          <label style={eiLabel}>Date of birth in EI-Hub</label>
+          <DateField yearNav clearable style={eiInput} ariaLabel="Date of birth in EI-Hub" value={form.date_of_birth || ''} onChange={v => setForm(f => ({ ...f, date_of_birth: v }))} />
+        </div>
+        <div>
+          <label htmlFor="ei-child-sex" style={eiLabel}>Sex</label>
+          <select id="ei-child-sex" style={eiInput} value={form.sex || ''} onChange={set('sex')}>
+            <option value="">Not set</option><option value="F">Female</option><option value="M">Male</option>
+          </select>
+        </div>
+        {field('diagnosis_codes', 'Diagnosis codes (ICD-10)', { placeholder: 'e.g. F80.2, R62.50' })}
+        <div>
+          <label htmlFor="ei-child-county" style={eiLabel}>County</label>
+          <select id="ei-child-county" style={eiInput} value={form.county || ''} onChange={set('county')}>
+            <option value="">Not set</option>
+            {counties.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        {field('address_line1', 'Address')}
+        {field('address_line2', 'Address line 2')}
+        {field('city', 'City')}
+        {field('state', 'State', { maxLength: 2 })}
+        {field('zip', 'ZIP code', { inputMode: 'numeric' })}
+      </div>
+      <p style={{ margin: '8px 0 0', fontSize: 12, color: MUTED }}>The first diagnosis goes on claims as the main one.</p>
+    </>
+  );
+}
+
 // The details form: a change from a date, or a correction of one version.
 function DetailsForm({ child, counties, version, onDone, onCancel }) {
   const correcting = !!version;
@@ -70,7 +121,6 @@ function DetailsForm({ child, counties, version, onDone, onCancel }) {
   const [from, setFrom] = useState(today());
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
   const save = async () => {
     setBusy(true); setStatus(null);
     try {
@@ -83,12 +133,6 @@ function DetailsForm({ child, counties, version, onDone, onCancel }) {
       setBusy(false);
     }
   };
-  const field = (k, label, extra = {}) => (
-    <div>
-      <label htmlFor={`ei-child-${k}`} style={eiLabel}>{label}</label>
-      <input id={`ei-child-${k}`} style={eiInput} value={form[k]} onChange={set(k)} {...extra} />
-    </div>
-  );
   return (
     <div style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 8, padding: 14, background: 'white' }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: INK, marginBottom: 2 }}>
@@ -99,34 +143,7 @@ function DetailsForm({ child, counties, version, onDone, onCancel }) {
           : first ? 'As EI-Hub has them. These apply to all dates until a change is added.'
           : 'As EI-Hub has them now. Sessions before the date keep the earlier details.'}
       </p>
-      <div style={eiGrid}>
-        {field('ei_child_id', 'ID # (EI child ID)')}
-        {field('first_name', 'First name in EI-Hub')}
-        {field('last_name', 'Last name in EI-Hub')}
-        <div>
-          <label style={eiLabel}>Date of birth</label>
-          <DateField yearNav clearable style={eiInput} ariaLabel="Date of birth" value={form.date_of_birth} onChange={v => setForm(f => ({ ...f, date_of_birth: v }))} />
-        </div>
-        <div>
-          <label htmlFor="ei-child-sex" style={eiLabel}>Sex</label>
-          <select id="ei-child-sex" style={eiInput} value={form.sex} onChange={set('sex')}>
-            <option value="">Not set</option><option value="F">Female</option><option value="M">Male</option>
-          </select>
-        </div>
-        {field('diagnosis_codes', 'Diagnosis codes (ICD-10)', { placeholder: 'e.g. F80.2, R62.50' })}
-        <div>
-          <label htmlFor="ei-child-county" style={eiLabel}>County</label>
-          <select id="ei-child-county" style={eiInput} value={form.county} onChange={set('county')}>
-            <option value="">Not set</option>
-            {counties.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        {field('address_line1', 'Address')}
-        {field('address_line2', 'Address line 2')}
-        {field('city', 'City')}
-        {field('state', 'State', { maxLength: 2 })}
-        {field('zip', 'ZIP code', { inputMode: 'numeric' })}
-      </div>
+      <EiDetailsFields form={form} setForm={setForm} counties={counties} />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
         {!correcting && !first && (
           <>
@@ -134,11 +151,10 @@ function DetailsForm({ child, counties, version, onDone, onCancel }) {
             <DateField style={{ ...eiInput, width: 170 }} ariaLabel="Takes effect from" value={from} onChange={setFrom} />
           </>
         )}
-        <button type="button" onClick={save} disabled={busy || (!correcting && !first && !from)} style={buttonStyle('primary')}>{busy ? 'Saving...' : 'Save'}</button>
+        <button type="button" onClick={save} disabled={busy || (!correcting && !first && !from) || Object.keys(childProblems(form)).length > 0} style={buttonStyle('primary')}>{busy ? 'Saving...' : 'Save'}</button>
         <button type="button" onClick={onCancel} disabled={busy} style={buttonStyle('secondary')}>Cancel</button>
         <Status status={status} />
       </div>
-      <p style={{ margin: '8px 0 0', fontSize: 12, color: MUTED }}>The first diagnosis goes on claims as the main one.</p>
     </div>
   );
 }
@@ -201,6 +217,7 @@ function ReferralForm({ service, period, onDone, onCancel }) {
         value={form.referring_first} onChange={e => setForm(f => ({ ...f, referring_first: e.target.value }))} />
       <input aria-label="Referring provider NPI" style={{ ...eiInput, width: 120 }} placeholder="NPI" inputMode="numeric" maxLength={10}
         value={form.referring_npi} onChange={e => setForm(f => ({ ...f, referring_npi: e.target.value.replace(/\D/g, '') }))} />
+      {npiProblem(form.referring_npi) && <span role="alert" style={{ fontSize: 12, color: TONES.danger.fg }}>{npiProblem(form.referring_npi)}</span>}
       {!period && !first && (
         <>
           <span style={{ fontSize: 12.5 }}>from</span>

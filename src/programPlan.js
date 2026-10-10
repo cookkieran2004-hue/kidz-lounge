@@ -52,3 +52,17 @@ const NO_CODE_PROGRAMS = new Set(['EI', 'CPSE', 'CSE', 'DOE', 'NONE']);
 export const takesBillingCode = (program) => !NO_CODE_PROGRAMS.has(String(program || '').trim().toUpperCase());
 // What the form sends for a plan.
 export const planPayload = (plan) => plan.map(({ program, billing_code, mandates }) => ({ program, billing_code: billing_code || null, mandates }));
+
+const SESSIONS_RE = /^\d{1,2}(-\d{1,2})?$/;
+export const sessionsProblem = (v) => (SESSIONS_RE.test(String(v || '').replace(/\s+/g, '')) ? null : 'Enter sessions per week, like 2 or 1-2.');
+
+// The first program with a mandate that can't be saved: { program, message }.
+export function planProblem(plan) {
+  for (const p of plan) {
+    for (const m of p.mandates) {
+      if (sessionsProblem(m.sessions)) return { program: p.program, message: `${p.program} ${m.service}: enter sessions per week, like 2 or 1-2.` };
+    }
+  }
+  return null;
+}
+

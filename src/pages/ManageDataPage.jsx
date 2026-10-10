@@ -9,8 +9,10 @@ import { useIsMobile } from '../useIsMobile';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoices } from '../roles';
 import SpecialtyPicker from '../SpecialtyPicker';
 import TimeOffBalanceEditor from '../TimeOffBalanceEditor';
-import ProgramPlanEditor, { ProgramPlanDialog, ChangeStartChoice } from '../ProgramPlanEditor';
-import { planFromRows, planKey, programHistoryAvailable, isFirstChange, planPayload } from '../programPlan';
+import { ProgramPlanDialog, ChangeStartChoice, ProgramChips, ProgramTab } from '../ProgramPlanEditor';
+import { EiDetailsFields, ChildPanel } from '../EiHubChildren';
+import { childProblems as eiChildProblems, npiProblem } from '../eiValidate';
+import { planFromRows, planKey, programHistoryAvailable, isFirstChange, planPayload, mandateLabel, takesBillingCode, planProblem } from '../programPlan';
 import LinkTextarea from '../LinkTextarea';
 import { PatientLinksEditor } from '../PatientLinksView';
 import { parseLinks, linkLabel } from '../patientLinks';
@@ -814,6 +816,27 @@ export function PatientModal({ existing, onClose, onSaved }) {
   const [replaceAll, setReplaceAll] = useState(true);
   const planChanged = programsAvailable && planKey(plan) !== originalPlanKey;
   const allDates = firstChange && replaceAll;
+  // Each program has its own tab (Kieran, Oct 2026): 'patient' or a program.
+  const [tab, setTab] = useState('patient');
+  // EI billing details: Reception, Admins and Developers only (Kieran, Oct
+  // 2026: none for providers). An existing patient's are edited as dated
+  // versions (ChildPanel, saved straight away); a new patient's are typed
+  // here and saved with the patient (POST /patients ei_details).
+  const showEiBilling = canManage(currentUser);
+  const [eiData, setEiData] = useState(null); // GET /ei-hub/patient/:id
+  const [eiReload, setEiReload] = useState(0);
+  const [eiDraft, setEiDraft] = useState({ state: 'NY', county: 'New York City' });
+  const [eiRefs, setEiRefs] = useState({}); // service -> { referring_last, referring_first, referring_npi }
+  const hasEi = !!programsAvailable && plan.some(p => p.program === 'EI');
+
+  useEffect(() => {
+    if (!showEiBilling) return undefined;
+    let alive = true;
+    api.getEiPatient(existing ? existing.id : 'new')
+      .then(d => { if (alive) setEiData(d); })
+      .catch(err => { if (alive) setEiData({ error: err.message }); });
+    return () => { alive = false; };
+  }, [existing, showEiBilling, eiReload]);
 
   useEffect(() => {
     api.getStaffDirectory().then(setStaffDirectory).catch(() => {});
@@ -858,6 +881,24 @@ export function PatientModal({ existing, onClose, onSaved }) {
 
   const setField = (key, value) => setForm(f => ({ ...f, [key]: value }));
 
+  // A program chip adds the program (if it isn't on yet) and opens its tab.
+  const pickProgram = (program) => {
+    if (!plan.some(p => p.program === program)) changePlan([...plan, { program, mandates: [], billing_code: '' }]);
+    setTab(program);
+  };
+  const updateEntry = (entry) => changePlan(plan.map(p => (p.program === entry.program ? entry : p)));
+  const removeProgram = (program) => { changePlan(plan.filter(p => p.program !== program)); setTab('patient'); };
+
+  // A new EI patient's billing details, sent with the patient when anything's filled in.
+  const eiReferrals = () => (plan.find(p => p.program === 'EI')?.mandates || [])
+    .filter(m => m.service !== 'SI' && (m.authorization || '').trim())
+    .map(m => ({ authorization: m.authorization.trim(), ...(eiRefs[m.service] || {}) }));
+  const eiDraftFilled = Object.entries(eiDraft).some(([k, v]) => v && !['state', 'county'].includes(k))
+    || eiReferrals().some(r => r.referring_last || r.referring_npi);
+  const withEi = (payload) => (!existing && showEiBilling && hasEi && eiDraftFilled
+    ? { ...payload, ei_details: { ...eiDraft, referrals: eiReferrals() } }
+    : payload);
+
   const toggleMultiField = (key, value) => {
     setForm(f => {
       const current = f[key];
@@ -879,6 +920,12 @@ export function PatientModal({ existing, onClose, onSaved }) {
   const handleSave = async () => {
     if (!form.Name.trim()) { setError('Name is required.'); return; }
     if (existing && planChanged && !allDates && !effectiveFrom) { setError('Choose the date the program changes start.'); return; }
+    const badPlan = programsAvailable && planProblem(plan);
+    if (badPlan) { setTab(badPlan.program); setError(badPlan.message); return; }
+    if (!existing && showEiBilling && hasEi && eiDraftFilled) {
+      const bad = Object.values(eiChildProblems(eiDraft))[0] || eiReferrals().map(r => npiProblem(r.referring_npi)).find(Boolean);
+      if (bad) { setTab('EI'); setError(`EI tab: ${bad}`); return; }
+    }
     // Only editing an EXISTING patient requires password confirmation --
     // creating a brand-new one does not.
     if (existing) {
@@ -887,7 +934,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
       return;
     }
     setSaving(true); setError(null);
-    const payload = withPlan(formToPayload(form));
+    const payload = withEi(withPlan(formToPayload(form)));
     let saved;
     try {
       saved = await api.createPatient(payload);
@@ -934,6 +981,95 @@ export function PatientModal({ existing, onClose, onSaved }) {
     setConfirmingPassword(true);
   };
 
+  // The EI tab's EI-Hub billing details (Reception, Admins and Developers).
+  const eiBillingSection = () => {
+    const head = <p style={{ fontSize: 13, fontWeight: 700, color: EMR_INK, margin: '22px 0 4px' }}>EI-Hub billing</p>;
+    const note = (text, color = EMR_MUTED) => <p style={{ fontSize: 12, color, margin: '0 0 10px' }}>{text}</p>;
+    if (!eiData) return <>{head}{note('Loading...')}</>;
+    if (eiData.error) return <>{head}{note(eiData.error, '#B42318')}</>;
+    if (!eiData.available) return <>{head}{note('EI billing details need the 2026-10-21 and 2026-10-23 database updates. Ask an admin to run them.')}</>;
+    if (existing) {
+      return (
+        <>
+          {head}
+          {note('Kept with dates: each Save here takes effect right away, separately from the patient Save. A referring provider can be added once its auth # is saved.')}
+          <ChildPanel child={eiData.child} counties={eiData.counties || []} onChanged={() => setEiReload(n => n + 1)} />
+        </>
+      );
+    }
+    const name = form.Name.trim().split(/\s+/);
+    const refServices = (plan.find(p => p.program === 'EI')?.mandates || []).filter(m => m.service !== 'SI');
+    return (
+      <>
+        {head}
+        {note("As EI-Hub has them. Leave the name and date of birth blank if they're the same as the patient's.")}
+        <div style={{ maxWidth: 240, marginBottom: 10 }}>
+          <label htmlFor="kl-ei-id" style={emrLabelStyle()}>ID # (EI child ID)</label>
+          <input id="kl-ei-id" style={emrInputStyle()} value={form.ID_Number} onChange={e => setField('ID_Number', e.target.value)} />
+        </div>
+        <EiDetailsFields form={eiDraft} setForm={setEiDraft} counties={eiData.counties || []} idField={false}
+          namePlaceholder={{ first: name[0] || '', last: name.slice(1).join(' ') }} />
+        {refServices.length > 0 && (
+          <>
+            <p style={{ fontSize: 13, fontWeight: 700, color: EMR_INK, margin: '18px 0 4px' }}>Referring provider</p>
+            {note('Must match the prescriber on that authorization in EI-Hub.')}
+            {refServices.map(m => {
+              const r = eiRefs[m.service] || {};
+              const setR = (patch) => setEiRefs(x => ({ ...x, [m.service]: { ...r, ...patch } }));
+              const npiBad = npiProblem(r.referring_npi);
+              return (
+                <div key={m.service} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8, fontSize: 13 }}>
+                  <strong style={{ width: 28, color: EMR_INK }}>{m.service}</strong>
+                  {(m.authorization || '').trim() ? (
+                    <>
+                      <span style={{ color: EMR_MUTED, minWidth: 90 }}>auth {m.authorization.trim()}</span>
+                      <input aria-label={`${m.service} referring provider last name`} placeholder="Last name or organization" style={{ ...emrInputStyle(), width: 190 }}
+                        value={r.referring_last || ''} onChange={e => setR({ referring_last: e.target.value })} />
+                      <input aria-label={`${m.service} referring provider first name`} placeholder="First name" style={{ ...emrInputStyle(), width: 130 }}
+                        value={r.referring_first || ''} onChange={e => setR({ referring_first: e.target.value })} />
+                      <input aria-label={`${m.service} referring provider NPI`} placeholder="NPI" inputMode="numeric" maxLength={10} style={{ ...emrInputStyle(), width: 120, ...(npiBad ? { borderColor: '#B42318' } : {}) }}
+                        value={r.referring_npi || ''} onChange={e => setR({ referring_npi: e.target.value.replace(/\D/g, '') })} />
+                      {npiBad && <span role="alert" style={{ fontSize: 12, color: '#B42318' }}>{npiBad}</span>}
+                    </>
+                  ) : <span style={{ color: EMR_MUTED }}>Enter the auth # above first.</span>}
+                </div>
+              );
+            })}
+          </>
+        )}
+      </>
+    );
+  };
+
+  // The IFSP fields: on the Patient tab, or on the EI tab once EI is a program.
+  const ifspSection = (index) => (
+    <>
+      {index ? <EMRSectionHeading index={index} label="IFSP" /> : <p style={{ fontSize: 13, fontWeight: 700, color: EMR_INK, margin: '4px 0 10px' }}>IFSP</p>}
+    <div style={emrFieldGrid(2)}>
+      <div>
+        <label style={emrLabelStyle()}>IFSP Start Date</label>
+        <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP Start Date" value={form.IFSP_Start_Date} onChange={v => setField('IFSP_Start_Date', v)} />
+      </div>
+      <div>
+        <label style={emrLabelStyle()}>IFSP End Date</label>
+        <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP End Date" value={form.IFSP_End_Date} onChange={setIFSPEndDate} />
+      </div>
+    </div>
+    <label style={emrLabelStyle()}>IFSP Type</label>
+    <select style={{ ...emrInputStyle(), marginBottom: 14 }} value={form.IFSP_Type} onChange={e => setField('IFSP_Type', e.target.value)}>
+      <option value="">-- select --</option>
+      {IFSP_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+    </select>
+
+    <label style={emrLabelStyle()}>Report Date</label>
+    <div style={{ ...emrLockedFieldStyle(), maxWidth: 220 }}>
+      <span style={{ fontSize: 12 }}>&#128274;</span>
+      {formatDateMMDDYYYY(form.Report_Date)}
+    </div>
+    <p style={{ fontSize: 10.5, color: EMR_MUTED, margin: '4px 0 0' }}>Calculated automatically: 21 days before IFSP End Date.</p>
+    </>
+  );
+
   return (
     <div style={emrOverlayStyle()} onClick={onClose}>
       <div style={emrModalBoxStyle()} onClick={e => e.stopPropagation()}>
@@ -958,9 +1094,23 @@ export function PatientModal({ existing, onClose, onSaved }) {
               )}
             </div>
           </div>
+          {programsAvailable && plan.length > 0 && (
+            <div role="tablist" aria-label="Patient form" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, margin: '14px -4px -21px' }}>
+              {['patient', ...plan.map(p => p.program)].map(t => (
+                <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+                  style={{
+                    padding: '8px 12px', border: 'none', borderBottom: `2px solid ${tab === t ? EMR_PRIMARY : 'transparent'}`, background: 'none',
+                    fontSize: 13, fontWeight: tab === t ? 700 : 500, color: tab === t ? EMR_PRIMARY : EMR_MUTED, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  {t === 'patient' ? 'Patient' : t}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ padding: '20px 28px 26px' }}>
+          {tab === 'patient' && (<>
           <EMRSectionHeading index={1} label="Patient Information" />
           <label style={emrLabelStyle()}>Patient Name *</label>
           <input style={{ ...emrInputStyle(), marginBottom: 14 }} value={form.Name} onChange={e => setField('Name', e.target.value)} placeholder="Full name" />
@@ -977,7 +1127,22 @@ export function PatientModal({ existing, onClose, onSaved }) {
           <div style={{ marginBottom: 14 }}>
             {programsAvailable ? (
               <>
-                <ProgramPlanEditor options={PROGRAM_OPTIONS} plan={plan} onChange={changePlan} childServices={form.Services} legacyMandate={form.Mandate} />
+                <ProgramChips options={PROGRAM_OPTIONS} plan={plan} onPick={pickProgram} />
+                {plan.length > 0 && (
+                  <div style={{ marginTop: 10, border: `1px solid ${EMR_BORDER}`, borderRadius: 8, overflow: 'hidden' }}>
+                    {plan.map((p, i) => (
+                      <button key={p.program} type="button" onClick={() => setTab(p.program)}
+                        style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '8px 12px', border: 'none', borderTop: i ? `1px solid ${EMR_BORDER}` : 'none', background: 'white', fontSize: 13, fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
+                        <strong style={{ color: EMR_INK, minWidth: 90 }}>{p.program}</strong>
+                        <span style={{ color: p.mandates.length ? EMR_INK : EMR_MUTED, flex: 1 }}>
+                          {takesBillingCode(p.program) && <strong style={{ marginRight: 8, color: p.billing_code ? EMR_INK : '#B42318' }}>{p.billing_code || '#'}</strong>}
+                          {p.mandates.length ? p.mandates.map(m => mandateLabel(showEiBilling ? m : { ...m, authorization: '' })).join(' · ') : (p.legacy ? `Old mandate: ${p.legacy}` : 'No mandate entered')}
+                        </span>
+                        <span style={{ color: EMR_PRIMARY, fontWeight: 600, fontSize: 12.5 }}>Open</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {existing && planChanged && (
                   <ChangeStartChoice firstChange={firstChange} replaceAll={replaceAll} onReplaceAll={setReplaceAll}
                     effectiveFrom={effectiveFrom} onEffectiveFrom={setEffectiveFrom} inputStyle={emrInputStyle()} label="Program changes start on" />
@@ -1096,31 +1261,9 @@ export function PatientModal({ existing, onClose, onSaved }) {
             </div>
           </div>
 
-          <EMRSectionHeading index={5} label="IFSP" />
-          <div style={emrFieldGrid(2)}>
-            <div>
-              <label style={emrLabelStyle()}>IFSP Start Date</label>
-              <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP Start Date" value={form.IFSP_Start_Date} onChange={v => setField('IFSP_Start_Date', v)} />
-            </div>
-            <div>
-              <label style={emrLabelStyle()}>IFSP End Date</label>
-              <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP End Date" value={form.IFSP_End_Date} onChange={setIFSPEndDate} />
-            </div>
-          </div>
-          <label style={emrLabelStyle()}>IFSP Type</label>
-          <select style={{ ...emrInputStyle(), marginBottom: 14 }} value={form.IFSP_Type} onChange={e => setField('IFSP_Type', e.target.value)}>
-            <option value="">-- select --</option>
-            {IFSP_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          {!hasEi && ifspSection(5)}
 
-          <label style={emrLabelStyle()}>Report Date</label>
-          <div style={{ ...emrLockedFieldStyle(), maxWidth: 220 }}>
-            <span style={{ fontSize: 12 }}>&#128274;</span>
-            {formatDateMMDDYYYY(form.Report_Date)}
-          </div>
-          <p style={{ fontSize: 10.5, color: EMR_MUTED, margin: '4px 0 0' }}>Calculated automatically: 21 days before IFSP End Date.</p>
-
-          <EMRSectionHeading index={6} label="Consent & Documentation" />
+          <EMRSectionHeading index={hasEi ? 5 : 6} label="Consent & Documentation" />
           <div style={emrFieldGrid(2)}>
             <div>
               <label style={emrLabelStyle()}>Picture Consent</label>
@@ -1136,7 +1279,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
             </div>
           </div>
 
-          <EMRSectionHeading index={7} label="Allergies & Immunizations" />
+          <EMRSectionHeading index={hasEi ? 6 : 7} label="Allergies & Immunizations" />
           <p style={{ fontSize: 11.5, color: EMR_MUTED, margin: '-4px 0 10px' }}>
             Anything entered here shows as a yellow alert on the patient chart and on their schedule appointments. Leave blank if none.
           </p>
@@ -1154,6 +1297,24 @@ export function PatientModal({ existing, onClose, onSaved }) {
               <textarea id="kl-patient-immunizations" style={{ ...emrInputStyle(), minHeight: 60, resize: 'vertical' }} value={form.Immunizations} onChange={e => setField('Immunizations', e.target.value)} placeholder="e.g. Not up to date: MMR" />
             </div>
           </div>
+
+          </>)}
+
+          {tab !== 'patient' && plan.some(p => p.program === tab) && (
+            <ProgramTab key={tab} entry={plan.find(p => p.program === tab)} plan={plan} onChange={updateEntry} onRemove={() => removeProgram(tab)}
+              childServices={form.Services} showAuth={showEiBilling} inputStyle={emrInputStyle()} labelStyle={emrLabelStyle()}>
+              {tab === 'EI' && (
+                <>
+                  {ifspSection(0)}
+                  {showEiBilling && eiBillingSection()}
+                </>
+              )}
+              {existing && planChanged && (
+                <ChangeStartChoice firstChange={firstChange} replaceAll={replaceAll} onReplaceAll={setReplaceAll}
+                  effectiveFrom={effectiveFrom} onEffectiveFrom={setEffectiveFrom} inputStyle={emrInputStyle()} label="Program changes start on" />
+              )}
+            </ProgramTab>
+          )}
 
           {error && <p style={{ color: '#dc2626', fontSize: 13, marginTop: 14 }}>{error}</p>}
 

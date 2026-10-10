@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from './api';
+import { useAuth } from './AuthContext';
+import { canManage } from './roles';
 import { DateField, dateToInputValue } from './pages/SchedulePage';
-import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, takesAuthorization, isFirstChange, BILLING_CODES, takesBillingCode, planPayload } from './programPlan';
+import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, takesAuthorization, isFirstChange, BILLING_CODES, takesBillingCode, planPayload, sessionsProblem } from './programPlan';
 
 // Program chips for the patient form. Clicking a program opens its mandate:
 // which services it covers, each as sessions per week x minutes. A service
@@ -16,7 +18,7 @@ const BORDER = '#E2E8F0';
 const MUTED = '#64748B';
 const INK = '#0F172A';
 
-export default function ProgramPlanEditor({ options, plan, onChange, childServices = [], legacyMandate }) {
+export default function ProgramPlanEditor({ options, plan, onChange, childServices = [], legacyMandate, showAuth = true }) {
   const [editing, setEditing] = useState(null); // program name
   const selected = new Set(plan.map(p => p.program));
   const ownerOf = (service, except) => plan.find(p => p.program !== except && p.mandates.some(m => m.service === service))?.program;
@@ -73,6 +75,7 @@ export default function ProgramPlanEditor({ options, plan, onChange, childServic
           initialCode={plan.find(p => p.program === editing)?.billing_code || ''}
           isSelected={selected.has(editing)}
           childServices={childServices}
+          showAuth={showAuth}
           ownerOf={(s) => ownerOf(s, editing)}
           onSave={(m) => save(editing, m)}
           onRemove={() => remove(editing)}
@@ -120,9 +123,10 @@ export function ChangeStartChoice({ firstChange, replaceAll, onReplaceAll, effec
   );
 }
 
-function MandateDialog({ program, initial, initialCode, isSelected, childServices, ownerOf, onSave, onRemove, onCancel }) {
+function MandateDialog({ program, initial, initialCode, isSelected, childServices, ownerOf, onSave, onRemove, onCancel, showAuth }) {
   const coded = takesBillingCode(program);
-  const authorized = takesAuthorization(program);
+  // Providers don't see auth #s (the server keeps them as they are).
+  const authorized = takesAuthorization(program) && showAuth;
   const [code, setCode] = useState(initialCode || '');
   const order = [...childServices.filter(s => MANDATE_SERVICES.includes(s)), ...MANDATE_SERVICES.filter(s => !childServices.includes(s))];
   const [rows, setRows] = useState(() => Object.fromEntries(order.map(s => {
@@ -139,7 +143,7 @@ function MandateDialog({ program, initial, initialCode, isSelected, childService
       if (!r.on) continue;
       const sessions = r.sessions.replace(/\s+/g, '');
       if (!/^\d{1,2}(-\d{1,2})?$/.test(sessions)) { setError(`Enter sessions per week for ${s}, like 2 or 1-2.`); return; }
-      mandates.push({ service: s, sessions, minutes: Number(r.minutes), ...(authorized ? { authorization: r.authorization.trim() } : {}) });
+      mandates.push({ service: s, sessions, minutes: Number(r.minutes), ...(takesAuthorization(program) ? { authorization: r.authorization.trim() } : {}) });
     }
     onSave({ mandates, billing_code: coded ? code : '' });
   };
@@ -214,6 +218,8 @@ function MandateDialog({ program, initial, initialCode, isSelected, childService
 // data table's Program and Mandate cells. Loads their history, and on Save
 // hands back { effective_from, programs } for the patient save.
 export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
+  // EI auth #s: Reception, Admins and Developers only.
+  const showAuth = canManage(useAuth().user);
   const [plan, setPlan] = useState(null);
   const [originalKey, setOriginalKey] = useState('[]');
   const [effectiveFrom, setEffectiveFrom] = useState(() => dateToInputValue(new Date()));
@@ -260,7 +266,7 @@ export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
         {!plan ? (
           <p style={{ fontSize: 13, color: MUTED }}>Loading...</p>
         ) : (
-          <ProgramPlanEditor options={options} plan={plan} onChange={setPlan}
+          <ProgramPlanEditor options={options} plan={plan} onChange={setPlan} showAuth={showAuth}
             childServices={String(patient.Services || '').split(',').map(s => s.trim()).filter(Boolean)} legacyMandate={patient.Mandate} />
         )}
         {changed && (
@@ -279,5 +285,121 @@ export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
       </div>
     </div>,
     document.body
+  );
+}
+
+// ---- The patient form's program tabs (Oct 2026) ----
+// The patient form (ManageDataPage.jsx PatientModal) gives each program its
+// own tab: clicking a program chip adds it and opens its tab, which holds
+// everything that program needs. Changes are part of the form and save with
+// it (the same `plan` as above).
+
+// The chips on the form's Patient tab. onPick(program): add it if needed and
+// open its tab.
+export function ProgramChips({ options, plan, onPick }) {
+  const selected = new Set(plan.map(p => p.program));
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+      {options.map(opt => {
+        const on = selected.has(opt);
+        return (
+          <button key={opt} type="button" onClick={() => onPick(opt)}
+            style={{
+              padding: '6px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+              border: `1.5px solid ${on ? PRIMARY : BORDER}`, background: on ? PRIMARY : 'white', color: on ? 'white' : '#475569',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+            }}>
+            {on && <span style={{ fontSize: 11, lineHeight: 1 }}>&#10003;</span>}
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// One program's tab: its billing code (insurance / P / PP), and per service
+// sessions per week x minutes, plus the auth # for EI (not shown to
+// providers). A service can only be under one program at a time. `children`
+// goes below (the EI tab's IFSP and EI-Hub details).
+export function ProgramTab({ entry, plan, onChange, onRemove, childServices = [], showAuth, inputStyle, labelStyle, children }) {
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const program = entry.program;
+  const coded = takesBillingCode(program);
+  const authorized = takesAuthorization(program) && showAuth;
+  const order = [...childServices.filter(s => MANDATE_SERVICES.includes(s)), ...MANDATE_SERVICES.filter(s => !childServices.includes(s))];
+  const ownerOf = (service) => plan.find(p => p.program !== program && p.mandates.some(m => m.service === service))?.program;
+  const mandate = (s) => entry.mandates.find(m => m.service === s);
+  const setMandate = (s, patch) => onChange({ ...entry, mandates: entry.mandates.map(m => (m.service === s ? { ...m, ...patch } : m)) });
+  const toggle = (s, on) => onChange({
+    ...entry,
+    mandates: on
+      ? [...entry.mandates, { service: s, sessions: '', minutes: 30, ...(takesAuthorization(program) ? { authorization: '' } : {}) }]
+      : entry.mandates.filter(m => m.service !== s),
+  });
+  const sectionTitle = { fontSize: 13, fontWeight: 700, color: INK, margin: '0 0 8px' };
+  return (
+    <div>
+      {coded && (
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor={`kl-code-${program}`} style={labelStyle}>Billing code</label>
+          <select id={`kl-code-${program}`} value={entry.billing_code || ''} onChange={e => onChange({ ...entry, billing_code: e.target.value })} style={{ ...inputStyle, maxWidth: 200 }}>
+            <option value="">Not set</option>
+            {BILLING_CODES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {!entry.billing_code && <p style={{ fontSize: 12, color: MUTED, margin: '4px 0 0' }}>Billing shows a red # until it's set.</p>}
+        </div>
+      )}
+      <p style={sectionTitle}>Mandate</p>
+      {entry.legacy && !entry.mandates.length && <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 8px' }}>Old mandate: {entry.legacy}</p>}
+      <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
+        {order.map(s => {
+          const owner = ownerOf(s);
+          const m = mandate(s);
+          const problem = m && m.sessions !== '' ? sessionsProblem(m.sessions) : null;
+          return (
+            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', opacity: owner ? 0.55 : 1 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, width: 64, fontWeight: 600, fontSize: 13.5, color: INK, cursor: owner ? 'not-allowed' : 'pointer' }}>
+                <input type="checkbox" checked={!!m} disabled={!!owner} onChange={e => toggle(s, e.target.checked)} aria-label={`${program} covers ${s}`} />
+                {s}
+              </label>
+              {owner ? (
+                <span style={{ fontSize: 12.5, color: MUTED }}>Under {owner}</span>
+              ) : m ? (
+                <>
+                  <input value={m.sessions} onChange={e => setMandate(s, { sessions: e.target.value })} placeholder="2" inputMode="numeric"
+                    aria-label={`${s} sessions per week`} style={{ ...inputStyle, width: 64, textAlign: 'center', ...(problem ? { borderColor: '#B42318' } : {}) }} />
+                  <span style={{ color: MUTED, fontSize: 13 }}>x</span>
+                  <select value={m.minutes} onChange={e => setMandate(s, { minutes: Number(e.target.value) })} aria-label={`${s} minutes`} style={{ ...inputStyle, width: 'auto' }}>
+                    {MINUTE_OPTIONS.map(x => <option key={x} value={x}>{x} min</option>)}
+                  </select>
+                  <span style={{ fontSize: 12, color: MUTED }}>per week</span>
+                  {authorized && (
+                    <input value={m.authorization || ''} onChange={e => setMandate(s, { authorization: e.target.value })} placeholder="Auth #" maxLength={40}
+                      aria-label={`${s} EI authorization number`} style={{ ...inputStyle, width: 130 }} />
+                  )}
+                  {problem && <span role="alert" style={{ fontSize: 12, color: '#B42318', flexBasis: '100%', paddingLeft: 70 }}>{problem}</span>}
+                </>
+              ) : (
+                <span style={{ fontSize: 12.5, color: MUTED }}>Not covered</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {authorized && <p style={{ margin: '-8px 0 18px', fontSize: 12, color: MUTED }}>Auth # is the EI-Hub authorization number for that service.</p>}
+      {children}
+      <div style={{ marginTop: 18, paddingTop: 12, borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        {confirmRemove ? (
+          <>
+            <span style={{ fontSize: 13, color: INK }}>Remove {program} from this patient?</span>
+            <button type="button" onClick={onRemove} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: '#B42318', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Remove</button>
+            <button type="button" onClick={() => setConfirmRemove(false)} style={{ padding: '6px 12px', borderRadius: 7, border: `1.5px solid ${BORDER}`, background: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Keep</button>
+          </>
+        ) : (
+          <button type="button" onClick={() => setConfirmRemove(true)} style={{ border: 'none', background: 'none', color: '#B42318', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>Remove {program}</button>
+        )}
+      </div>
+    </div>
   );
 }
