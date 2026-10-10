@@ -76,14 +76,16 @@ const disciplinesOf = (specialty) => String(specialty || '').split(/[,/]/).map(x
 // 30-minute session; speech bills one line per session for now.
 const LINES = { OT: 2, PT: 2, SI: 2, ST: 1 };
 
-function ProviderRow({ provider, allowed, onSaved }) {
-  const initial = () => ({
+// A provider's EI-Hub details being edited -- shared by the Setup table and
+// the staff profile's Linked provider tab (ProviderEiCard), so both behave
+// the same and save the same way.
+function useProviderEiForm(provider, allowed, onSaved) {
+  const [form, setForm] = useState(() => ({
     npi: provider.npi || '',
     ei_first_name: provider.ei_first_name || '',
     ei_last_name: provider.ei_last_name || '',
     codes: provider.ei_default_codes || {},
-  });
-  const [form, setForm] = useState(initial);
+  }));
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   const disciplines = disciplinesOf(provider.specialty).filter(d => allowed[d]);
@@ -98,12 +100,83 @@ function ProviderRow({ provider, allowed, onSaved }) {
       const codes = Object.fromEntries(Object.entries(form.codes).map(([d, list]) => [d, (list || []).filter(Boolean)]));
       const saved = await api.saveEiProvider(provider.Name, { npi: form.npi, ei_first_name: form.ei_first_name, ei_last_name: form.ei_last_name, ei_default_codes: codes });
       setStatus({ ok: 'Saved.' });
-      onSaved(saved);
+      onSaved?.(saved);
     } catch (err) {
       setStatus({ error: err.message });
     }
     setBusy(false);
   };
+  return { form, setForm, status, busy, disciplines, setCode, save };
+}
+
+// The default-code pickers for one provider: one line per 15 minutes of a
+// 30-minute session (speech: one per session).
+function CodePickers({ provider, disciplines, allowed, form, setCode }) {
+  if (!disciplines.length) return <span style={{ fontSize: 12.5, color: MUTED }}>Set their discipline (specialty) first.</span>;
+  return disciplines.map(d => (
+    <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+      <span style={{ width: 24, fontWeight: 600, fontSize: 12.5 }}>{d}</span>
+      {Array.from({ length: LINES[d] || 2 }, (_, i) => (
+        <select key={i} aria-label={`${provider.Name} ${d} code ${i + 1}`} style={{ ...eiInput, width: 'auto', minWidth: 150 }}
+          value={(form.codes[d] || [])[i] || ''} onChange={e => setCode(d, i, e.target.value)}>
+          <option value="">{LINES[d] > 1 ? `Line ${i + 1}: not set` : 'Not set'}</option>
+          {allowed[d].map(c => <option key={c.code} value={c.code}>{c.code} {c.label}</option>)}
+        </select>
+      ))}
+    </div>
+  ));
+}
+
+// The staff profile's Linked provider tab: the same EI-Hub details as the
+// Setup table, for one provider (Admins and Developers).
+export function ProviderEiCard({ providerName }) {
+  const [state, setState] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    api.getEiSetup()
+      .then(d => { if (alive) setState({ data: d, provider: (d.providers || []).find(p => p.Name === providerName) || null }); })
+      .catch(err => { if (alive) setState({ error: err.message }); });
+    return () => { alive = false; };
+  }, [providerName]);
+  if (!state) return null;
+  if (state.error) return <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{state.error}</p>;
+  if (!state.data.available) return <p style={{ fontSize: 13, color: TONES.warning.fg }}>EI-Hub billing details need a database update. Ask an admin to run it.</p>;
+  if (!state.provider) return null;
+  return <ProviderEiForm provider={state.provider} allowed={state.data.allowed_codes} />;
+}
+
+function ProviderEiForm({ provider, allowed }) {
+  const { form, setForm, status, busy, disciplines, setCode, save } = useProviderEiForm(provider, allowed);
+  return (
+    <div>
+      <div style={grid}>
+        <div>
+          <label htmlFor="ei-prov-npi" style={eiLabel}>Individual NPI</label>
+          <input id="ei-prov-npi" style={{ ...eiInput, borderColor: form.npi ? '#D4D4D8' : '#FDA29B' }} inputMode="numeric" maxLength={10}
+            value={form.npi} placeholder="10 digits" onChange={e => setForm(f => ({ ...f, npi: e.target.value.replace(/\D/g, '') }))} />
+        </div>
+        <div>
+          <label htmlFor="ei-prov-first" style={eiLabel}>First name in EI-Hub</label>
+          <input id="ei-prov-first" style={eiInput} value={form.ei_first_name} placeholder={provider.first_name || ''} onChange={e => setForm(f => ({ ...f, ei_first_name: e.target.value }))} />
+        </div>
+        <div>
+          <label htmlFor="ei-prov-last" style={eiLabel}>Last name in EI-Hub</label>
+          <input id="ei-prov-last" style={eiInput} value={form.ei_last_name} placeholder={provider.last_name || ''} onChange={e => setForm(f => ({ ...f, ei_last_name: e.target.value }))} />
+        </div>
+      </div>
+      <p style={{ margin: '4px 0 12px', fontSize: 12, color: MUTED }}>Leave the names blank if EI-Hub spells them as shown. The NPI and name must match their therapist record in EI-Hub.</p>
+      <span style={eiLabel}>Default codes (one per 15 minutes, changeable per session)</span>
+      <CodePickers provider={provider} disciplines={disciplines} allowed={allowed} form={form} setCode={setCode} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
+        <button type="button" onClick={save} disabled={busy} style={buttonStyle('primary')}>{busy ? 'Saving...' : 'Save EI-Hub details'}</button>
+        <Status status={status} />
+      </div>
+    </div>
+  );
+}
+
+function ProviderRow({ provider, allowed, onSaved }) {
+  const { form, setForm, status, busy, disciplines, setCode, save } = useProviderEiForm(provider, allowed, onSaved);
   const td = { padding: '10px 10px', borderBottom: `1px solid ${HAIRLINE}`, verticalAlign: 'top', fontSize: 13, color: INK };
   return (
     <tr>
@@ -125,19 +198,7 @@ function ProviderRow({ provider, allowed, onSaved }) {
         <div style={{ fontSize: 11.5, color: MUTED, marginTop: 3 }}>Leave blank if it's the same as shown.</div>
       </td>
       <td style={td}>
-        {disciplines.length === 0 && <span style={{ fontSize: 12.5, color: MUTED }}>Set their discipline on the staff profile first.</span>}
-        {disciplines.map(d => (
-          <div key={d} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-            <span style={{ width: 24, fontWeight: 600, fontSize: 12.5 }}>{d}</span>
-            {Array.from({ length: LINES[d] || 2 }, (_, i) => (
-              <select key={i} aria-label={`${provider.Name} ${d} code ${i + 1}`} style={{ ...eiInput, width: 'auto', minWidth: 150 }}
-                value={(form.codes[d] || [])[i] || ''} onChange={e => setCode(d, i, e.target.value)}>
-                <option value="">{LINES[d] > 1 ? `Line ${i + 1}: not set` : 'Not set'}</option>
-                {allowed[d].map(c => <option key={c.code} value={c.code}>{c.code} {c.label}</option>)}
-              </select>
-            ))}
-          </div>
-        ))}
+        <CodePickers provider={provider} disciplines={disciplines} allowed={allowed} form={form} setCode={setCode} />
       </td>
       <td style={{ ...td, width: 120 }}>
         <button type="button" onClick={save} disabled={busy} style={buttonStyle('secondary')}>{busy ? 'Saving...' : 'Save'}</button>
@@ -169,7 +230,7 @@ export default function EiHubSetup() {
         <div style={{ padding: '16px 16px 10px' }}>
           <h3 style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 600, color: INK }}>Providers</h3>
           <p style={{ margin: 0, fontSize: 12.5, color: MUTED }}>
-            Each provider's individual NPI and name must match their therapist record in EI-Hub. Default codes fill in on each session (one code per 15 minutes) and can be changed per session.
+            Each provider's individual NPI and name must match their therapist record in EI-Hub. Default codes fill in on each session (one code per 15 minutes) and can be changed per session. The same details are on each person's staff profile, under Linked provider.
           </p>
         </div>
         <div style={{ overflowX: 'auto' }}>

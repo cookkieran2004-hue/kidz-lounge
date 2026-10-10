@@ -22,6 +22,7 @@ import { ROLES, ROLE_LABELS, ROLE_HINTS, roleLabel } from '../../roles';
 import SpecialtyPicker from '../../SpecialtyPicker';
 import { EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_HINTS, employmentLabel } from '../../employment';
 import { CredentialsPanel } from '../MyProfilePage';
+import { ProviderEiCard } from '../../EiHubSetup';
 import { phoneDigits, formatPhone } from '../../phone';
 
 const SECTIONS = [
@@ -849,7 +850,18 @@ export default function StaffProfilePage() {
 
           <div style={{ minWidth: 0 }}>
             {section === 'account' && <AccountSection staff={staff} providers={providers} isSelf={staff.username === user?.username} isMobile={isMobile} onSaved={load} />}
-            {section === 'provider' && <ProviderSection staff={staff} providers={providers} allStaff={allStaff} isMobile={isMobile} onChanged={load} />}
+            {section === 'provider' && (
+              <>
+                <ProviderSection staff={staff} providers={providers} allStaff={allStaff} isMobile={isMobile} onChanged={load} />
+                {/* Their EI-Hub billing details (EiHubSetup.jsx), the same as
+                    Billing → EI-Hub Entry → Setup. */}
+                {staff.provider_name && (
+                  <SectionCard title="EI-Hub billing">
+                    <ProviderEiCard providerName={staff.provider_name} />
+                  </SectionCard>
+                )}
+              </>
+            )}
             {section === 'schedule' && <ScheduleSection staff={staff} providerExists={providerExists} goTo={goTo} />}
             {section === 'time-off' && <TimeOffSection staff={staff} isMobile={isMobile} onChanged={onTimeOffChanged} />}
             {section === 'caseload' && <CaseloadSection staff={staff} providerExists={providerExists} goTo={goTo} />}

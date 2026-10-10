@@ -1,16 +1,15 @@
 import { useState } from 'react';
-import EiHubList from './EiHubList';
+import EiHubSessions from './EiHubSessions';
 import EiHubChildren from './EiHubChildren';
 import EiHubSetup from './EiHubSetup';
-import EiHubClaims from './EiHubClaims';
 import { HAIRLINE, INK, ACCENT } from './uiTokens';
 
-// The Billing page's EI-Hub tab (Admins and Developers): the month's EI sessions
-// (EiHubList.jsx), 837P claim files (EiHubClaims.jsx), each EI child's billing details (EiHubChildren.jsx), and
-// the agency / provider setup (EiHubSetup.jsx) every claim file needs.
+// The Billing page's EI-Hub Entry tab (Admins and Developers): the month's EI
+// sessions and getting each into EI-Hub, by claim file or by hand
+// (EiHubSessions.jsx), each EI child's billing details (EiHubChildren.jsx),
+// and the agency / provider setup every claim file needs (EiHubSetup.jsx).
 const SECTIONS = [
   { key: 'sessions', label: 'Sessions' },
-  { key: 'claims', label: 'Claims' },
   { key: 'children', label: 'Children' },
   { key: 'setup', label: 'Setup' },
 ];
@@ -31,8 +30,7 @@ export default function EiHubPanel({ month }) {
           </button>
         ))}
       </div>
-      {section === 'sessions' && <EiHubList month={month} />}
-      {section === 'claims' && <EiHubClaims month={month} />}
+      {section === 'sessions' && <EiHubSessions month={month} />}
       {section === 'children' && <EiHubChildren />}
       {section === 'setup' && <EiHubSetup />}
     </div>
