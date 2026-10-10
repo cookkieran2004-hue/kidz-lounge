@@ -10,9 +10,10 @@ import { PatientAlertsInline } from '../patientAlerts';
 import { useStaffNames } from '../staffDirectory';
 import { roomDisplayText, AppointmentModal, STATUS_OPTIONS, dateToInputValue } from './SchedulePage';
 import Linkify from '../Linkify';
-import { canAdminister } from '../roles';
+import { canAdminister, canManage } from '../roles';
 import LinkTextarea from '../LinkTextarea';
 import { PatientLinksEditor, PatientLinksList } from '../PatientLinksView';
+import { EiChartCard } from '../EiChartCard';
 
 // The Eval tag, same on the schedule (SchedulePage.jsx).
 const EVAL_BLUE = '#1D4ED8';
@@ -241,6 +242,10 @@ const TABS = [
   { key: 'documents', label: 'Documents' },
   { key: 'care-team', label: 'Care Team' },
 ];
+// EI billing details (EiChartCard.jsx): EI children only, and only for
+// Reception, Admins and Developers -- providers don't see it (Kieran, Oct 2026).
+const EI_TAB = { key: 'ei-billing', label: 'EI Billing' };
+const isEiPatient = (patient) => /(^|,)\s*EI\s*(,|$)/.test(patient?.Program || '');
 
 function calculateAge(dobStr) {
   if (!dobStr) return null;
@@ -332,7 +337,7 @@ function PatientBanner({ patient, appointments }) {
   );
 }
 
-function Sidebar({ activeTab, setActiveTab, onBack, onEdit }) {
+function Sidebar({ tabs, activeTab, setActiveTab, onBack, onEdit }) {
   const isMobile = useIsMobile(PATIENT_CHART_PHONE_BREAKPOINT);
   if (isMobile) {
     // The name/MRN/program badges are already shown in PatientBanner right
@@ -359,7 +364,7 @@ function Sidebar({ activeTab, setActiveTab, onBack, onEdit }) {
           </button>
         </div>
         <div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '0 12px 10px', WebkitOverflowScrolling: 'touch' }}>
-          {TABS.map(tab => (
+          {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
@@ -393,7 +398,7 @@ function Sidebar({ activeTab, setActiveTab, onBack, onEdit }) {
       </button>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {TABS.map(tab => (
+        {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -1065,6 +1070,7 @@ export default function PatientChartPage() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [editingPatient, setEditingPatient] = useState(false);
   const reloadAppointments = () => { api.getPatientAppointments(name).then(a => setAppointments(a || [])).catch(() => {}); };
@@ -1109,11 +1115,14 @@ export default function PatientChartPage() {
     );
   }
 
+  const showEiTab = canManage(user) && isEiPatient(patient);
+  const tabs = showEiTab ? [...TABS, EI_TAB] : TABS;
+
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
       <PatientBanner patient={patient} appointments={appointments} />
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onBack={() => navigate(-1)} onEdit={() => setEditingPatient(true)} />
+        <Sidebar tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} onBack={() => navigate(-1)} onEdit={() => setEditingPatient(true)} />
         <div style={{
           flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
           overflowY: activeTab === 'documents' ? 'hidden' : 'auto',
@@ -1124,6 +1133,7 @@ export default function PatientChartPage() {
           {activeTab === 'appointments' && <AppointmentsTab patient={patient} appointments={appointments} onChanged={reloadAppointments} />}
           {activeTab === 'documents' && <DocumentsTab patient={patient} isMobile={isMobile} />}
           {activeTab === 'care-team' && <CareTeamTab patient={patient} appointments={appointments} />}
+          {activeTab === EI_TAB.key && showEiTab && <EiChartCard patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} />}
         </div>
       </div>
       {editingPatient && (

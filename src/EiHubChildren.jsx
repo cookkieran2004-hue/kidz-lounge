@@ -16,7 +16,8 @@ import { INK, MUTED, HAIRLINE, TONES, buttonStyle, NUMERIC } from './uiTokens';
 // before) or a correction of one version (a mistake; its dates stay). Each
 // authorization's referring provider is dated the same way. A version a sent
 // claim used can't be taken back. Auth numbers are set with the EI mandate
-// in the patient form.
+// in the patient form. ChildPanel is also the patient chart's EI editor
+// (EiChartCard.jsx; Reception may use it there).
 
 const fmt = (s) => (s ? new Date(`${String(s).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null);
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -213,7 +214,7 @@ function ReferralForm({ service, period, onDone, onCancel }) {
   );
 }
 
-function ChildPanel({ child, counties, onChanged }) {
+export function ChildPanel({ child, counties, onChanged }) {
   const nameOf = useStaffNames();
   const [editing, setEditing] = useState(child.versions.length ? null : 'new'); // 'new' | version
   const [refEditing, setRefEditing] = useState(null); // { auth, period|null }
