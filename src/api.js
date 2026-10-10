@@ -288,6 +288,11 @@ export const api = {
   getEiChildren: () => request('/ei-hub/children'),
   saveEiChild: (id, data) => request(`/ei-hub/children/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   saveEiReferral: (authorization, data) => request(`/ei-hub/referrals/${encodeURIComponent(authorization)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  // Dated versions: correct one, or take back the newest.
+  correctEiChildVersion: (id, versionId, data) => request(`/ei-hub/children/${id}/versions/${versionId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  takeBackEiChildVersion: (id, versionId) => request(`/ei-hub/children/${id}/versions/${versionId}`, { method: 'DELETE' }),
+  correctEiReferral: (authorization, periodId, data) => request(`/ei-hub/referrals/${encodeURIComponent(authorization)}/periods/${periodId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  takeBackEiReferral: (authorization, periodId) => request(`/ei-hub/referrals/${encodeURIComponent(authorization)}/periods/${periodId}`, { method: 'DELETE' }),
   getEiClaims: (month) => request(`/ei-hub/claims?month=${month}`),
   saveEiSessionCodes: (data) => request('/ei-hub/claims/codes', { method: 'PUT', body: JSON.stringify(data) }),
   createEiClaimFile: (data) => request('/ei-hub/claim-files', { method: 'POST', body: JSON.stringify(data) }),
