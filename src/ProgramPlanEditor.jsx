@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { api } from './api';
 import { useAuth } from './AuthContext';
 import { canManage } from './roles';
+import { choiceStyle, buttonStyle, HAIRLINE, TONES } from './uiTokens';
 import { DateField, dateToInputValue } from './pages/SchedulePage';
 import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, takesAuthorization, isFirstChange, BILLING_CODES, takesBillingCode, planPayload, sessionsProblem } from './programPlan';
 
@@ -14,9 +15,9 @@ import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, 
 // per-service mandates are entered.
 
 const PRIMARY = '#6D28D9';
-const BORDER = '#E2E8F0';
-const MUTED = '#64748B';
-const INK = '#0F172A';
+const BORDER = '#E4E4E7';
+const MUTED = '#71717A';
+const INK = '#18181B';
 
 export default function ProgramPlanEditor({ options, plan, onChange, childServices = [], legacyMandate, showAuth = true }) {
   const [editing, setEditing] = useState(null); // program name
@@ -35,17 +36,12 @@ export default function ProgramPlanEditor({ options, plan, onChange, childServic
 
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {options.map(opt => {
           const on = selected.has(opt);
           return (
             <button key={opt} type="button" onClick={() => setEditing(opt)}
-              style={{
-                padding: '6px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-                border: `1.5px solid ${on ? PRIMARY : BORDER}`, background: on ? PRIMARY : 'white', color: on ? 'white' : '#475569',
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-              }}>
-              {on && <span style={{ fontSize: 11, lineHeight: 1 }}>&#10003;</span>}
+              aria-pressed={on} style={choiceStyle(on)}>
               {opt}
             </button>
           );
@@ -91,7 +87,7 @@ export default function ProgramPlanEditor({ options, plan, onChange, childServic
 // change, while they only have the old free-text mandate, it can instead
 // replace the old mandate for all dates (`replaceAll`).
 export function ChangeStartChoice({ firstChange, replaceAll, onReplaceAll, effectiveFrom, onEffectiveFrom, inputStyle, label = 'Changes start on' }) {
-  const box = { display: 'grid', gap: 8, marginTop: 10, padding: '10px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8, fontSize: 13, color: INK };
+  const box = { display: 'grid', gap: 8, marginTop: 10, padding: '10px 12px', background: '#FAFAFA', border: `1px solid ${HAIRLINE}`, borderRadius: 6, fontSize: 13, color: INK };
   const dateRow = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
       <span style={{ fontWeight: 600 }}>{label}</span>
@@ -299,17 +295,12 @@ export function ProgramPlanDialog({ patient, options, onSave, onClose }) {
 export function ProgramChips({ options, plan, onPick }) {
   const selected = new Set(plan.map(p => p.program));
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
       {options.map(opt => {
         const on = selected.has(opt);
         return (
           <button key={opt} type="button" onClick={() => onPick(opt)}
-            style={{
-              padding: '6px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-              border: `1.5px solid ${on ? PRIMARY : BORDER}`, background: on ? PRIMARY : 'white', color: on ? 'white' : '#475569',
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-            }}>
-            {on && <span style={{ fontSize: 11, lineHeight: 1 }}>&#10003;</span>}
+            aria-pressed={on} style={choiceStyle(on)}>
             {opt}
           </button>
         );
@@ -337,7 +328,7 @@ export function ProgramTab({ entry, plan, onChange, onRemove, childServices = []
       ? [...entry.mandates, { service: s, sessions: '', minutes: 30, ...(takesAuthorization(program) ? { authorization: '' } : {}) }]
       : entry.mandates.filter(m => m.service !== s),
   });
-  const sectionTitle = { fontSize: 13, fontWeight: 700, color: INK, margin: '0 0 8px' };
+  const sectionTitle = { fontSize: 13, fontWeight: 600, color: INK, margin: '0 0 8px' };
   return (
     <div>
       {coded && (
@@ -389,15 +380,15 @@ export function ProgramTab({ entry, plan, onChange, onRemove, childServices = []
       </div>
       {authorized && <p style={{ margin: '-8px 0 18px', fontSize: 12, color: MUTED }}>Auth # is the EI-Hub authorization number for that service.</p>}
       {children}
-      <div style={{ marginTop: 18, paddingTop: 12, borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ marginTop: 18, paddingTop: 12, borderTop: `1px solid ${HAIRLINE}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {confirmRemove ? (
           <>
             <span style={{ fontSize: 13, color: INK }}>Remove {program} from this patient?</span>
-            <button type="button" onClick={onRemove} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: '#B42318', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Remove</button>
-            <button type="button" onClick={() => setConfirmRemove(false)} style={{ padding: '6px 12px', borderRadius: 7, border: `1.5px solid ${BORDER}`, background: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Keep</button>
+            <button type="button" onClick={onRemove} style={buttonStyle('danger')}>Remove</button>
+            <button type="button" onClick={() => setConfirmRemove(false)} style={buttonStyle('secondary')}>Keep</button>
           </>
         ) : (
-          <button type="button" onClick={() => setConfirmRemove(true)} style={{ border: 'none', background: 'none', color: '#B42318', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>Remove {program}</button>
+          <button type="button" onClick={() => setConfirmRemove(true)} style={buttonStyle('text', { color: TONES.danger.fg, padding: 0 })}>Remove {program}</button>
         )}
       </div>
     </div>

@@ -32,3 +32,12 @@ export const buttonStyle = (variant = 'secondary', extra = {}) => ({
     : { background: 'white', color: INK, border: `1px solid ${HAIRLINE}` }),
   ...extra,
 });
+
+// Toggle buttons for a multi-choice field (the patient form's Services and
+// Program): square-ish, the selected ones tinted, never pill-shaped.
+export const choiceStyle = (selected) => ({
+  padding: '5px 11px', borderRadius: 6, fontSize: 13, fontWeight: selected ? 600 : 500, cursor: 'pointer', fontFamily: 'inherit',
+  border: `1px solid ${selected ? ACCENT : '#D4D4D8'}`,
+  background: selected ? TONES.accent.bg : 'white',
+  color: selected ? TONES.accent.fg : INK,
+});

@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
+import { INK, MUTED, HAIRLINE, PAGE_BG, ACCENT, FONT, NUMERIC, TONES, buttonStyle, choiceStyle } from '../uiTokens';
 import { Avatar } from '../Avatar';
-import { WarningIcon, SyringeIcon, refreshPatientAlerts } from '../patientAlerts';
+import { refreshPatientAlerts } from '../patientAlerts';
 import { DateField, TimeField } from './SchedulePage';
 import { useIsMobile } from '../useIsMobile';
 import { ROLES, ROLE_LABELS, ROLE_HINTS, canManage, roleLabel, caseManagerChoices } from '../roles';
@@ -703,87 +704,67 @@ function formToPayload(form) {
   return payload;
 }
 
-// ---------- EMR-style visual language, scoped to the Patient form ----------
-const EMR_PRIMARY = '#6D28D9';
-const EMR_ACCENT = '#0EA5E9';
-const EMR_BORDER = '#E2E8F0';
-const EMR_MUTED = '#64748B';
-const EMR_INK = '#0F172A';
-const EMR_SURFACE = '#F8FAFC';
+// ---------- The patient form's look ----------
+// The plain business look of My time / Admin (src/uiTokens.js; Kieran, Oct
+// 2026: formal, not playful): white, thin grey borders, sentence case, the
+// brand purple only for the primary button, links and the selected tab. No
+// gradients, numbered badges or pill-shaped chips.
+const EMR_PRIMARY = ACCENT;
+const EMR_BORDER = HAIRLINE;
+const EMR_MUTED = MUTED;
+const EMR_INK = INK;
+const EMR_SURFACE = PAGE_BG;
 
 function emrOverlayStyle() {
-  return { position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20 };
+  return { position: 'fixed', inset: 0, background: 'rgba(24,24,27,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20 };
 }
 function emrModalBoxStyle() {
   return {
-    background: 'white', borderRadius: 14, width: '100%', maxWidth: 760, maxHeight: '92vh', overflowY: 'auto',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    boxShadow: '0 30px 70px rgba(15, 23, 42, 0.22)', border: `1px solid ${EMR_BORDER}`,
+    background: 'white', borderRadius: 8, width: '100%', maxWidth: 760, maxHeight: '92vh', overflowY: 'auto',
+    fontFamily: FONT, border: `1px solid ${EMR_BORDER}`,
   };
 }
 function emrLabelStyle() {
-  return { display: 'block', fontSize: 11, fontWeight: 600, color: EMR_MUTED, marginBottom: 5, letterSpacing: '0.01em' };
+  return { display: 'block', fontSize: 12, fontWeight: 500, color: '#52525B', marginBottom: 4 };
 }
 function emrInputStyle() {
   return {
-    width: '100%', padding: '9px 11px', borderRadius: 8, fontSize: 13.5, boxSizing: 'border-box',
-    border: `1.5px solid ${EMR_BORDER}`, background: '#FDFDFE', outline: 'none', color: EMR_INK,
+    width: '100%', padding: '7px 9px', borderRadius: 6, fontSize: 13, boxSizing: 'border-box',
+    border: '1px solid #D4D4D8', background: 'white', outline: 'none', color: EMR_INK,
     fontFamily: 'inherit',
   };
 }
 function emrFieldGrid(cols) {
-  return { display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 14, marginBottom: 14 };
+  return { display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 12, marginBottom: 14 };
 }
 function emrBtnStyle(primary, danger) {
-  return {
-    padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-    border: primary ? 'none' : danger ? `1.5px solid #FCA5A5` : `1.5px solid ${EMR_BORDER}`,
-    background: primary ? EMR_PRIMARY : danger ? '#FEF2F2' : 'white',
-    color: primary ? 'white' : danger ? '#DC2626' : '#334155',
-  };
+  return buttonStyle(primary ? 'primary' : danger ? 'danger' : 'secondary');
 }
 function emrLockedFieldStyle() {
   return {
-    width: '100%', padding: '9px 11px', borderRadius: 8, fontSize: 13.5, boxSizing: 'border-box',
-    border: `1.5px dashed ${EMR_BORDER}`, background: EMR_SURFACE, color: '#334155',
-    display: 'flex', alignItems: 'center', gap: 6,
+    width: '100%', padding: '7px 9px', borderRadius: 6, fontSize: 13, boxSizing: 'border-box',
+    border: `1px solid ${EMR_BORDER}`, background: EMR_SURFACE, color: EMR_INK, minHeight: 33,
+    display: 'flex', alignItems: 'center', ...NUMERIC,
   };
 }
 
+// A section of the form: its name over a thin rule. (`index` is the
+// section's place; the first has no rule above it.)
 function EMRSectionHeading({ index, label }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: index === 0 ? '0 0 14px' : '26px 0 14px' }}>
-      <span style={{
-        width: 20, height: 20, borderRadius: 6, background: EMR_PRIMARY, color: 'white', fontSize: 10.5, fontWeight: 700,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        {index}
-      </span>
-      <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#334155' }}>{label}</span>
-      <div style={{ flex: 1, height: 1, background: EMR_BORDER }} />
+    <div style={{ margin: index === 1 ? '0 0 12px' : '22px 0 12px', paddingTop: index === 1 ? 0 : 16, borderTop: index === 1 ? 'none' : `1px solid ${EMR_BORDER}` }}>
+      <span style={{ fontSize: 14, fontWeight: 600, color: EMR_INK }}>{label}</span>
     </div>
   );
 }
 
 function MultiSelectChips({ options, selected, onToggle }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
       {options.map(opt => {
         const isSelected = selected.includes(opt);
         return (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onToggle(opt)}
-            style={{
-              padding: '6px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-              border: `1.5px solid ${isSelected ? EMR_PRIMARY : EMR_BORDER}`,
-              background: isSelected ? EMR_PRIMARY : 'white',
-              color: isSelected ? 'white' : '#475569',
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-            }}
-          >
-            {isSelected && <span style={{ fontSize: 11, lineHeight: 1 }}>&#10003;</span>}
+          <button key={opt} type="button" aria-pressed={isSelected} onClick={() => onToggle(opt)} style={choiceStyle(isSelected)}>
             {opt}
           </button>
         );
@@ -828,6 +809,9 @@ export function PatientModal({ existing, onClose, onSaved }) {
   const [eiDraft, setEiDraft] = useState({ state: 'NY', county: 'New York City' });
   const [eiRefs, setEiRefs] = useState({}); // service -> { referring_last, referring_first, referring_npi }
   const hasEi = !!programsAvailable && plan.some(p => p.program === 'EI');
+  // Once any program is picked, the ID # and IFSP fields move to the program
+  // tabs (each tab shows the same fields; Kieran, Oct 2026).
+  const hasPrograms = !!programsAvailable && plan.length > 0;
 
   useEffect(() => {
     if (!showEiBilling) return undefined;
@@ -983,7 +967,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
 
   // The EI tab's EI-Hub billing details (Reception, Admins and Developers).
   const eiBillingSection = () => {
-    const head = <p style={{ fontSize: 13, fontWeight: 700, color: EMR_INK, margin: '22px 0 4px' }}>EI-Hub billing</p>;
+    const head = <p style={{ fontSize: 13, fontWeight: 600, color: EMR_INK, margin: '22px 0 4px' }}>EI-Hub billing</p>;
     const note = (text, color = EMR_MUTED) => <p style={{ fontSize: 12, color, margin: '0 0 10px' }}>{text}</p>;
     if (!eiData) return <>{head}{note('Loading...')}</>;
     if (eiData.error) return <>{head}{note(eiData.error, '#B42318')}</>;
@@ -1002,16 +986,12 @@ export function PatientModal({ existing, onClose, onSaved }) {
     return (
       <>
         {head}
-        {note("As EI-Hub has them. Leave the name and date of birth blank if they're the same as the patient's.")}
-        <div style={{ maxWidth: 240, marginBottom: 10 }}>
-          <label htmlFor="kl-ei-id" style={emrLabelStyle()}>ID # (EI child ID)</label>
-          <input id="kl-ei-id" style={emrInputStyle()} value={form.ID_Number} onChange={e => setField('ID_Number', e.target.value)} />
-        </div>
+        {note("As EI-Hub has them. The EI child ID is the ID # above. Leave the name and date of birth blank if they're the same as the patient's.")}
         <EiDetailsFields form={eiDraft} setForm={setEiDraft} counties={eiData.counties || []} idField={false}
           namePlaceholder={{ first: name[0] || '', last: name.slice(1).join(' ') }} />
         {refServices.length > 0 && (
           <>
-            <p style={{ fontSize: 13, fontWeight: 700, color: EMR_INK, margin: '18px 0 4px' }}>Referring provider</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: EMR_INK, margin: '18px 0 4px' }}>Referring provider</p>
             {note('Must match the prescriber on that authorization in EI-Hub.')}
             {refServices.map(m => {
               const r = eiRefs[m.service] || {};
@@ -1041,66 +1021,51 @@ export function PatientModal({ existing, onClose, onSaved }) {
     );
   };
 
-  // The IFSP fields: on the Patient tab, or on the EI tab once EI is a program.
+  // The IFSP fields: on the Patient tab, or on every program tab once a program is picked.
   const ifspSection = (index) => (
     <>
-      {index ? <EMRSectionHeading index={index} label="IFSP" /> : <p style={{ fontSize: 13, fontWeight: 700, color: EMR_INK, margin: '4px 0 10px' }}>IFSP</p>}
+      {index ? <EMRSectionHeading index={index} label="IFSP" /> : <p style={{ fontSize: 13, fontWeight: 600, color: EMR_INK, margin: '4px 0 10px' }}>IFSP</p>}
     <div style={emrFieldGrid(2)}>
       <div>
-        <label style={emrLabelStyle()}>IFSP Start Date</label>
-        <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP Start Date" value={form.IFSP_Start_Date} onChange={v => setField('IFSP_Start_Date', v)} />
+        <label style={emrLabelStyle()}>IFSP start date</label>
+        <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP start date" value={form.IFSP_Start_Date} onChange={v => setField('IFSP_Start_Date', v)} />
       </div>
       <div>
-        <label style={emrLabelStyle()}>IFSP End Date</label>
-        <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP End Date" value={form.IFSP_End_Date} onChange={setIFSPEndDate} />
+        <label style={emrLabelStyle()}>IFSP end date</label>
+        <DateField yearNav clearable style={emrInputStyle()} ariaLabel="IFSP end date" value={form.IFSP_End_Date} onChange={setIFSPEndDate} />
       </div>
     </div>
-    <label style={emrLabelStyle()}>IFSP Type</label>
+    <label style={emrLabelStyle()}>IFSP type</label>
     <select style={{ ...emrInputStyle(), marginBottom: 14 }} value={form.IFSP_Type} onChange={e => setField('IFSP_Type', e.target.value)}>
-      <option value="">-- select --</option>
+      <option value="">Not set</option>
       {IFSP_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
     </select>
 
-    <label style={emrLabelStyle()}>Report Date</label>
+    <label style={emrLabelStyle()}>Report date</label>
     <div style={{ ...emrLockedFieldStyle(), maxWidth: 220 }}>
-      <span style={{ fontSize: 12 }}>&#128274;</span>
       {formatDateMMDDYYYY(form.Report_Date)}
     </div>
-    <p style={{ fontSize: 10.5, color: EMR_MUTED, margin: '4px 0 0' }}>Calculated automatically: 21 days before IFSP End Date.</p>
+    <p style={{ fontSize: 12, color: EMR_MUTED, margin: '4px 0 0' }}>Set automatically: 21 days before the IFSP end date.</p>
     </>
   );
 
   return (
     <div style={emrOverlayStyle()} onClick={onClose}>
       <div style={emrModalBoxStyle()} onClick={e => e.stopPropagation()}>
-        <div style={{ padding: '20px 28px', borderBottom: `1px solid ${EMR_BORDER}`, position: 'sticky', top: 0, background: 'white', zIndex: 2, borderRadius: '14px 14px 0 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: `linear-gradient(135deg, ${EMR_PRIMARY}, ${EMR_ACCENT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ color: 'white', fontSize: 15, fontWeight: 700 }}>+</span>
-            </div>
-            <div>
-              <h2 style={{ fontSize: 16.5, fontWeight: 700, margin: 0, color: EMR_INK }}>
-                {existing ? 'Edit Patient Record' : 'New Patient Record'}
-              </h2>
-              {existing ? (
-                <p style={{ fontSize: 11.5, color: EMR_MUTED, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: EMR_PRIMARY }}>MRN {existing.mrn || '\u2014'}</span>
-                  <span>&middot; Renaming updates appointments automatically</span>
-                </p>
-              ) : (
-                <p style={{ fontSize: 11.5, color: EMR_MUTED, margin: '2px 0 0' }}>
-                  A unique MRN will be assigned automatically once saved.
-                </p>
-              )}
-            </div>
+        <div style={{ padding: '16px 24px 0', borderBottom: `1px solid ${EMR_BORDER}`, position: 'sticky', top: 0, background: 'white', zIndex: 2, borderRadius: '8px 8px 0 0' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', paddingBottom: programsAvailable && plan.length > 0 ? 4 : 14 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 600, margin: 0, color: EMR_INK }}>
+              {existing ? 'Edit patient' : 'New patient'}
+            </h2>
+            {existing && <span style={{ fontSize: 12.5, color: EMR_MUTED, ...NUMERIC }}>MRN {existing.mrn || '\u2014'}</span>}
           </div>
           {programsAvailable && plan.length > 0 && (
-            <div role="tablist" aria-label="Patient form" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, margin: '14px -4px -21px' }}>
+            <div role="tablist" aria-label="Patient form" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, margin: '0 -10px -1px' }}>
               {['patient', ...plan.map(p => p.program)].map(t => (
                 <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
                   style={{
-                    padding: '8px 12px', border: 'none', borderBottom: `2px solid ${tab === t ? EMR_PRIMARY : 'transparent'}`, background: 'none',
-                    fontSize: 13, fontWeight: tab === t ? 700 : 500, color: tab === t ? EMR_PRIMARY : EMR_MUTED, cursor: 'pointer', fontFamily: 'inherit',
+                    padding: '8px 10px', border: 'none', borderBottom: `2px solid ${tab === t ? EMR_PRIMARY : 'transparent'}`, background: 'none',
+                    fontSize: 13, fontWeight: tab === t ? 600 : 500, color: tab === t ? EMR_PRIMARY : EMR_MUTED, cursor: 'pointer', fontFamily: 'inherit',
                   }}>
                   {t === 'patient' ? 'Patient' : t}
                 </button>
@@ -1109,14 +1074,14 @@ export function PatientModal({ existing, onClose, onSaved }) {
           )}
         </div>
 
-        <div style={{ padding: '20px 28px 26px' }}>
+        <div style={{ padding: '18px 24px 22px' }}>
           {tab === 'patient' && (<>
-          <EMRSectionHeading index={1} label="Patient Information" />
-          <label style={emrLabelStyle()}>Patient Name *</label>
-          <input style={{ ...emrInputStyle(), marginBottom: 14 }} value={form.Name} onChange={e => setField('Name', e.target.value)} placeholder="Full name" />
+          <EMRSectionHeading index={1} label="Patient information" />
+          <label style={emrLabelStyle()}>Patient name *</label>
+          <input style={{ ...emrInputStyle(), marginBottom: 14 }} value={form.Name} onChange={e => setField('Name', e.target.value)} placeholder="First and last name" />
 
-          <label style={emrLabelStyle()}>Date of Birth</label>
-          <DateField yearNav clearable style={{ ...emrInputStyle(), marginBottom: 14, maxWidth: 220 }} ariaLabel="Date of Birth" value={form.Date_of_Birth} onChange={v => setField('Date_of_Birth', v)} />
+          <label style={emrLabelStyle()}>Date of birth</label>
+          <DateField yearNav clearable style={{ ...emrInputStyle(), marginBottom: 14, maxWidth: 220 }} ariaLabel="Date of birth" value={form.Date_of_Birth} onChange={v => setField('Date_of_Birth', v)} />
 
           <label style={emrLabelStyle()}>Services</label>
           <div style={{ marginBottom: 14 }}>
@@ -1129,7 +1094,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
               <>
                 <ProgramChips options={PROGRAM_OPTIONS} plan={plan} onPick={pickProgram} />
                 {plan.length > 0 && (
-                  <div style={{ marginTop: 10, border: `1px solid ${EMR_BORDER}`, borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ marginTop: 10, border: `1px solid ${EMR_BORDER}`, borderRadius: 6, overflow: 'hidden' }}>
                     {plan.map((p, i) => (
                       <button key={p.program} type="button" onClick={() => setTab(p.program)}
                         style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '8px 12px', border: 'none', borderTop: i ? `1px solid ${EMR_BORDER}` : 'none', background: 'white', fontSize: 13, fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
@@ -1157,7 +1122,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
 
           <label style={emrLabelStyle()}>Status</label>
           <select style={{ ...emrInputStyle(), marginBottom: 14, maxWidth: 320 }} value={form.Status} onChange={e => setField('Status', e.target.value)}>
-            <option value="">-- select --</option>
+            <option value="">Not set</option>
             {PATIENT_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
@@ -1170,41 +1135,41 @@ export function PatientModal({ existing, onClose, onSaved }) {
             </>
           )}
 
-          <EMRSectionHeading index={2} label="Parent / Guardian" />
+          <EMRSectionHeading index={2} label="Parent or guardian" />
           <div style={emrFieldGrid(2)}>
             <div>
-              <label style={emrLabelStyle()}>Parent Name</label>
+              <label style={emrLabelStyle()}>Parent name</label>
               <input style={emrInputStyle()} value={form.Parent_Name} onChange={e => setField('Parent_Name', e.target.value)} />
             </div>
             <div>
-              <label style={emrLabelStyle()}>Relationship to Patient</label>
+              <label style={emrLabelStyle()}>Relationship to patient</label>
               <select style={emrInputStyle()} value={form.Relationship_To_Patient} onChange={e => setField('Relationship_To_Patient', e.target.value)}>
-                <option value="">-- select --</option>
+                <option value="">Not set</option>
                 {RELATIONSHIP_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
-              <label style={emrLabelStyle()}>Parent Phone #</label>
+              <label style={emrLabelStyle()}>Parent phone</label>
               <input style={emrInputStyle()} value={form.Parent_Phone} onChange={e => setField('Parent_Phone', e.target.value)} />
             </div>
             <div>
-              <label style={emrLabelStyle()}>Parent Email</label>
+              <label style={emrLabelStyle()}>Parent email</label>
               <input style={emrInputStyle()} value={form.Parent_Email} onChange={e => setField('Parent_Email', e.target.value)} />
             </div>
           </div>
 
-          <EMRSectionHeading index={3} label="Care Coordination" />
+          <EMRSectionHeading index={3} label="Care coordination" />
           <div style={emrFieldGrid(3)}>
             <div>
-              <label style={emrLabelStyle()}>SC / Admin Name</label>
+              <label style={emrLabelStyle()}>SC / admin name</label>
               <input style={emrInputStyle()} value={form.SC_Admin_Name} onChange={e => setField('SC_Admin_Name', e.target.value)} />
             </div>
             <div>
-              <label style={emrLabelStyle()}>SC / Admin Phone #</label>
+              <label style={emrLabelStyle()}>SC / admin phone</label>
               <input style={emrInputStyle()} value={form.SC_Admin_Phone} onChange={e => setField('SC_Admin_Phone', e.target.value)} />
             </div>
             <div>
-              <label style={emrLabelStyle()}>SC / Admin Email</label>
+              <label style={emrLabelStyle()}>SC / admin email</label>
               <input style={emrInputStyle()} value={form.SC_Admin_Email} onChange={e => setField('SC_Admin_Email', e.target.value)} />
             </div>
           </div>
@@ -1218,7 +1183,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
 
           <div style={emrFieldGrid(2)}>
             <div>
-              <label style={emrLabelStyle()}>Case Manager</label>
+              <label style={emrLabelStyle()}>Case manager</label>
               <select
                 style={emrInputStyle()}
                 value={form.case_manager_username || (form.Case_Manager === 'Not Needed' ? '__NOT_NEEDED__' : '')}
@@ -1234,41 +1199,42 @@ export function PatientModal({ existing, onClose, onSaved }) {
                   }
                 }}
               >
-                <option value="">-- Not Assigned --</option>
+                <option value="">Not assigned</option>
                 <option value="__NOT_NEEDED__">Not Needed</option>
                 {caseManagerChoices(staffDirectory, form.case_manager_username).map(s => <option key={s.username} value={s.username}>{s.display_name}</option>)}
               </select>
             </div>
-            <div>
-              <label style={emrLabelStyle()}>ID #</label>
-              <input style={emrInputStyle()} value={form.ID_Number} onChange={e => setField('ID_Number', e.target.value)} />
-            </div>
+            {!hasPrograms && (
+              <div>
+                <label style={emrLabelStyle()}>ID #</label>
+                <input style={emrInputStyle()} value={form.ID_Number} onChange={e => setField('ID_Number', e.target.value)} />
+              </div>
+            )}
           </div>
 
           <EMRSectionHeading index={4} label="Prescription (RX)" />
           <div style={emrFieldGrid(2)}>
             <div>
-              <label style={emrLabelStyle()}>RX Date</label>
-              <DateField yearNav clearable style={emrInputStyle()} ariaLabel="RX Date" value={form.RX_Date} onChange={setRXDate} />
+              <label style={emrLabelStyle()}>RX date</label>
+              <DateField yearNav clearable style={emrInputStyle()} ariaLabel="RX date" value={form.RX_Date} onChange={setRXDate} />
             </div>
             <div>
-              <label style={emrLabelStyle()}>RX Expiration</label>
+              <label style={emrLabelStyle()}>RX expiration</label>
               <div style={emrLockedFieldStyle()}>
-                <span style={{ fontSize: 12 }}>&#128274;</span>
-                {formatDateMMDDYYYY(form.RX_Expiration)}
+                          {formatDateMMDDYYYY(form.RX_Expiration)}
               </div>
-              <p style={{ fontSize: 10.5, color: EMR_MUTED, margin: '4px 0 0' }}>Calculated automatically: 364 days after RX Date.</p>
+              <p style={{ fontSize: 12, color: EMR_MUTED, margin: '4px 0 0' }}>Set automatically: 364 days after the RX date.</p>
             </div>
           </div>
 
-          {!hasEi && ifspSection(5)}
+          {!hasPrograms && ifspSection(5)}
 
-          <EMRSectionHeading index={hasEi ? 5 : 6} label="Consent & Documentation" />
+          <EMRSectionHeading index={hasPrograms ? 5 : 6} label="Consent and documentation" />
           <div style={emrFieldGrid(2)}>
             <div>
-              <label style={emrLabelStyle()}>Picture Consent</label>
+              <label style={emrLabelStyle()}>Picture consent</label>
               <select style={emrInputStyle()} value={form.Picture_Consent} onChange={e => setField('Picture_Consent', e.target.value)}>
-                <option value="">-- unspecified --</option>
+                <option value="">Not set</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
               </select>
@@ -1279,21 +1245,17 @@ export function PatientModal({ existing, onClose, onSaved }) {
             </div>
           </div>
 
-          <EMRSectionHeading index={hasEi ? 6 : 7} label="Allergies & Immunizations" />
-          <p style={{ fontSize: 11.5, color: EMR_MUTED, margin: '-4px 0 10px' }}>
+          <EMRSectionHeading index={hasPrograms ? 6 : 7} label="Allergies and immunizations" />
+          <p style={{ fontSize: 12, color: EMR_MUTED, margin: '-4px 0 10px' }}>
             Anything entered here shows as a yellow alert on the patient chart and on their schedule appointments. Leave blank if none.
           </p>
           <div style={emrFieldGrid(2)}>
             <div>
-              <label htmlFor="kl-patient-allergies" style={{ ...emrLabelStyle(), display: 'flex', alignItems: 'center', gap: 5 }}>
-                <WarningIcon size={13} color="#A16207" /> Allergies
-              </label>
+              <label htmlFor="kl-patient-allergies" style={emrLabelStyle()}>Allergies</label>
               <textarea id="kl-patient-allergies" style={{ ...emrInputStyle(), minHeight: 60, resize: 'vertical' }} value={form.Allergies} onChange={e => setField('Allergies', e.target.value)} placeholder="e.g. Peanuts (EpiPen in backpack)" />
             </div>
             <div>
-              <label htmlFor="kl-patient-immunizations" style={{ ...emrLabelStyle(), display: 'flex', alignItems: 'center', gap: 5 }}>
-                <SyringeIcon size={13} color="#A16207" /> Immunizations
-              </label>
+              <label htmlFor="kl-patient-immunizations" style={emrLabelStyle()}>Immunizations</label>
               <textarea id="kl-patient-immunizations" style={{ ...emrInputStyle(), minHeight: 60, resize: 'vertical' }} value={form.Immunizations} onChange={e => setField('Immunizations', e.target.value)} placeholder="e.g. Not up to date: MMR" />
             </div>
           </div>
@@ -1303,12 +1265,12 @@ export function PatientModal({ existing, onClose, onSaved }) {
           {tab !== 'patient' && plan.some(p => p.program === tab) && (
             <ProgramTab key={tab} entry={plan.find(p => p.program === tab)} plan={plan} onChange={updateEntry} onRemove={() => removeProgram(tab)}
               childServices={form.Services} showAuth={showEiBilling} inputStyle={emrInputStyle()} labelStyle={emrLabelStyle()}>
-              {tab === 'EI' && (
-                <>
-                  {ifspSection(0)}
-                  {showEiBilling && eiBillingSection()}
-                </>
-              )}
+              <div style={{ maxWidth: 240, marginBottom: 14 }}>
+                <label htmlFor="kl-program-id" style={emrLabelStyle()}>{tab === 'EI' ? 'ID # (EI child ID)' : 'ID #'}</label>
+                <input id="kl-program-id" style={emrInputStyle()} value={form.ID_Number} onChange={e => setField('ID_Number', e.target.value)} />
+              </div>
+              {ifspSection(0)}
+              {tab === 'EI' && showEiBilling && eiBillingSection()}
               {existing && planChanged && (
                 <ChangeStartChoice firstChange={firstChange} replaceAll={replaceAll} onReplaceAll={setReplaceAll}
                   effectiveFrom={effectiveFrom} onEffectiveFrom={setEffectiveFrom} inputStyle={emrInputStyle()} label="Program changes start on" />
@@ -1316,13 +1278,13 @@ export function PatientModal({ existing, onClose, onSaved }) {
             </ProgramTab>
           )}
 
-          {error && <p style={{ color: '#dc2626', fontSize: 13, marginTop: 14 }}>{error}</p>}
+          {error && <p role="alert" style={{ color: TONES.danger.fg, fontSize: 13, marginTop: 14 }}>{error}</p>}
 
           {confirmingDelete ? (
-            <div style={{ marginTop: 20, padding: 14, borderRadius: 10, background: '#FEF2F2', border: '1.5px solid #FCA5A5' }}>
+            <div style={{ marginTop: 20, padding: 14, borderRadius: 8, background: TONES.danger.bg, border: `1px solid ${EMR_BORDER}` }}>
               {linkedCount !== null ? (
                 <>
-                  <p style={{ fontSize: 13, color: '#991b1b', margin: '0 0 10px 0', fontWeight: 500 }}>
+                  <p style={{ fontSize: 13, color: TONES.danger.fg, margin: '0 0 10px 0' }}>
                     This patient has {linkedCount} appointment{linkedCount === 1 ? '' : 's'} on record and can't be deleted --
                     that would permanently erase their treatment history. Set their status to Off Program instead to keep
                     their record while marking them as no longer active.
@@ -1336,27 +1298,27 @@ export function PatientModal({ existing, onClose, onSaved }) {
                 </>
               ) : (
                 <>
-                  <p style={{ fontSize: 13, color: '#991b1b', margin: '0 0 10px 0', fontWeight: 500 }}>
+                  <p style={{ fontSize: 13, color: TONES.danger.fg, margin: '0 0 10px 0' }}>
                     Delete this patient? This can't be undone.
                   </p>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <button onClick={() => setConfirmingDelete(false)} disabled={saving} style={emrBtnStyle()}>Cancel</button>
                     <button onClick={handleDelete} disabled={saving} style={emrBtnStyle(false, true)}>
-                      {saving ? 'Deleting...' : 'Yes, Delete'}
+                      {saving ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
                 </>
               )}
             </div>
           ) : (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 22, paddingTop: 18, borderTop: `1px solid ${EMR_BORDER}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 22, paddingTop: 16, borderTop: `1px solid ${EMR_BORDER}` }}>
               {existing ? (
                 <button onClick={() => setConfirmingDelete(true)} disabled={saving} style={emrBtnStyle(false, true)}>Delete</button>
               ) : <div />}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={onClose} style={emrBtnStyle()}>Cancel</button>
                 <button onClick={handleSave} disabled={saving} style={emrBtnStyle(true)}>
-                  {saving ? 'Saving...' : existing ? 'Save' : 'Add Patient'}
+                  {saving ? 'Saving...' : existing ? 'Save' : 'Add patient'}
                 </button>
               </div>
             </div>
@@ -1395,14 +1357,10 @@ export function generateTempPassword() {
 // happens server-side as part of the real save request, since the backend
 // already knows who's asking (via the JWT) and just needs the password.
 export function PasswordConfirmModal({ expectedUsername, actionLabel, onConfirm, onCancel }) {
-  const BRAND_PURPLE = '#7c3aed';
-  const BRAND_PURPLE_DARK = '#6d28d9';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
-  const [focusedField, setFocusedField] = useState(null);
-  const [btnHover, setBtnHover] = useState(false);
 
   const handleConfirm = async () => {
     if (username.trim() !== expectedUsername) {
@@ -1423,102 +1381,38 @@ export function PasswordConfirmModal({ expectedUsername, actionLabel, onConfirm,
     setVerifying(false);
   };
 
-  const inputStyle = (focused) => ({
-    width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, boxSizing: 'border-box',
-    border: `1.5px solid ${focused ? BRAND_PURPLE : '#e2e4e9'}`,
-    outline: 'none',
-    boxShadow: focused ? '0 0 0 3px rgba(124, 58, 237, 0.12)' : 'none',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-  });
-  const labelStyle2 = () => ({ display: 'block', fontSize: 12, fontWeight: 600, color: '#6b7280', marginTop: 14, marginBottom: 5 });
-
+  // The same plain look as the patient form.
   return (
     <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 10050, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(15, 10, 30, 0.45)', padding: 20,
-      }}
+      style={{ position: 'fixed', inset: 0, zIndex: 10050, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(24,24,27,0.45)', padding: 20 }}
       onClick={onCancel}
     >
       <div
-        style={{
-          position: 'relative', overflow: 'hidden', background: 'white', borderRadius: 20, padding: '32px 28px 28px',
-          width: '100%', maxWidth: 360, boxShadow: '0 20px 50px rgba(109, 40, 217, 0.18), 0 2px 8px rgba(0,0,0,0.06)',
-          border: '1px solid #f1eafe',
-        }}
+        role="dialog" aria-modal="true" aria-labelledby="kl-confirm-title"
+        style={{ background: 'white', borderRadius: 8, padding: 20, width: '100%', maxWidth: 360, border: `1px solid ${HAIRLINE}`, fontFamily: FONT }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ position: 'absolute', top: '-15%', right: '-10%', width: 180, height: 180, borderRadius: '50%', background: BRAND_PURPLE, opacity: 0.08, filter: 'blur(60px)', pointerEvents: 'none' }} />
-
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-            background: `linear-gradient(135deg, ${BRAND_PURPLE}, ${BRAND_PURPLE_DARK})`, boxShadow: '0 4px 14px rgba(124, 58, 237, 0.3)',
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-          </div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: '0 0 3px' }}>Confirm It's You</h2>
-          <p style={{ fontSize: 12.5, color: '#9ca3af', margin: 0, maxWidth: 280 }}>
-            {actionLabel || 'Enter your username and password to confirm this change.'}
-          </p>
-        </div>
-
-        <div style={{ position: 'relative', marginTop: 6 }}>
-          <label style={labelStyle2()}>Username</label>
-          <input
-            style={inputStyle(focusedField === 'username')}
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            onFocus={() => setFocusedField('username')}
-            onBlur={() => setFocusedField(null)}
-            autoFocus
-          />
-
-          <label style={labelStyle2()}>Password</label>
-          <input
-            style={inputStyle(focusedField === 'password')}
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onFocus={() => setFocusedField('password')}
-            onBlur={() => setFocusedField(null)}
-            onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); }}
-          />
-
-          {error && <p style={{ color: '#dc2626', fontSize: 13, marginTop: 12, marginBottom: 0 }}>{error}</p>}
-
-          <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-            <button
-              onClick={onCancel}
-              style={{
-                flex: 1, padding: '11px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                border: '1.5px solid #e2e4e9', background: 'white', color: '#374151',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={verifying}
-              onMouseEnter={() => setBtnHover(true)}
-              onMouseLeave={() => setBtnHover(false)}
-              style={{
-                flex: 1, padding: '11px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600,
-                cursor: verifying ? 'default' : 'pointer', border: 'none', color: 'white',
-                background: btnHover && !verifying
-                  ? `linear-gradient(135deg, ${BRAND_PURPLE_DARK}, ${BRAND_PURPLE_DARK})`
-                  : `linear-gradient(135deg, ${BRAND_PURPLE}, ${BRAND_PURPLE_DARK})`,
-                boxShadow: '0 4px 14px rgba(124, 58, 237, 0.28)',
-                transition: 'background 0.15s, transform 0.1s',
-                transform: btnHover && !verifying ? 'translateY(-1px)' : 'none',
-                opacity: verifying ? 0.75 : 1,
-              }}
-            >
-              {verifying ? 'Verifying...' : 'Confirm'}
-            </button>
-          </div>
+        <h2 id="kl-confirm-title" style={{ fontSize: 16, fontWeight: 600, color: INK, margin: '0 0 4px' }}>Confirm it's you</h2>
+        <p style={{ fontSize: 13, color: MUTED, margin: '0 0 14px' }}>
+          {actionLabel || 'Enter your username and password to confirm this change.'}
+        </p>
+        <label htmlFor="kl-confirm-username" style={emrLabelStyle()}>Username</label>
+        <input id="kl-confirm-username" style={{ ...emrInputStyle(), marginBottom: 12 }} value={username} onChange={e => setUsername(e.target.value)} autoFocus />
+        <label htmlFor="kl-confirm-password" style={emrLabelStyle()}>Password</label>
+        <input
+          id="kl-confirm-password"
+          style={emrInputStyle()}
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); }}
+        />
+        {error && <p role="alert" style={{ color: TONES.danger.fg, fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+          <button type="button" onClick={onCancel} style={buttonStyle('secondary')}>Cancel</button>
+          <button type="button" onClick={handleConfirm} disabled={verifying} style={buttonStyle('primary', { opacity: verifying ? 0.7 : 1 })}>
+            {verifying ? 'Checking...' : 'Confirm'}
+          </button>
         </div>
       </div>
     </div>
