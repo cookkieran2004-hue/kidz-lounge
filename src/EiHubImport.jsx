@@ -41,7 +41,8 @@ export default function EiHubImport() {
       const p = await api.previewEiImport(data);
       setFile({ name: f.name, ...data });
       setPreview(p);
-      setPicked(new Set(p.changes.map(c => c.id)));
+      // All ticked except an exited child's (c.unticked).
+      setPicked(new Set(p.changes.filter(c => !c.unticked).map(c => c.id)));
       if (p.unmatched.length && !patients) api.getPatients().then(list => setPatients((list || []).map(x => ({ id: x.id, name: x.Name })).sort((a, b) => a.name.localeCompare(b.name)))).catch(() => {});
     } catch (err) {
       setError(err.message);
@@ -58,7 +59,7 @@ export default function EiHubImport() {
     try {
       const p = await api.previewEiImport({ headers: file.headers, rows: file.rows, matches: next });
       const before = new Set(preview.changes.map(c => c.id));
-      setPicked(old => new Set(p.changes.map(c => c.id).filter(id => old.has(id) || !before.has(id))));
+      setPicked(old => new Set(p.changes.filter(c => old.has(c.id) || (!before.has(c.id) && !c.unticked)).map(c => c.id)));
       setMatches(next);
       setPreview(p);
     } catch (err) {
@@ -106,7 +107,7 @@ export default function EiHubImport() {
           </>
         }>
         <p style={{ margin: 0, fontSize: 13, color: INK, lineHeight: 1.5 }}>
-          In EI-Hub, open <strong>Child Info and Authorizations</strong> (under Reports) and click <strong>Excel</strong>. Choose that file here: you'll see every change before anything is saved.
+          In EI-Hub, open <strong>Child Info and Authorizations</strong> (under Reports in Case Management Module) and click <strong>Excel</strong>. Choose that file here: you'll see every change before anything is saved.
         </p>
         {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
         {done && KIND_ORDER.some(k => done.applied[k]) && (
@@ -132,7 +133,7 @@ export default function EiHubImport() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 300px', fontSize: 13, color: INK, ...NUMERIC }}>
                 <strong>{file.name}</strong>
-                <span style={{ color: MUTED }}> · {plural(preview.rows_used, 'row')} with your therapists · {plural(preview.children, 'child')}: {preview.matched} found, {preview.unmatched.length} not in Kidz Lounge · {plural(preview.changes.length, 'change')}{preview.unchanged ? ` · ${preview.unchanged} already up to date` : ''}</span>
+                <span style={{ color: MUTED }}> · {plural(preview.children, 'child')}: {preview.matched} with sessions, {preview.unmatched.length} not in Kidz Lounge · {plural(preview.changes.length, 'change')}{preview.unchanged ? ` · ${preview.unchanged} already up to date` : ''}</span>
               </div>
               {preview.changes.length > 0 && (
                 <>
@@ -145,18 +146,15 @@ export default function EiHubImport() {
                 </>
               )}
             </div>
-            {(preview.skipped.other_therapist > 0 || preview.skipped.no_therapist > 0) && (
+            {preview.skipped.no_sessions > 0 && (
               <p style={{ margin: '8px 0 0', fontSize: 12.5, color: MUTED, ...NUMERIC }}>
-                Left out: {[
-                  preview.skipped.other_therapist ? `${plural(preview.skipped.other_therapist, 'row')} with a therapist NPI that isn't one of your providers'` : null,
-                  preview.skipped.no_therapist ? `${plural(preview.skipped.no_therapist, 'row')} with no therapist` : null,
-                ].filter(Boolean).join(' and ')}.
+                Left out: {plural(preview.skipped.no_sessions, 'child')} with no sessions in Kidz Lounge ({plural(preview.skipped.rows, 'row')}).
               </p>
             )}
             {!preview.authorizations_available && (
               <p style={{ margin: '10px 0 0', fontSize: 12.5, color: TONES.warning.fg }}>Authorizations can't be saved until the 2026-10-24 database update is run. Ask an admin to run it.</p>
             )}
-            {preview.changes.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 13, color: MUTED }}>{preview.rows_used ? 'Everything in this file is already in Kidz Lounge.' : 'None of the rows have one of your therapists.'}</p>}
+            {preview.changes.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 13, color: MUTED }}>{preview.rows_used ? 'Everything in this file is already in Kidz Lounge.' : 'None of the children in this file have sessions in Kidz Lounge.'}</p>}
           </Card>
 
           {byPatient.map(g => (
