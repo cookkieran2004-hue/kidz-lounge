@@ -99,7 +99,7 @@ export default function EiHubImport() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 300px', fontSize: 13, color: INK, ...NUMERIC }}>
                 <strong>{file.name}</strong>
-                <span style={{ color: MUTED }}> · {plural(preview.rows, 'row')} · {plural(preview.children, 'child')}: {preview.matched} found, {preview.unmatched.length} not in Kidz Lounge · {plural(preview.changes.length, 'change')}{preview.unchanged ? ` · ${preview.unchanged} already up to date` : ''}</span>
+                <span style={{ color: MUTED }}> · {plural(preview.rows_used, 'row')} with your therapists · {plural(preview.children, 'child')}: {preview.matched} found, {preview.unmatched.length} not in Kidz Lounge · {plural(preview.changes.length, 'change')}{preview.unchanged ? ` · ${preview.unchanged} already up to date` : ''}</span>
               </div>
               {preview.changes.length > 0 && (
                 <>
@@ -112,10 +112,18 @@ export default function EiHubImport() {
                 </>
               )}
             </div>
+            {(preview.skipped.other_therapist > 0 || preview.skipped.no_therapist > 0) && (
+              <p style={{ margin: '8px 0 0', fontSize: 12.5, color: MUTED, ...NUMERIC }}>
+                Left out: {[
+                  preview.skipped.other_therapist ? `${plural(preview.skipped.other_therapist, 'row')} with a therapist NPI that isn't one of your providers'` : null,
+                  preview.skipped.no_therapist ? `${plural(preview.skipped.no_therapist, 'row')} with no therapist` : null,
+                ].filter(Boolean).join(' and ')}.
+              </p>
+            )}
             {!preview.authorizations_available && (
               <p style={{ margin: '10px 0 0', fontSize: 12.5, color: TONES.warning.fg }}>Authorizations can't be saved until the 2026-10-24 database update is run. Ask an admin to run it.</p>
             )}
-            {preview.changes.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 13, color: MUTED }}>Everything in this file is already in Kidz Lounge.</p>}
+            {preview.changes.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 13, color: MUTED }}>{preview.rows_used ? 'Everything in this file is already in Kidz Lounge.' : 'None of the rows have one of your therapists.'}</p>}
           </Card>
 
           {byPatient.map(g => (
