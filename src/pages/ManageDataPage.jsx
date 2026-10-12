@@ -1039,6 +1039,8 @@ export function PatientModal({ existing, onClose, onSaved }) {
     <select style={{ ...emrInputStyle(), marginBottom: 14 }} value={form.IFSP_Type} onChange={e => setField('IFSP_Type', e.target.value)}>
       <option value="">Not set</option>
       {IFSP_TYPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+      {/* A type the list doesn't have (e.g. from the EI-Hub import) stays visible. */}
+      {form.IFSP_Type && !IFSP_TYPE_OPTIONS.includes(form.IFSP_Type) && <option value={form.IFSP_Type}>{form.IFSP_Type}</option>}
     </select>
 
     <label style={emrLabelStyle()}>Report date</label>

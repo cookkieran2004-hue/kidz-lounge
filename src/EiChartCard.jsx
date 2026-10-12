@@ -7,7 +7,9 @@ import { ChildPanel } from './EiHubChildren';
 // (kidz-lounge-api routes/eiHub.js), saying what a claim would be missing in
 // the same words as the Sessions list. Reception, Admins and Developers only
 // (the API's canManage): providers don't see EI billing information (Kieran,
-// Oct 2026). Auth #s stay with the EI mandate in the patient form.
+// Oct 2026). Authorizations imported from EI-Hub (Billing -> EI-Hub Entry ->
+// Import) are listed with their dates and session counts; otherwise auth #s
+// come from the EI mandate in the patient form.
 
 const MUTED = '#6B6280';
 const INK = '#241A33';
@@ -18,6 +20,15 @@ const ACCENT = '#6D28D9';
 
 const fmt = (s) => (s ? new Date(`${String(s).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null);
 const zipText = (z) => (z && z.length === 9 ? `${z.slice(0, 5)}-${z.slice(5)}` : z);
+const num = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+// Where an imported authorization stands today.
+function authStatus(a) {
+  if (a.suspended) return { label: 'Suspended', color: RED };
+  if (a.current) return { label: 'Current', color: GREEN };
+  const today = new Date();
+  const t = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return a.start_date && a.start_date > t ? { label: 'Upcoming', color: MUTED } : { label: 'Ended', color: MUTED };
+}
 const referrer = (r) => (r ? `${[r.referring_first, r.referring_last].filter(Boolean).join(' ')} (NPI ${r.referring_npi})` : null);
 
 function Row({ label, children }) {
@@ -103,10 +114,44 @@ export function EiChartCard({ patient, headerStyle, boxStyle }) {
           </div>
         ))}
 
+        {(data.authorizations || []).length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 2 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: INK }}>Authorizations from EI-Hub</span>
+              <span style={{ fontSize: 12, color: MUTED }}>Imported {fmt(data.authorizations.map(a => a.imported_at).sort().pop())}</span>
+            </div>
+            {data.authorizations.map(a => {
+              const st = authStatus(a);
+              const used = num(a.sessions_used);
+              const total = num(a.sessions_authorized);
+              const left = num(a.sessions_remaining);
+              return (
+                <div key={a.authorization_number} style={{ fontSize: 13, padding: '7px 0', borderBottom: `1px solid ${LINE}`, color: st.label === 'Ended' ? MUTED : INK, fontVariantNumeric: 'tabular-nums' }}>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                    <strong style={{ minWidth: 26 }}>{a.service || '?'}</strong>
+                    <span>Auth # {a.authorization_number}</span>
+                    <span>{fmt(a.start_date) || '—'} – {fmt(a.end_date) || '—'}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: st.color }}>{st.label}</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}>
+                    {[
+                      total !== null ? `${used ?? 0} of ${total} sessions used${left !== null ? `, ${left} left` : ''}` : null,
+                      num(a.makeups_authorized) ? `make-ups ${num(a.makeups_used) ?? 0} of ${num(a.makeups_authorized)}` : null,
+                      a.suspended_start ? `suspended ${fmt(a.suspended_start)}${a.suspended_end ? ` – ${fmt(a.suspended_end)}` : ''}` : null,
+                      a.service !== 'SI' ? (a.referral ? `referred by ${referrer(a.referral)}` : 'no referring provider') : null,
+                      !a.service && a.program ? a.program : null,
+                    ].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {editing && (
           <div style={{ marginTop: 14, padding: 14, borderRadius: 8, background: 'white', border: `1px solid ${LINE}` }}>
             <ChildPanel child={c} counties={data.counties} onChanged={() => setReload(n => n + 1)} />
-            <p style={{ margin: '12px 0 0', fontSize: 12, color: MUTED }}>Auth #s are entered with the EI mandate (Edit patient, Programs).</p>
+            <p style={{ margin: '12px 0 0', fontSize: 12, color: MUTED }}>Authorizations come from the EI-Hub import (Billing, EI-Hub Entry, Import); without one, the auth # is taken from the EI mandate (Edit patient).</p>
           </div>
         )}
       </div>

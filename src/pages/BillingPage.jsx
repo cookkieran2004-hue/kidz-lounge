@@ -86,8 +86,10 @@ export default function BillingPage() {
   const [version, setVersion] = useState(0);
   const [savingReview, setSavingReview] = useState(false);
   // Admins and Developers also get the EI-Hub Entry tab (EiHubPanel.jsx;
-  // src/roles.js canUseEiHub). Not Reception.
-  const eiHubAllowed = canUseEiHub(user);
+  // src/roles.js canUseEiHub). Reception gets it with just Import (EI-Hub's
+  // Child Info and Authorizations report; Kieran, Oct 2026).
+  const eiHubFull = canUseEiHub(user);
+  const eiHubAllowed = eiHubFull || canManage(user);
   const [view, setView] = useState('sheet');
   const eiHub = eiHubAllowed && view === 'eihub';
   const headerRef = useRef(null);
@@ -219,7 +221,7 @@ export default function BillingPage() {
           )}
         </div>
 
-        {eiHub && <EiHubPanel month={month} />}
+        {eiHub && <EiHubPanel month={month} full={eiHubFull} />}
         {!eiHub && error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
         {!eiHub && !sheet && !error && <p style={{ fontSize: 13, color: MUTED }}>Loading billing...</p>}
 

@@ -295,6 +295,9 @@ export const api = {
   takeBackEiReferral: (authorization, periodId) => request(`/ei-hub/referrals/${encodeURIComponent(authorization)}/periods/${periodId}`, { method: 'DELETE' }),
   // Reception, Admins and Developers: one child's EI billing details (the chart's EI Billing tab).
   getEiPatient: (id) => request(`/ei-hub/patient/${id}`),
+  // EI-Hub's Child Info and Authorizations report (Reception too): what it would change, then apply the ticked changes.
+  previewEiImport: (file) => request('/ei-hub/import/preview', { method: 'POST', body: JSON.stringify(file) }),
+  applyEiImport: (file, ids) => request('/ei-hub/import/apply', { method: 'POST', body: JSON.stringify({ ...file, ids }) }),
   getEiClaims: (month) => request(`/ei-hub/claims?month=${month}`),
   saveEiSessionCodes: (data) => request('/ei-hub/claims/codes', { method: 'PUT', body: JSON.stringify(data) }),
   createEiClaimFile: (data) => request('/ei-hub/claim-files', { method: 'POST', body: JSON.stringify(data) }),
