@@ -26,19 +26,41 @@ export default function EiHubImport() {
   const [picked, setPicked] = useState(new Set());
   const [busy, setBusy] = useState(null);       // 'reading' | 'applying'
   const [error, setError] = useState(null);
-  const [done, setDone] = useState(null);       // applied counts
+  const [done, setDone] = useState(null);       // { applied, failed }
+  // Children matched to a patient by hand: { child id key: patient id }.
+  const [matches, setMatches] = useState({});
+  const [patients, setPatients] = useState(null); // for "Match to patient"
 
   const choose = async (e) => {
     const f = e.target.files?.[0];
     e.target.value = '';
     if (!f) return;
-    setError(null); setDone(null); setPreview(null); setBusy('reading');
+    setError(null); setDone(null); setPreview(null); setMatches({}); setBusy('reading');
     try {
       const data = await readEiHubFile(f);
       const p = await api.previewEiImport(data);
       setFile({ name: f.name, ...data });
       setPreview(p);
       setPicked(new Set(p.changes.map(c => c.id)));
+      if (p.unmatched.length && !patients) api.getPatients().then(list => setPatients((list || []).map(x => ({ id: x.id, name: x.Name })).sort((a, b) => a.name.localeCompare(b.name)))).catch(() => {});
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusy(null);
+  };
+
+  // Matching a child by hand re-checks the file with that match; the new
+  // changes it brings are ticked, the rest keep their ticks.
+  const match = async (key, patientId) => {
+    const next = { ...matches };
+    if (patientId) next[key] = patientId; else delete next[key];
+    setError(null); setBusy('reading');
+    try {
+      const p = await api.previewEiImport({ headers: file.headers, rows: file.rows, matches: next });
+      const before = new Set(preview.changes.map(c => c.id));
+      setPicked(old => new Set(p.changes.map(c => c.id).filter(id => old.has(id) || !before.has(id))));
+      setMatches(next);
+      setPreview(p);
     } catch (err) {
       setError(err.message);
     }
@@ -48,9 +70,9 @@ export default function EiHubImport() {
   const apply = async () => {
     setError(null); setBusy('applying');
     try {
-      const r = await api.applyEiImport({ headers: file.headers, rows: file.rows }, [...picked]);
-      setDone(r.applied);
-      setPreview(null); setFile(null);
+      const r = await api.applyEiImport({ headers: file.headers, rows: file.rows, matches }, [...picked]);
+      setDone(r);
+      setPreview(null); setFile(null); setMatches({});
     } catch (err) {
       setError(err.message);
     }
@@ -87,10 +109,20 @@ export default function EiHubImport() {
           In EI-Hub, open <strong>Child Info and Authorizations</strong> (under Reports) and click <strong>Excel</strong>. Choose that file here: you'll see every change before anything is saved.
         </p>
         {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
-        {done && (
+        {done && KIND_ORDER.some(k => done.applied[k]) && (
           <p role="status" style={{ margin: '10px 0 0', fontSize: 13, color: TONES.success.fg }}>
-            Imported: {KIND_ORDER.filter(k => done[k]).map(k => `${KIND_LABEL[k]} ${done[k]}`).join(' · ')}
+            Imported: {KIND_ORDER.filter(k => done.applied[k]).map(k => `${KIND_LABEL[k]} ${done.applied[k]}`).join(' · ')}
           </p>
+        )}
+        {done && (done.failed || []).length > 0 && (
+          <div role="alert" style={{ marginTop: 10, fontSize: 13 }}>
+            <div style={{ color: TONES.danger.fg, fontWeight: 600 }}>{plural(done.failed.length, 'change')} couldn't be saved (everything else was):</div>
+            {done.failed.map((f, i) => (
+              <div key={i} style={{ padding: '4px 0', borderTop: i ? `1px solid ${HAIRLINE}` : 'none', color: INK }}>
+                <strong>{f.patient_name}</strong> · {f.title}: <span style={{ color: TONES.danger.fg }}>{f.error}</span>
+              </div>
+            ))}
+          </div>
         )}
       </Card>
 
@@ -162,13 +194,28 @@ export default function EiHubImport() {
 
           {preview.unmatched.length > 0 && (
             <Card title="Not in Kidz Lounge" pad={16}>
-              <p style={{ margin: '-6px 0 8px', fontSize: 12.5, color: MUTED }}>No patient has these EI child IDs (or the same name and date of birth). Add the patient with their ID #, then import again.</p>
+              <p style={{ margin: '-6px 0 8px', fontSize: 12.5, color: MUTED }}>No patient has these EI child IDs, and none has the same name and date of birth. Pick the patient to bring them in (their ID # is set to the EI child ID), or add the patient first.</p>
               {preview.unmatched.map(u => (
-                <div key={u.ei_child_id} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', padding: '6px 0', borderTop: `1px solid ${HAIRLINE}`, fontSize: 13, ...NUMERIC }}>
+                <div key={u.key || u.ei_child_id} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', padding: '6px 0', borderTop: `1px solid ${HAIRLINE}`, fontSize: 13, ...NUMERIC }}>
                   <span style={{ minWidth: 160, fontWeight: 500, color: INK }}>{u.name || '—'}</span>
                   <span style={{ color: MUTED }}>EI child ID {u.ei_child_id}</span>
                   {u.date_of_birth && <span style={{ color: MUTED }}>Born {fmtDate(u.date_of_birth)}</span>}
                   <span style={{ color: MUTED }}>{plural(u.authorizations, 'authorization')}</span>
+                  <select aria-label={`Match ${u.name || u.ei_child_id} to a patient`} value="" disabled={!!busy}
+                    onChange={e => e.target.value && match(u.key, e.target.value)}
+                    style={{ marginLeft: 'auto', padding: '5px 8px', borderRadius: 6, border: '1px solid #D4D4D8', fontSize: 13, fontFamily: 'inherit', background: 'white', maxWidth: 260 }}>
+                    <option value="">Match to patient…</option>
+                    {(u.suggestions || []).length > 0 && (
+                      <optgroup label="Likely">
+                        {u.suggestions.map(sg => <option key={sg.id} value={sg.id}>{sg.name}{sg.date_of_birth ? ` (born ${fmtDate(sg.date_of_birth)})` : ''}</option>)}
+                      </optgroup>
+                    )}
+                    {patients && (
+                      <optgroup label="All patients">
+                        {patients.map(pt => <option key={pt.id} value={pt.id}>{pt.name}</option>)}
+                      </optgroup>
+                    )}
+                  </select>
                 </div>
               ))}
             </Card>

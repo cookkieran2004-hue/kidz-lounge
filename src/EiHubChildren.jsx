@@ -62,7 +62,7 @@ const summary = (v) => [
 // in wrong (src/eiValidate.js). Shared by DetailsForm and the new-patient
 // form's EI tab (ProgramPlanEditor.jsx). `idField`: false when the form
 // already has the ID # (the patient form's own field).
-export function EiDetailsFields({ form, setForm, counties, idField = true, namePlaceholder = {} }) {
+export function EiDetailsFields({ form, setForm, counties, idField = true, idLocked = false, namePlaceholder = {} }) {
   const problems = childProblems(form);
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
   const note = (k) => problems[k] && <div role="alert" style={{ fontSize: 11.5, color: TONES.danger.fg, marginTop: 3 }}>{problems[k]}</div>;
@@ -76,7 +76,13 @@ export function EiDetailsFields({ form, setForm, counties, idField = true, nameP
   return (
     <>
       <div style={eiGrid}>
-        {idField && field('ei_child_id', 'ID # (EI child ID)')}
+        {idField && (idLocked ? (
+          <div>
+            <label htmlFor="ei-child-ei_child_id" style={eiLabel}>ID # (EI child ID)</label>
+            <input id="ei-child-ei_child_id" style={{ ...eiInput, background: '#FAFAFA', color: MUTED }} value={form.ei_child_id || ''} readOnly />
+            <div style={{ fontSize: 11.5, color: MUTED, marginTop: 3 }}>Locked: from EI-Hub</div>
+          </div>
+        ) : field('ei_child_id', 'ID # (EI child ID)'))}
         {field('first_name', 'First name in EI-Hub', { placeholder: namePlaceholder.first })}
         {field('last_name', 'Last name in EI-Hub', { placeholder: namePlaceholder.last })}
         <div>
@@ -143,7 +149,7 @@ function DetailsForm({ child, counties, version, onDone, onCancel }) {
           : first ? 'As EI-Hub has them. These apply to all dates until a change is added.'
           : 'As EI-Hub has them now. Sessions before the date keep the earlier details.'}
       </p>
-      <EiDetailsFields form={form} setForm={setForm} counties={counties} />
+      <EiDetailsFields form={form} setForm={setForm} counties={counties} idLocked={!!child.ei_id_locked} />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
         {!correcting && !first && (
           <>

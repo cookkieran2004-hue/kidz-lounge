@@ -1021,6 +1021,18 @@ export function PatientModal({ existing, onClose, onSaved }) {
     );
   };
 
+  // The ID # field. Once an EI-Hub import has set it, it's the child's EI
+  // child ID and locked (the API refuses a change): imports refer back to it.
+  const idLocked = !!(existing && existing.ei_id_locked_at && String(existing.ID_Number || '').trim());
+  const idInput = (id) => (idLocked ? (
+    <>
+      <input id={id} style={{ ...emrInputStyle(), background: EMR_SURFACE, color: EMR_MUTED }} value={form.ID_Number} readOnly />
+      <p style={{ fontSize: 12, color: EMR_MUTED, margin: '4px 0 0' }}>Locked: from EI-Hub</p>
+    </>
+  ) : (
+    <input id={id} style={emrInputStyle()} value={form.ID_Number} onChange={e => setField('ID_Number', e.target.value)} />
+  ));
+
   // The IFSP fields: on the Patient tab, or on every program tab once a program is picked.
   const ifspSection = (index) => (
     <>
@@ -1209,7 +1221,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
             {!hasPrograms && (
               <div>
                 <label style={emrLabelStyle()}>ID #</label>
-                <input style={emrInputStyle()} value={form.ID_Number} onChange={e => setField('ID_Number', e.target.value)} />
+                {idInput('kl-patient-id')}
               </div>
             )}
           </div>
@@ -1269,7 +1281,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
               childServices={form.Services} showAuth={showEiBilling} inputStyle={emrInputStyle()} labelStyle={emrLabelStyle()}>
               <div style={{ maxWidth: 240, marginBottom: 14 }}>
                 <label htmlFor="kl-program-id" style={emrLabelStyle()}>{tab === 'EI' ? 'ID # (EI child ID)' : 'ID #'}</label>
-                <input id="kl-program-id" style={emrInputStyle()} value={form.ID_Number} onChange={e => setField('ID_Number', e.target.value)} />
+                {idInput('kl-program-id')}
               </div>
               {ifspSection(0)}
               {tab === 'EI' && showEiBilling && eiBillingSection()}
