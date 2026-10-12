@@ -7,12 +7,13 @@ import { INK, MUTED, HAIRLINE, TONES, NUMERIC, buttonStyle } from './uiTokens';
 // Billing -> EI-Hub Entry -> Import (Reception, Admins and Developers;
 // kidz-lounge-api lib/eiImport.js). Choose EI-Hub's Child Info and
 // Authorizations download; the file is read here (src/eiHubFile.js), the
-// server lists what it would change -- new authorizations, changed EI
-// details, referring providers, IFSP dates, service coordinators -- and only
+// server lists what it would change -- EI mandates (service, sessions x
+// minutes, auth #), new authorizations, changed EI details, referring
+// providers, IFSP dates, service coordinators -- and only
 // the ticked changes are applied (Kieran, Oct 2026: "show me first").
 
-const KIND_ORDER = ['link', 'child', 'auth', 'referral', 'ifsp', 'sc'];
-const KIND_LABEL = { link: 'ID #', child: 'EI details', auth: 'Authorizations', referral: 'Referring providers', ifsp: 'IFSP', sc: 'Service coordinators' };
+const KIND_ORDER = ['link', 'child', 'mandate', 'auth', 'referral', 'ifsp', 'sc'];
+const KIND_LABEL = { link: 'ID #', child: 'EI details', mandate: 'EI mandates', auth: 'Authorizations', referral: 'Referring providers', ifsp: 'IFSP', sc: 'Service coordinators' };
 const isDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 const fmtDate = (v) => new Date(`${v}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const show = (v) => (v === null || v === undefined || v === '' ? '—' : isDate(v) ? fmtDate(v) : String(v));
