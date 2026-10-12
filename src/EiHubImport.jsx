@@ -12,8 +12,8 @@ import { INK, MUTED, HAIRLINE, TONES, NUMERIC, buttonStyle } from './uiTokens';
 // providers, IFSP dates, service coordinators -- and only
 // the ticked changes are applied (Kieran, Oct 2026: "show me first").
 
-const KIND_ORDER = ['link', 'child', 'mandate', 'auth', 'referral', 'ifsp', 'sc'];
-const KIND_LABEL = { link: 'ID #', child: 'EI details', mandate: 'EI mandates', auth: 'Authorizations', referral: 'Referring providers', ifsp: 'IFSP', sc: 'Service coordinators' };
+const KIND_ORDER = ['link', 'child', 'redate', 'mandate', 'auth', 'referral', 'ifsp', 'sc'];
+const KIND_LABEL = { link: 'ID #', child: 'EI details', redate: 'Dates moved', mandate: 'EI mandates', auth: 'Authorizations', referral: 'Referring providers', ifsp: 'IFSP', sc: 'Service coordinators' };
 const isDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 const fmtDate = (v) => new Date(`${v}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const show = (v) => (v === null || v === undefined || v === '' ? '—' : isDate(v) ? fmtDate(v) : String(v));
