@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
 import { useStaffNames } from './staffDirectory';
+import { useAuth } from './AuthContext';
+import { canAdminister } from './roles';
 import { PowerFormAnswers } from './PowerFormFields';
 import { buildPowerFormPdf } from './powerForms';
 import { Tag } from './dashboardUi';
@@ -104,6 +106,8 @@ function FormDetail({ id, patient, onChanged, onClose }) {
   const [error, setError] = useState(null);
   const [note, setNote] = useState(null);
   const [reload, setReload] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { user } = useAuth();
   useEffect(() => {
     let alive = true;
     api.getPowerForm(id)
@@ -135,6 +139,19 @@ function FormDetail({ id, patient, onChanged, onClose }) {
       setError(err.message);
     }
     setBusy(null);
+  };
+  // Admins and Developers only (the server checks too): the answers and the
+  // saved PDF go for good; changes already applied to the chart stay.
+  const remove = async () => {
+    setBusy('delete'); setError(null); setNote(null);
+    try {
+      await api.deletePowerForm(id);
+      onChanged();
+      onClose();
+    } catch (err) {
+      setError(err.message);
+      setBusy(null);
+    }
   };
   const pdfName = () => `${form.form_name} - ${patient.Name} - ${day(form.completed_at)}.pdf`.replace(/[/\\]/g, '-');
   const download = async () => {
@@ -220,7 +237,19 @@ function FormDetail({ id, patient, onChanged, onClose }) {
           ? <span style={{ fontSize: 13, color: TONES.success.fg }}>Saved to Documents</span>
           : <button type="button" onClick={saveToDocuments} disabled={!!busy} style={buttonStyle('secondary')}>{busy === 'save' ? 'Saving...' : 'Save PDF to Documents'}</button>}
         <button type="button" onClick={download} disabled={!!busy} style={buttonStyle('secondary')}>{busy === 'pdf' ? 'Making the PDF...' : 'Download PDF'}</button>
+        {canAdminister(user) && !confirmDelete && (
+          <button type="button" onClick={() => setConfirmDelete(true)} disabled={!!busy} style={buttonStyle('text', { color: TONES.danger.fg, marginLeft: 'auto' })}>Delete form</button>
+        )}
       </div>
+      {confirmDelete && (
+        <div role="alert" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px', borderRadius: 8, background: TONES.danger.bg }}>
+          <span style={{ fontSize: 13.5, color: TONES.danger.fg, flex: '1 1 240px' }}>
+            Delete this form for good? Its answers{form.document_id ? ' and its PDF in Documents' : ''} will be deleted.{form.applied_at ? ' Changes already applied to the chart stay.' : ''}
+          </span>
+          <button type="button" onClick={remove} disabled={!!busy} style={buttonStyle('danger')}>{busy === 'delete' ? 'Deleting...' : 'Delete'}</button>
+          <button type="button" onClick={() => setConfirmDelete(false)} disabled={!!busy} style={buttonStyle('secondary')}>Keep</button>
+        </div>
+      )}
       {note && <p role="status" style={{ margin: 0, fontSize: 13, color: TONES.success.fg }}>{note}</p>}
       {error && <p role="alert" style={{ margin: 0, fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
 

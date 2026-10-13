@@ -143,6 +143,7 @@ export const api = {
   getPowerForm: (id) => request(`/power-forms/requests/${id}`),
   applyPowerForm: (id, fields) => request(`/power-forms/requests/${id}/apply`, { method: 'POST', body: JSON.stringify({ fields }) }),
   reviewPowerForm: (id) => request(`/power-forms/requests/${id}/review`, { method: 'POST', body: '{}' }),
+  deletePowerForm: (id) => request(`/power-forms/requests/${id}`, { method: 'DELETE' }),
   linkPowerFormDocument: (id, documentId) => request(`/power-forms/requests/${id}/document`, { method: 'POST', body: JSON.stringify({ document_id: documentId }) }),
   // The parent's side (no sign-in): the link's token, the child's date of birth, the answers.
   getPublicPowerForm: (token) => request(`/forms/${encodeURIComponent(token)}`),
