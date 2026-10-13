@@ -153,10 +153,11 @@ function CredentialForm({ initial, isMobile, onSave, onCancel }) {
   const [error, setError] = useState(null);
 
   const submit = async () => {
-    if (!name.trim() || !expiration) { setError('Name and expiration date are required.'); return; }
+    // The expiration date is optional: some credentials never expire.
+    if (!name.trim()) { setError('Enter the credential name.'); return; }
     setSaving(true); setError(null);
     try {
-      await onSave({ credential_name: name.trim(), expiration_date: expiration, notes: notes.trim() });
+      await onSave({ credential_name: name.trim(), expiration_date: expiration || null, notes: notes.trim() });
     } catch (err) {
       setError(err.message); setSaving(false);
     }
@@ -170,8 +171,8 @@ function CredentialForm({ initial, isMobile, onSave, onCancel }) {
           <input id="kl-cred-name" style={fieldStyle(isMobile)} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. CCC-SLP License, CPR Certification" />
         </div>
         <div>
-          <label style={labelStyle} htmlFor="kl-cred-exp">Expiration date</label>
-          <DateField id="kl-cred-exp" style={fieldStyle(isMobile)} yearNav value={expiration} onChange={setExpiration} />
+          <label style={labelStyle} htmlFor="kl-cred-exp">Expiration date (optional)</label>
+          <DateField id="kl-cred-exp" style={fieldStyle(isMobile)} yearNav clearable value={expiration} onChange={v => setExpiration(v || '')} />
         </div>
       </div>
       <div style={{ marginBottom: 14 }}>
