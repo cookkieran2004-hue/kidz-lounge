@@ -242,7 +242,7 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
         aria-modal="true"
         aria-labelledby="new-staff-title"
         onClick={e => e.stopPropagation()}
-        style={{ ...cardStyle({ padding: isMobile ? 18 : 26 }), width: '100%', maxWidth: 640, fontFamily: FONT, boxShadow: '0 24px 48px rgba(36,26,51,0.18)' }}
+        style={{ ...cardStyle({ padding: isMobile ? 18 : 26 }), width: '100%', maxWidth: 640, fontFamily: FONT, boxShadow: '0 24px 48px color-mix(in srgb, var(--brand-ink) 18%, transparent)' }}
       >
         <h2 id="new-staff-title" style={{ fontFamily: BRAND_SERIF, fontSize: 23, fontWeight: 700, color: INK, margin: 0 }}>
           {done ? 'Account created' : 'Add a staff member'}

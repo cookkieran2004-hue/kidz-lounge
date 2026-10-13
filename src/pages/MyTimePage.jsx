@@ -255,8 +255,8 @@ function WeekView({ weekStart, setWeekStart, days, isMobile, isProvider, onOpen 
               <div key={a} title="Not contracted at this time" style={{ position: 'absolute', left: 0, right: 0, top: a, height: z - a, background: NOT_CONTRACTED_BG, pointerEvents: 'none' }} />
             ))}
             {d.closed && (
-              <div title={d.closed} style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(109, 40, 217, 0.035)', display: 'flex', alignItems: 'center', overflow: 'hidden', pointerEvents: 'none' }}>
-                <span style={{ width: '100%', textAlign: 'center', padding: '8px 4px', background: 'rgba(109, 40, 217, 0.13)', borderTop: '2px solid rgba(109, 40, 217, 0.35)', borderBottom: '2px solid rgba(109, 40, 217, 0.35)', color: BRAND.brassText, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{d.closed}</span>
+              <div title={d.closed} style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'color-mix(in srgb, var(--brand-primary) 3.5%, transparent)', display: 'flex', alignItems: 'center', overflow: 'hidden', pointerEvents: 'none' }}>
+                <span style={{ width: '100%', textAlign: 'center', padding: '8px 4px', background: 'color-mix(in srgb, var(--brand-primary) 13%, transparent)', borderTop: '2px solid color-mix(in srgb, var(--brand-primary) 35%, transparent)', borderBottom: '2px solid color-mix(in srgb, var(--brand-primary) 35%, transparent)', color: BRAND.brassText, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{d.closed}</span>
               </div>
             )}
             {layoutLanes(d.blocks).map((b, i) => {

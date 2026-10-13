@@ -206,7 +206,7 @@ export function presetTabsWrap() {
 }
 export function presetTabStyle(active) {
   return {
-    border: 'none', borderRadius: 999, padding: '5px 12px', fontSize: 12.5, cursor: 'pointer', fontWeight: 600,
+    border: 'none', borderRadius: 'var(--brand-pill-radius)', padding: '5px 12px', fontSize: 12.5, cursor: 'pointer', fontWeight: 600,
     background: active ? '#111827' : '#f1f2f4',
     color: active ? 'white' : '#6b7280',
   };
@@ -481,7 +481,7 @@ export function ScheduleChangesEditor({ providerName }) {
             {c.end_date ? `${formatLongDate(c.start_date)} \u2013 ${formatLongDate(c.end_date)}` : `From ${formatLongDate(c.start_date)}`}
           </strong>
           <span style={{ fontSize: 11, color: '#6b7280' }}>{c.end_date ? 'Temporary' : 'Permanent'}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: status.color, background: status.bg, borderRadius: 999, padding: '2px 8px' }}>{status.label}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: status.color, background: status.bg, borderRadius: 'var(--brand-pill-radius)', padding: '2px 8px' }}>{status.label}</span>
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
             <button type="button" onClick={() => setEditing(c)} style={smallBtnStyle(false)}>Edit</button>
             <button type="button" onClick={() => remove(c)} style={smallBtnStyle(true)}>Delete</button>
@@ -1812,7 +1812,7 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
           style={{ ...cellStyle, textAlign: 'left', cursor: 'pointer', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3, minHeight: 22, minWidth: columnKey === 'Mandate' ? 160 : 130 }}>
           {columnKey === 'Program'
             ? (programs.length ? programs.map(s => (
-              <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: 'var(--brand-tint2)', color: 'var(--brand-primary)' }}>{s}</span>
+              <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 'var(--brand-pill-radius)', background: 'var(--brand-tint2)', color: 'var(--brand-primary)' }}>{s}</span>
             )) : <span style={{ color: '#9ca3af' }}>--</span>)
             : (patient.Mandate || <span style={{ color: '#9ca3af' }}>--</span>)}
         </button>
@@ -1914,7 +1914,7 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
           }}
         >
           {selected.length > 0 ? selected.map(s => (
-            <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: 'var(--brand-tint2)', color: 'var(--brand-primary)' }}>
+            <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 'var(--brand-pill-radius)', background: 'var(--brand-tint2)', color: 'var(--brand-primary)' }}>
               {s}
             </span>
           )) : <span style={{ color: '#9ca3af' }}>--</span>}
@@ -2666,7 +2666,7 @@ export default function ManageDataPage({ section: sectionProp, onSectionChange }
                   )}
                   {splitMultiValue(p.Services).map(s => (
                     <span key={'svc-' + s} style={{
-                      fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                      fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--brand-pill-radius)',
                       background: serviceColor(s) + '20', color: serviceColor(s),
                     }}>
                       {s}
@@ -2674,7 +2674,7 @@ export default function ManageDataPage({ section: sectionProp, onSectionChange }
                   ))}
                   {splitMultiValue(p.Program).map(prog => (
                     <span key={'prog-' + prog} style={{
-                      fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                      fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--brand-pill-radius)',
                       background: programColor(prog) + '20', color: programColor(prog),
                     }}>
                       {prog}
@@ -2715,7 +2715,7 @@ export default function ManageDataPage({ section: sectionProp, onSectionChange }
                       <span style={{ fontFamily: 'monospace', fontSize: 12.5, color: '#9ca3af' }}>({s.username})</span>
                     </span>
                     <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--brand-pill-radius)',
                       background: s.role && s.role !== 'staff' ? '#8b5cf620' : '#6b728020',
                       color: s.role && s.role !== 'staff' ? '#8b5cf6' : '#6b7280',
                     }}>

@@ -232,12 +232,12 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') send(); }}
           placeholder="Type a message..."
-          style={{ flex: 1, minWidth: 0, padding: '7px 10px', borderRadius: 16, border: `1px solid ${BORDER}`, fontSize: 13 }}
+          style={{ flex: 1, minWidth: 0, padding: '7px 10px', borderRadius: 'var(--brand-pill-radius)', border: `1px solid ${BORDER}`, fontSize: 13 }}
         />
         <button
           onClick={send}
           disabled={sending || !text.trim()}
-          style={{ padding: '7px 14px', borderRadius: 16, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer', flexShrink: 0 }}
+          style={{ padding: '7px 14px', borderRadius: 'var(--brand-pill-radius)', fontSize: 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer', flexShrink: 0 }}
         >
           Send
         </button>
@@ -378,7 +378,7 @@ export default function ChatWidget() {
         onClick={() => { setWidgetOpen(o => !o); if (!widgetOpen) setActiveConversationId(null); }}
         style={{
           position: 'relative', width: 56, height: 56, borderRadius: '50%', background: BRAND_COLOR, border: 'none',
-          boxShadow: '0 6px 20px rgba(109,40,217,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 6px 20px color-mix(in srgb, var(--brand-primary) 40%, transparent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginLeft: 'auto',
         }}
         aria-label="Toggle chat"

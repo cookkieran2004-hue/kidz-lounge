@@ -49,5 +49,16 @@ export default {
     subtle3: '#C9C3D6',
     gray: '#F1F0F4',
     gray2: '#F3F2F7',
+    shadow: '#4C1D6B', // tinted drop shadows
+    // Page backgrounds: dashboard-style pages, and the two schedules.
+    pageBg: '#F7F7F8',
+    pageBg2: '#F6F7F9',
+    // Appointment statuses that carry the brand (the rest are the same at
+    // every clinic). Cards are these colors mixed with white.
+    statusConfirmed: '#907BE3',
+    statusMessage: '#9B8FC9', // Left Message, Emailed
+    // Badges, chips and tags: Kidz Lounge's are pills.
+    pillRadius: '999px',
+    viewSwitch: '#DC2626', // the schedule's Provider / Room / Unassigned switch
   },
 };

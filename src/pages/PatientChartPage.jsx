@@ -229,7 +229,7 @@ function AppointmentRow({ apt, onOpen }) {
         fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
         color: bad ? '#A32D2D' : BRAND.brassText,
         border: `1.5px solid ${bad ? '#A32D2D' : BRAND.brass}`,
-        borderRadius: 20, padding: '3px 10px',
+        borderRadius: 'var(--brand-pill-radius)', padding: '3px 10px',
       }}>
         {apt.appointment_status}
       </span>
@@ -312,7 +312,7 @@ function PatientBanner({ patient, appointments }) {
         {patient.Status && (
           <span style={{
             fontSize: 10.5, fontWeight: 700, color: BRAND.brassText, border: `1.5px solid ${BRAND.brass}`,
-            borderRadius: 20, padding: '3px 10px', letterSpacing: '0.02em', textTransform: 'uppercase',
+            borderRadius: 'var(--brand-pill-radius)', padding: '3px 10px', letterSpacing: '0.02em', textTransform: 'uppercase',
           }}>
             {patient.Status}
           </span>
@@ -372,7 +372,7 @@ function Sidebar({ tabs, activeTab, setActiveTab, onBack, onEdit }) {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               style={{
-                whiteSpace: 'nowrap', padding: '7px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                whiteSpace: 'nowrap', padding: '7px 12px', borderRadius: 'var(--brand-pill-radius)', border: 'none', cursor: 'pointer',
                 fontSize: 13, fontWeight: activeTab === tab.key ? 700 : 500,
                 background: activeTab === tab.key ? BRAND.tint : 'transparent',
                 color: activeTab === tab.key ? BRAND.brassText : '#374151',

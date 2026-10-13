@@ -26,7 +26,7 @@ function StatusBadge({ status }) {
   };
   const c = colors[status] || colors.pending;
   return (
-    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: c.bg, color: c.text, textTransform: 'capitalize' }}>
+    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--brand-pill-radius)', background: c.bg, color: c.text, textTransform: 'capitalize' }}>
       {status}
     </span>
   );

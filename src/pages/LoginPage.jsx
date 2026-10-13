@@ -29,7 +29,7 @@ function cardStyle() {
   return {
     position: 'relative', zIndex: 1,
     background: 'white', borderRadius: 20, padding: '36px 32px 32px', width: '100%', maxWidth: 380,
-    boxShadow: '0 20px 50px rgba(109, 40, 217, 0.12), 0 2px 8px rgba(0,0,0,0.04)',
+    boxShadow: '0 20px 50px color-mix(in srgb, var(--brand-primary) 12%, transparent), 0 2px 8px rgba(0,0,0,0.04)',
     border: '1px solid var(--brand-tint3)',
   };
 }
@@ -41,7 +41,7 @@ function inputStyle(focused) {
     width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, boxSizing: 'border-box',
     border: `1.5px solid ${focused ? BRAND_COLOR : '#e2e4e9'}`,
     outline: 'none',
-    boxShadow: focused ? '0 0 0 3px rgba(124, 58, 237, 0.12)' : 'none',
+    boxShadow: focused ? '0 0 0 3px color-mix(in srgb, var(--brand-primary-bright) 12%, transparent)' : 'none',
     transition: 'border-color 0.15s, box-shadow 0.15s',
   };
 }
@@ -118,7 +118,7 @@ export default function LoginPage() {
               background: btnHover && !loading
                 ? `linear-gradient(135deg, ${BRAND_COLOR_DARK}, ${BRAND_COLOR_DARK})`
                 : `linear-gradient(135deg, ${BRAND_COLOR}, ${BRAND_COLOR_DARK})`,
-              boxShadow: '0 4px 14px rgba(124, 58, 237, 0.28)',
+              boxShadow: '0 4px 14px color-mix(in srgb, var(--brand-primary-bright) 28%, transparent)',
               transition: 'background 0.15s, transform 0.1s',
               transform: btnHover && !loading ? 'translateY(-1px)' : 'none',
               opacity: loading ? 0.75 : 1,

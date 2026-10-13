@@ -46,5 +46,13 @@ export default {
     subtle3: '#C3C9D6',
     gray: '#F0F1F4',
     gray2: '#F2F4F7',
+    shadow: '#1D366B',
+    pageBg: '#F4F7FB',
+    pageBg2: '#F4F7FB',
+    statusConfirmed: '#3B6FE0',
+    statusMessage: '#D4A72C', // warm yellow, distinct from Canceled's steel blue and *HOLD*'s amber
+    // Badges, chips and tags: slightly rounded rectangles, no pills.
+    pillRadius: '6px',
+    viewSwitch: '#1D4ED8',
   },
 };

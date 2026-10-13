@@ -367,7 +367,7 @@ export default function WeeklySchedulePage() {
   const datePickerValue = isMobile ? dateToInputValue(mobileDay) : dateToInputValue(weekAnchor);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', padding: isMobile ? '16px' : '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: 'var(--brand-page-bg2)', padding: isMobile ? '16px' : '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
       {/* Phones and tablets show one day (daysToShow): a compact header in
           rows -- title and provider; day navigation; the two actions -- so
           the sticky header doesn't take a third of a phone screen. */}
@@ -376,7 +376,7 @@ export default function WeeklySchedulePage() {
           ref={pageHeaderRef}
           style={{
             display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0,
-            position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: '#f6f7f9',
+            position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: 'var(--brand-page-bg2)',
             margin: '-16px -16px 0', padding: '14px 16px 12px',
           }}
         >
@@ -443,7 +443,7 @@ export default function WeeklySchedulePage() {
           ref={pageHeaderRef}
           style={{
             display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, flexShrink: 0,
-            position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: '#f6f7f9',
+            position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: 'var(--brand-page-bg2)',
             margin: '-20px -28px 0', padding: '20px 28px 16px',
           }}
         >
@@ -613,7 +613,7 @@ export default function WeeklySchedulePage() {
       ) : loading ? (
         <p style={{ fontSize: 13, color: '#9ca3af' }}>Loading...</p>
       ) : (
-        <div style={{ background: 'white', borderRadius: 4, overflow: 'clip', boxShadow: '0 8px 28px rgba(76,29,107,0.10)' }}>
+        <div style={{ background: 'white', borderRadius: 4, overflow: 'clip', boxShadow: '0 8px 28px color-mix(in srgb, var(--brand-shadow) 10%, transparent)' }}>
           <div style={{ position: 'relative' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
             <colgroup>

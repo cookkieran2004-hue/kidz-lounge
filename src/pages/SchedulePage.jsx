@@ -90,13 +90,13 @@ export function statusColor(status) {
   // same hue family it always had (e.g. Canceled stays in the blue family,
   // No Show stays red), just softened.
   const map = {
-    Confirmed: '#907be3',
+    Confirmed: 'var(--brand-status-confirmed)',
     Scheduled: '#8B8D93',
     Canceled: '#6E93AD',
     'No Show': '#0b3c4d',
     '*HOLD*': '#C9954A',
-    'Left Message': '#9B8FC9',
-    Emailed: '#9B8FC9',
+    'Left Message': 'var(--brand-status-message)',
+    Emailed: 'var(--brand-status-message)',
     'Make Up': '#6B9C82',
     MUS: '#6B9C82',
   };
@@ -580,7 +580,7 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
             onClick={(e) => { e.stopPropagation(); onRoomClick(e); }}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 3, maxWidth: '100%', whiteSpace: 'nowrap',
-              fontSize: 10, fontWeight: 500, fontFamily: 'inherit', lineHeight: 1.3, cursor: 'pointer', borderRadius: 999, padding: '0 6px',
+              fontSize: 10, fontWeight: 500, fontFamily: 'inherit', lineHeight: 1.3, cursor: 'pointer', borderRadius: 'var(--brand-pill-radius)', padding: '0 6px',
               border: '1px dashed #d1d5db', background: 'rgba(255,255,255,0.6)', color: '#6b7280',
             }}
           >
@@ -1225,7 +1225,7 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
               {suggestions.slice(0, 4).map(loc => (
                 <button key={loc} type="button" onClick={() => pickLocation(loc)} title="Used before for this patient"
-                  style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, border: '1px solid #cfe0e7', background: '#F0F7FA', color: '#2F6479', cursor: 'pointer', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  style={{ fontSize: 11, padding: '2px 8px', borderRadius: 'var(--brand-pill-radius)', border: '1px solid #cfe0e7', background: '#F0F7FA', color: '#2F6479', cursor: 'pointer', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {loc}
                 </button>
               ))}
@@ -1271,7 +1271,7 @@ function OffsiteLocationField({ patientName, value, onChange, inputStyle, labelS
           <span style={{ fontSize: 11, color: '#9ca3af' }}>Used before:</span>
           {unused.slice(0, 5).map(loc => (
             <button key={loc} type="button" onClick={() => onChange(loc)}
-              style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, border: '1px solid #cfe0e7', background: '#F0F7FA', color: '#2F6479', cursor: 'pointer' }}>
+              style={{ fontSize: 11, padding: '2px 8px', borderRadius: 'var(--brand-pill-radius)', border: '1px solid #cfe0e7', background: '#F0F7FA', color: '#2F6479', cursor: 'pointer' }}>
               {loc}
             </button>
           ))}
@@ -1316,7 +1316,7 @@ export function ClosedDaySash({ reason, style }) {
       title={label}
       style={{
         position: 'absolute', top: headerHeight, bottom: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 18,
-        background: 'rgba(109, 40, 217, 0.035)',
+        background: 'color-mix(in srgb, var(--brand-primary) 3.5%, transparent)',
         ...style,
       }}
     >
@@ -1325,8 +1325,8 @@ export function ClosedDaySash({ reason, style }) {
           style={{
             position: 'absolute', left: '50%', top: '50%', width: length,
             transform: `translate(-50%, -50%) rotate(-${angle}deg)`,
-            background: 'rgba(109, 40, 217, 0.13)',
-            borderTop: '2px solid rgba(109, 40, 217, 0.35)', borderBottom: '2px solid rgba(109, 40, 217, 0.35)',
+            background: 'color-mix(in srgb, var(--brand-primary) 13%, transparent)',
+            borderTop: '2px solid color-mix(in srgb, var(--brand-primary) 35%, transparent)', borderBottom: '2px solid color-mix(in srgb, var(--brand-primary) 35%, transparent)',
             padding: '10px 0', display: 'flex', justifyContent: 'center', gap: 90, whiteSpace: 'nowrap',
             color: BRAND.brassText, fontSize: 15, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -1454,7 +1454,7 @@ export default function SchedulePage() {
 // Chips above the daily grid: disciplines, any number at once (none = all).
 function ProviderFilterBar({ prefs, onChange, counts, totalShown }) {
   const chip = (active, extra = {}) => ({
-    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, fontSize: 12.5, fontWeight: 600,
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 'var(--brand-pill-radius)', fontSize: 12.5, fontWeight: 600,
     cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
     border: active ? `1.5px solid ${BRAND.forest}` : '1.5px solid #e2e4e9',
     background: active ? BRAND.tint : 'white', color: active ? BRAND.forest : '#374151', ...extra,
@@ -1997,11 +1997,11 @@ function ScheduleApp() {
   }, [allConflicts, dismissedConflictKeys]);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: '#f6f7f9', padding: '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', background: 'var(--brand-page-bg2)', padding: '20px 28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
       <div
         ref={pageHeaderRef}
         style={{
-          position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: '#f6f7f9', flexShrink: 0,
+          position: 'sticky', top: 'var(--kl-nav-h, 0px)', zIndex: 30, background: 'var(--brand-page-bg2)', flexShrink: 0,
           // Covers the page's top padding and side gutters too, so nothing
           // scrolling underneath shows through around it.
           margin: '-20px -28px 0', padding: '20px 28px 16px',
@@ -2048,7 +2048,7 @@ function ScheduleApp() {
             <PlusIcon size={13} /> Request Time Off
           </button>
 
-          <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1.5px solid #dc2626', marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1.5px solid var(--brand-view-switch)', marginLeft: 'auto' }}>
             <button onClick={() => setViewMode('provider')} style={segmentBtnStyle(viewMode === 'provider')}>
               <UserIcon size={14} /> Provider
             </button>
@@ -2369,11 +2369,11 @@ function ScheduleApp() {
                     setRoomDropdown({ apt, top: rect.bottom + 4, left: rect.left });
                   }}
                   style={apt.treatment_area ? {
-                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', borderRadius: 999, padding: '3px 10px',
+                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', borderRadius: 'var(--brand-pill-radius)', padding: '3px 10px',
                     border: `1px solid color-mix(in srgb, ${roomColor(apt.treatment_area)} 40%, white)`,
                     background: `color-mix(in srgb, ${roomColor(apt.treatment_area)} 12%, white)`, color: roomColor(apt.treatment_area),
                   } : {
-                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', borderRadius: 999, padding: '3px 10px',
+                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', borderRadius: 'var(--brand-pill-radius)', padding: '3px 10px',
                     border: '1px dashed var(--brand-primary-faint)', background: 'var(--brand-tint)', color: 'var(--brand-primary)',
                   }}
                 >
@@ -2524,7 +2524,7 @@ export function segmentBtnStyle(active, disabled) {
   return {
     display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: 'none', fontSize: 13, fontWeight: 500,
     cursor: disabled ? 'not-allowed' : 'pointer',
-    background: active ? '#dc2626' : 'white', color: active ? 'white' : disabled ? '#c1c5cc' : '#374151',
+    background: active ? 'var(--brand-view-switch)' : 'white', color: active ? 'white' : disabled ? '#c1c5cc' : '#374151',
     borderRight: '1px solid #e2e4e9',
   };
 }

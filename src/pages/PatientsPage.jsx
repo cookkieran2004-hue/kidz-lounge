@@ -146,7 +146,7 @@ export default function PatientsPage() {
               )}
               {splitMultiValue(p.Services).map(s => (
                 <span key={'svc-' + s} style={{
-                  fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                  fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--brand-pill-radius)',
                   background: serviceColor(s) + '20', color: serviceColor(s),
                 }}>
                   {s}
@@ -156,7 +156,7 @@ export default function PatientsPage() {
                   EI, CPSE, CSE, P, PP and NONE show as themselves. */}
               {[...new Set(splitMultiValue(p.Program).map(prog => (NON_INSURANCE_PROGRAMS.has(prog.toUpperCase()) ? prog : 'INS')))].map(prog => (
                 <span key={'prog-' + prog} style={{
-                  fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                  fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 'var(--brand-pill-radius)',
                   background: programColor(prog === 'INS' ? 'GHI' : prog) + '20', color: programColor(prog === 'INS' ? 'GHI' : prog),
                 }}>
                   {prog}

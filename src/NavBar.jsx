@@ -192,7 +192,7 @@ function UserMenu({ user, links, pendingCount, supportCount, onSignOut }) {
             role="menu"
             style={{
               minWidth: 190, background: 'white', border: '1px solid var(--brand-border2)', borderRadius: 8,
-              boxShadow: '0 10px 24px rgba(36,26,51,0.12)', padding: '6px 0', overflow: 'hidden',
+              boxShadow: '0 10px 24px color-mix(in srgb, var(--brand-ink) 12%, transparent)', padding: '6px 0', overflow: 'hidden',
             }}
           >
             {links.map(link => (

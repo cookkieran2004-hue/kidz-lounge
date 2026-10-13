@@ -70,7 +70,7 @@ function StatusBadge({ status }) {
   };
   const c = colors[status] || colors.pending;
   return (
-    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: c.bg, color: c.text, textTransform: 'capitalize' }}>
+    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--brand-pill-radius)', background: c.bg, color: c.text, textTransform: 'capitalize' }}>
       {status}
     </span>
   );
@@ -138,7 +138,7 @@ function AttendeePicker({ selected, onChange, exclude, isMobile, labelStyle }) {
       {selected.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
           {selected.map(u => (
-            <span key={u} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, padding: '3px 4px 3px 10px', borderRadius: 999, background: BRAND.tint, border: `1px solid ${BRAND.box}`, color: BRAND.brassText }}>
+            <span key={u} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, padding: '3px 4px 3px 10px', borderRadius: 'var(--brand-pill-radius)', background: BRAND.tint, border: `1px solid ${BRAND.box}`, color: BRAND.brassText }}>
               {nameFor(u)}
               <button type="button" onClick={() => toggle(u)} aria-label={`Remove ${nameFor(u)}`} style={{ border: 'none', background: 'none', cursor: 'pointer', color: BRAND.brassText, fontSize: 14, lineHeight: 1, padding: '0 4px' }}>&times;</button>
             </span>
@@ -1166,8 +1166,8 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
       )}
 
       {denyingId && (
-        <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,51,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 16 }} onClick={() => setDenyingId(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Deny request" style={{ background: 'white', borderRadius: 16, padding: 22, maxWidth: 420, width: '100%', boxShadow: '0 24px 60px rgba(36,26,51,0.3)' }} onClick={e => e.stopPropagation()}>
+        <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--brand-ink) 45%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 16 }} onClick={() => setDenyingId(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Deny request" style={{ background: 'white', borderRadius: 16, padding: 22, maxWidth: 420, width: '100%', boxShadow: '0 24px 60px color-mix(in srgb, var(--brand-ink) 30%, transparent)' }} onClick={e => e.stopPropagation()}>
             <h3 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, color: 'var(--brand-ink)', margin: '0 0 6px' }}>Deny this request?</h3>
             {(() => { const r = (requests || []).find(x => x.id === denyingId); return r ? <p style={{ fontSize: 13, color: BRAND.muted, margin: '0 0 12px' }}>{nameFor(r.username)} · {r.request_type} · {requestWhen(r)}</p> : null; })()}
             <textarea placeholder="Reason (optional, shown to the employee)" value={denyNote} onChange={e => setDenyNote(e.target.value)} style={{ width: '100%', minHeight: 80, padding: 10, borderRadius: 10, border: '1px solid var(--brand-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14, resize: 'vertical' }} />

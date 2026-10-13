@@ -63,7 +63,7 @@ export function pill(kind = 'neutral') {
   };
   return {
     display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600,
-    padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap', ...kinds[kind],
+    padding: '3px 9px', borderRadius: 'var(--brand-pill-radius)', whiteSpace: 'nowrap', ...kinds[kind],
   };
 }
 
@@ -76,7 +76,7 @@ export function hintStyle() {
 }
 
 export function overlayStyle() {
-  return { position: 'fixed', inset: 0, background: 'rgba(36,26,51,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 10000, padding: '40px 16px', overflowY: 'auto' };
+  return { position: 'fixed', inset: 0, background: 'color-mix(in srgb, var(--brand-ink) 45%, transparent)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 10000, padding: '40px 16px', overflowY: 'auto' };
 }
 
 export function dateOnly(v) {
