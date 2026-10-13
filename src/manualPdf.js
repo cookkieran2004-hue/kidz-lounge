@@ -111,7 +111,7 @@ async function blocks(tokens, cache, first = { h2: true }) {
 }
 
 let pdfMakePromise = null;
-function loadPdfMake() {
+export function loadPdfMake() {
   if (!pdfMakePromise) {
     pdfMakePromise = Promise.all([import('pdfmake/build/pdfmake'), import('pdfmake/build/vfs_fonts')]).then(([pm, fonts]) => {
       const pdfMake = pm.default || pm;

@@ -14,6 +14,7 @@ import { canAdminister, canManage } from '../roles';
 import LinkTextarea from '../LinkTextarea';
 import { PatientLinksEditor, PatientLinksList } from '../PatientLinksView';
 import { EiChartCard } from '../EiChartCard';
+import { PowerFormsChartTab } from '../PowerFormsChartTab';
 
 // The Eval tag, same on the schedule (SchedulePage.jsx).
 const EVAL_BLUE = '#1D4ED8';
@@ -245,6 +246,8 @@ const TABS = [
 // EI billing details (EiChartCard.jsx): EI children only, and only for
 // Reception, Admins and Developers -- providers don't see it (Kieran, Oct 2026).
 const EI_TAB = { key: 'ei-billing', label: 'EI Billing' };
+// Power Forms (PowerFormsChartTab.jsx): Reception, Admins and Developers.
+const FORMS_TAB = { key: 'power-forms', label: 'Power Forms' };
 const isEiPatient = (patient) => /(^|,)\s*EI\s*(,|$)/.test(patient?.Program || '');
 
 function calculateAge(dobStr) {
@@ -1116,7 +1119,7 @@ export default function PatientChartPage() {
   }
 
   const showEiTab = canManage(user) && isEiPatient(patient);
-  const tabs = showEiTab ? [...TABS, EI_TAB] : TABS;
+  const tabs = [...TABS, ...(showEiTab ? [EI_TAB] : []), ...(canManage(user) ? [FORMS_TAB] : [])];
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
@@ -1134,6 +1137,7 @@ export default function PatientChartPage() {
           {activeTab === 'documents' && <DocumentsTab patient={patient} isMobile={isMobile} />}
           {activeTab === 'care-team' && <CareTeamTab patient={patient} appointments={appointments} />}
           {activeTab === EI_TAB.key && showEiTab && <EiChartCard patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} />}
+          {activeTab === FORMS_TAB.key && canManage(user) && <PowerFormsChartTab patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} />}
         </div>
       </div>
       {editingPatient && (

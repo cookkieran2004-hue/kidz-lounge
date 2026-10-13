@@ -27,6 +27,7 @@ import Footer from './Footer';
 import SupportNotifier from './SupportNotifier';
 import WhatsNewNotifier from './WhatsNewNotifier';
 import BillingPage from './pages/BillingPage';
+import PowerFormPage from './pages/PowerFormPage';
 
 function AppShell() {
   return (
@@ -78,6 +79,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
           <Route path="/set-password" element={<RequireLoggedIn><SetPasswordPage /></RequireLoggedIn>} />
+          {/* A parent's Power Form (secure link, no sign-in, no staff navigation). */}
+          <Route path="/f/:token" element={<PowerFormPage />} />
           <Route path="/*" element={<AppShell />} />
         </Routes>
       </AuthProvider>

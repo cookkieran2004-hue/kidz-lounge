@@ -130,6 +130,24 @@ export const api = {
   updateWaitlistEntry: (id, record) => request(`/waitlist/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
   deleteWaitlistEntry: (id) => request(`/waitlist/${id}`, { method: 'DELETE' }),
 
+  // ---- Power Forms (kidz-lounge-api routes/powerForms.js) ----
+  getPowerFormSetup: () => request('/power-forms/setup'),
+  getPowerFormTemplates: (all) => request(`/power-forms/templates${all ? '?all=1' : ''}`),
+  createPowerFormTemplate: (data) => request('/power-forms/templates', { method: 'POST', body: JSON.stringify(data) }),
+  updatePowerFormTemplate: (id, data) => request(`/power-forms/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  archivePowerFormTemplate: (id, archived) => request(`/power-forms/templates/${id}/archive`, { method: 'POST', body: JSON.stringify({ archived }) }),
+  getPatientPowerForms: (patientId) => request(`/power-forms/patient/${patientId}`),
+  sendPowerForm: (data) => request('/power-forms/requests', { method: 'POST', body: JSON.stringify(data) }),
+  newPowerFormLink: (id, days) => request(`/power-forms/requests/${id}/new-link`, { method: 'POST', body: JSON.stringify({ days }) }),
+  cancelPowerForm: (id) => request(`/power-forms/requests/${id}/cancel`, { method: 'POST', body: '{}' }),
+  getPowerForm: (id) => request(`/power-forms/requests/${id}`),
+  applyPowerForm: (id, fields) => request(`/power-forms/requests/${id}/apply`, { method: 'POST', body: JSON.stringify({ fields }) }),
+  linkPowerFormDocument: (id, documentId) => request(`/power-forms/requests/${id}/document`, { method: 'POST', body: JSON.stringify({ document_id: documentId }) }),
+  // The parent's side (no sign-in): the link's token, the child's date of birth, the answers.
+  getPublicPowerForm: (token) => request(`/forms/${encodeURIComponent(token)}`),
+  unlockPowerForm: (token, dob) => request(`/forms/${encodeURIComponent(token)}/unlock`, { method: 'POST', body: JSON.stringify({ dob }) }),
+  submitPowerForm: (token, access, answers) => request(`/forms/${encodeURIComponent(token)}/submit`, { method: 'POST', body: JSON.stringify({ access, answers }) }),
+
   // ---- Patient Documents ----
   getPatientDocuments: (patientId) => request(`/patients/${patientId}/documents`),
   getDocumentUploadUrl: (patientId, filename, contentType) =>
