@@ -8,9 +8,9 @@ import { CredentialsPanel } from './MyProfilePage';
 
 // Credentials (footer link; Reception, Admin, Developer; Kieran, Oct 2026):
 // everyone's licences and certifications in one place, to update as
-// paperwork comes in. "Needs attention" lists what's expired, expiring
-// within 60 days, or missing (a provider's 9 required credentials); "All
-// credentials" is a grid of people by required credential. Clicking a person
+// paperwork comes in. "All credentials" (first) is a grid of people by
+// required credential; "Needs attention" lists what's expired, expiring
+// within 60 days, or missing (a provider's 9 required credentials). Clicking a person
 // opens the same editor as their profile (CredentialsPanel). Data: the API's
 // GET /credentials/overview, active staff only, providers first.
 
@@ -101,7 +101,7 @@ export default function CredentialsPage() {
   const isMobile = useIsMobile(900);
   const [staff, setStaff] = useState(null);
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState('attention');
+  const [tab, setTab] = useState('all');
   const [query, setQuery] = useState('');
   const [providersOnly, setProvidersOnly] = useState(false);
   const [editing, setEditing] = useState(null); // username
@@ -135,8 +135,8 @@ export default function CredentialsPage() {
         <PageHeader title="Credentials" isMobile={isMobile} />
         <UnderlineTabs label="Credentials views" active={tab} onPick={setTab} style={{ marginBottom: 16 }}
           tabs={[
-            { key: 'attention', label: 'Needs attention', count: staff ? items.length : null, alert: urgent ? 'danger' : items.length ? 'warning' : null },
             { key: 'all', label: 'All credentials' },
+            { key: 'attention', label: 'Needs attention', count: staff ? items.length : null, alert: urgent ? 'danger' : items.length ? 'warning' : null },
           ]} />
         <Card pad={isMobile ? 14 : 20}>
           {error && <p role="alert" style={{ margin: 0, fontSize: 13.5, color: TONES.danger.fg }}>{error}</p>}
