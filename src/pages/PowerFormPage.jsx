@@ -15,7 +15,7 @@ function Shell({ children }) {
   return (
     <div style={{ minHeight: '100vh', background: PAGE_BG, fontFamily: FONT, color: INK }}>
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '28px 16px 60px' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#5B21B6', marginBottom: 16 }}>Kidz Lounge</div>
+        <img src="/logo.png" alt="The Kidz Lounge" style={{ display: 'block', height: 44, width: 'auto', marginBottom: 16 }} />
         <div style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 8, padding: '22px 20px' }}>
           {children}
         </div>

@@ -17,6 +17,7 @@ const STATUS = {
   sent: { text: 'Sent', tone: 'neutral' },
   opened: { text: 'Opened', tone: 'accent' },
   completed: { text: 'Completed', tone: 'success' },
+  needs_review: { text: 'Needs review', tone: 'warning' },
   expired: { text: 'Expired', tone: 'warning' },
   cancelled: { text: 'Cancelled', tone: 'neutral' },
 };
@@ -111,11 +112,23 @@ function FormDetail({ id, patient, onChanged, onClose }) {
     return () => { alive = false; };
   }, [id, reload]);
 
+  const markReviewed = async () => {
+    setBusy('review'); setError(null); setNote(null);
+    try {
+      await api.reviewPowerForm(id);
+      setNote('Marked as reviewed.');
+      setReload(n => n + 1);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusy(null);
+  };
   const apply = async () => {
     setBusy('apply'); setError(null); setNote(null);
     try {
       const r = await api.applyPowerForm(id, [...picked]);
-      setNote(`Saved to the chart: ${form.changes.filter(c => r.applied.includes(c.key)).map(c => c.label).join(', ')}.`);
+      setNote(`Saved to the chart: ${form.changes.filter(c => r.applied.includes(c.key)).map(c => c.label).join(', ')}. The form is marked as reviewed.`);
       setReload(n => n + 1);
       onChanged();
     } catch (err) {
@@ -191,6 +204,16 @@ function FormDetail({ id, patient, onChanged, onClose }) {
       {form.applied_at && (
         <p style={{ margin: 0, fontSize: 12.5, color: MUTED }}>Applied to the chart {when(form.applied_at)} by {nameOf(form.applied_by)}.</p>
       )}
+      {form.needs_review ? (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px', borderRadius: 8, background: TONES.warning.bg, border: '1px solid #FEDF89' }}>
+          <span style={{ fontSize: 13.5, color: TONES.warning.fg, fontWeight: 600, flex: '1 1 220px' }}>
+            This form needs review.{form.changes.length ? ' Apply the changes above, or mark it reviewed if none are needed.' : ''}
+          </span>
+          <button type="button" onClick={markReviewed} disabled={!!busy} style={buttonStyle('secondary')}>{busy === 'review' ? 'Saving...' : 'Mark as reviewed'}</button>
+        </div>
+      ) : form.reviewed_at && (
+        <p style={{ margin: 0, fontSize: 12.5, color: MUTED }}>Reviewed {when(form.reviewed_at)} by {nameOf(form.reviewed_by)}.</p>
+      )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {form.document_id
@@ -213,7 +236,7 @@ function FormRow({ r, first, onOpen, onLink, onChanged }) {
   const nameOf = useStaffNames();
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState(null);
-  const st = STATUS[r.status] || STATUS.sent;
+  const st = r.needs_review ? STATUS.needs_review : STATUS[r.status] || STATUS.sent;
   const open = r.status === 'sent' || r.status === 'opened';
   const cancel = async () => {
     try { await api.cancelPowerForm(r.id); onChanged(); } catch (err) { setError(err.message); }
@@ -222,7 +245,7 @@ function FormRow({ r, first, onOpen, onLink, onChanged }) {
   const newLink = async () => {
     try { const res = await api.newPowerFormLink(r.id, 7); onLink(res.token, 7); onChanged(); } catch (err) { setError(err.message); }
   };
-  const detail = r.status === 'completed' ? `Completed ${when(r.completed_at)}${r.applied_at ? ' · applied to chart' : ''}${r.document_id ? ' · in Documents' : ''}`
+  const detail = r.status === 'completed' ? `Completed ${when(r.completed_at)}${r.reviewed_at ? ` · reviewed by ${nameOf(r.reviewed_by)}` : ''}${r.document_id ? ' · in Documents' : ''}`
     : r.status === 'cancelled' ? `Cancelled ${day(r.cancelled_at)} by ${nameOf(r.cancelled_by)}`
     : r.status === 'expired' ? `Expired ${day(r.expires_at)}`
     : `${r.opened_at ? `Opened ${when(r.opened_at)} · ` : ''}Link works until ${day(r.expires_at)}`;
@@ -238,7 +261,7 @@ function FormRow({ r, first, onOpen, onLink, onChanged }) {
         </div>
         {error && <div role="alert" style={{ fontSize: 12, color: TONES.danger.fg }}>{error}</div>}
       </div>
-      {r.status === 'completed' && <button type="button" onClick={onOpen} style={buttonStyle('secondary')}>View answers</button>}
+      {r.status === 'completed' && <button type="button" onClick={onOpen} style={buttonStyle(r.needs_review ? 'primary' : 'secondary')}>{r.needs_review ? 'Review' : 'View answers'}</button>}
       {r.status !== 'completed' && <button type="button" onClick={newLink} style={buttonStyle('text')}>New link</button>}
       {open && (confirm ? (
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
@@ -253,7 +276,7 @@ function FormRow({ r, first, onOpen, onLink, onChanged }) {
   );
 }
 
-export function PowerFormsChartTab({ patient, headerStyle, boxStyle }) {
+export function PowerFormsChartTab({ patient, headerStyle, boxStyle, onReviewChange }) {
   const [templates, setTemplates] = useState(null);
   const [forms, setForms] = useState(null);
   const [error, setError] = useState(null);
@@ -268,7 +291,7 @@ export function PowerFormsChartTab({ patient, headerStyle, boxStyle }) {
       .catch(err => { if (alive) setError(err.message); });
     return () => { alive = false; };
   }, [patient.id, reload]);
-  const refresh = () => setReload(n => n + 1);
+  const refresh = () => { setReload(n => n + 1); onReviewChange?.(); };
 
   if (error) return <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>;
   if (!templates || !forms) return <p style={{ fontSize: 13, color: MUTED }}>Loading...</p>;
@@ -297,7 +320,7 @@ export function PowerFormsChartTab({ patient, headerStyle, boxStyle }) {
       <div style={{ ...boxStyle }}>
         {forms.length === 0
           ? <p style={{ margin: 0, fontSize: 13, color: MUTED, fontStyle: 'italic' }}>No forms sent yet.</p>
-          : forms.map((r, i) => <FormRow key={r.id} r={r} first={i === 0} onOpen={() => setOpenId(r.id)} onLink={(token, days) => setLink({ token, days })} onChanged={refresh} />)}
+          : [...forms].sort((a, b) => (b.needs_review ? 1 : 0) - (a.needs_review ? 1 : 0)).map((r, i) => <FormRow key={r.id} r={r} first={i === 0} onOpen={() => setOpenId(r.id)} onLink={(token, days) => setLink({ token, days })} onChanged={refresh} />)}
       </div>
     </>
   );

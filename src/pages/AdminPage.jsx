@@ -1,11 +1,10 @@
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '../useIsMobile';
 import { usePendingTimeOff } from '../PendingTimeOffContext';
 import StaffDirectory from './admin/StaffDirectory';
 import { TimeOffManageTab, OfficeHoursTab } from './StaffPage';
 import { Card, PageHeader, UnderlineTabs } from '../dashboardUi';
 import AuditLogTab from './admin/AuditLogTab';
-import PowerFormsAdminTab from './admin/PowerFormsAdminTab';
 import { useAuth } from '../AuthContext';
 import { canViewAuditLog } from '../roles';
 import { PAGE_BG, FONT } from '../uiTokens';
@@ -26,8 +25,6 @@ export default function AdminPage() {
     { key: 'staff', label: 'Staff' },
     { key: 'time-off', label: 'Time off', badge: pendingCount },
     { key: 'office-hours', label: 'Office hours' },
-    // Power Forms: the forms staff send from patient charts (Admins and Developers build them).
-    { key: 'power-forms', label: 'Power Forms' },
     // HIPAA audit log: Developers only.
     ...(canViewAuditLog(user) ? [{ key: 'audit-log', label: 'Audit log' }] : []),
   ];
@@ -36,6 +33,9 @@ export default function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = tabs.some(t => t.key === searchParams.get('tab')) ? searchParams.get('tab') : 'staff';
   const setTab = (key) => setSearchParams(key === 'staff' ? {} : { tab: key }, { replace: true });
+
+  // Power Forms moved to its own page (/power-forms); keep old links working.
+  if (searchParams.get('tab') === 'power-forms') return <Navigate to="/power-forms" replace />;
 
   return (
     <div style={{ background: PAGE_BG, fontFamily: FONT, minHeight: '100%' }}>
@@ -50,11 +50,6 @@ export default function AdminPage() {
         {tab === 'time-off' && (
           <Card title="Time off" pad={isMobile ? 14 : 20}>
             <TimeOffManageTab isMobile={isMobile} embedded onChanged={refreshPending} />
-          </Card>
-        )}
-        {tab === 'power-forms' && (
-          <Card title="Power Forms" pad={isMobile ? 14 : 20}>
-            <PowerFormsAdminTab />
           </Card>
         )}
         {tab === 'audit-log' && (

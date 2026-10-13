@@ -28,6 +28,7 @@ import SupportNotifier from './SupportNotifier';
 import WhatsNewNotifier from './WhatsNewNotifier';
 import BillingPage from './pages/BillingPage';
 import PowerFormPage from './pages/PowerFormPage';
+import PowerFormsPage from './pages/PowerFormsPage';
 
 function AppShell() {
   return (
@@ -54,6 +55,8 @@ function AppShell() {
             <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
             <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
           <Route path="/admin/staff/:username" element={<RequireAdmin><StaffProfilePage /></RequireAdmin>} />
+            {/* Power Forms builder (footer link, Admins and Developers) */}
+            <Route path="/power-forms" element={<RequireAdmin><PowerFormsPage /></RequireAdmin>} />
             {/* Help & Support: open to everyone, signed in or not */}
             <Route path="/support" element={<SupportPage />} />
             <Route path="/manual" element={<ManualPage />} />

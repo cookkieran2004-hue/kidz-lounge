@@ -378,7 +378,7 @@ function Sidebar({ tabs, activeTab, setActiveTab, onBack, onEdit }) {
                 color: activeTab === tab.key ? BRAND.brassText : '#374151',
               }}
             >
-              {tab.label}
+              {tab.label}{tab.badge > 0 && <span aria-label={`${tab.badge} to review`} style={{ marginLeft: 6, display: 'inline-block', minWidth: 18, padding: '0 6px', borderRadius: 9, background: '#B54708', color: 'white', fontSize: 11, fontWeight: 700, lineHeight: '18px', textAlign: 'center', boxSizing: 'border-box' }}>{tab.badge}</span>}
             </button>
           ))}
         </div>
@@ -412,7 +412,7 @@ function Sidebar({ tabs, activeTab, setActiveTab, onBack, onEdit }) {
               color: activeTab === tab.key ? BRAND.brassText : '#374151',
             }}
           >
-            {tab.label}
+            {tab.label}{tab.badge > 0 && <span aria-label={`${tab.badge} to review`} style={{ marginLeft: 6, display: 'inline-block', minWidth: 18, padding: '0 6px', borderRadius: 9, background: '#B54708', color: 'white', fontSize: 11, fontWeight: 700, lineHeight: '18px', textAlign: 'center', boxSizing: 'border-box' }}>{tab.badge}</span>}
           </button>
         ))}
       </div>
@@ -1075,6 +1075,18 @@ export default function PatientChartPage() {
   const [notFound, setNotFound] = useState(false);
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  // Completed Power Forms waiting for review: a count on the tab.
+  const [formsToReview, setFormsToReview] = useState(0);
+  const [formsReload, setFormsReload] = useState(0);
+  const patientId = patient?.id;
+  useEffect(() => {
+    if (!patientId || !canManage(user)) return undefined;
+    let alive = true;
+    api.getPatientPowerForms(patientId)
+      .then(list => { if (alive) setFormsToReview((list || []).filter(f => f.needs_review).length); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [patientId, user, formsReload]);
   const [editingPatient, setEditingPatient] = useState(false);
   const reloadAppointments = () => { api.getPatientAppointments(name).then(a => setAppointments(a || [])).catch(() => {}); };
 
@@ -1119,7 +1131,7 @@ export default function PatientChartPage() {
   }
 
   const showEiTab = canManage(user) && isEiPatient(patient);
-  const tabs = [...TABS, ...(showEiTab ? [EI_TAB] : []), ...(canManage(user) ? [FORMS_TAB] : [])];
+  const tabs = [...TABS, ...(showEiTab ? [EI_TAB] : []), ...(canManage(user) ? [{ ...FORMS_TAB, badge: formsToReview }] : [])];
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
@@ -1137,7 +1149,7 @@ export default function PatientChartPage() {
           {activeTab === 'documents' && <DocumentsTab patient={patient} isMobile={isMobile} />}
           {activeTab === 'care-team' && <CareTeamTab patient={patient} appointments={appointments} />}
           {activeTab === EI_TAB.key && showEiTab && <EiChartCard patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} />}
-          {activeTab === FORMS_TAB.key && canManage(user) && <PowerFormsChartTab patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} />}
+          {activeTab === FORMS_TAB.key && canManage(user) && <PowerFormsChartTab patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} onReviewChange={() => setFormsReload(n => n + 1)} />}
         </div>
       </div>
       {editingPatient && (

@@ -158,6 +158,11 @@ function FieldInput({ field, value, onChange, error, disabled }) {
   );
 }
 
+// One field on its own (the builder shows each question this way).
+export function PowerFormField(props) {
+  return <FieldInput {...props} />;
+}
+
 // The whole form to fill in. errors: { [field id]: message }.
 export function PowerFormInputs({ fields, values, onChange, errors = {}, disabled }) {
   return (

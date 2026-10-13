@@ -24,9 +24,22 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString('en-US', { month: 'sho
 
 // A completed form as a PDF Blob: the questions and answers, signatures as
 // drawn, and when / by whom it was sent and completed.
+// The app's logo as a data URL, for the PDF (top left). null if it can't load.
+let logoPromise = null;
+function logoDataUrl() {
+  if (!logoPromise) {
+    logoPromise = fetch('/logo.png')
+      .then(r => (r.ok ? r.blob() : null))
+      .then(blob => blob && new Promise(resolve => { const fr = new FileReader(); fr.onload = () => resolve(fr.result); fr.onerror = () => resolve(null); fr.readAsDataURL(blob); }))
+      .catch(() => null);
+  }
+  return logoPromise;
+}
+
 export async function buildPowerFormPdf(form, patientName) {
-  const pdfMake = await loadPdfMake();
+  const [pdfMake, logo] = await Promise.all([loadPdfMake(), logoDataUrl()]);
   const content = [
+    ...(logo ? [{ image: logo, fit: [96, 48], margin: [0, 0, 0, 14] }] : []),
     { text: form.form_name, fontSize: 16, bold: true, margin: [0, 0, 0, 4] },
     { text: `Patient: ${patientName}`, fontSize: 10, color: '#52525B' },
     { text: `Sent ${when(form.created_at)}${form.recipient ? ` to ${form.recipient}` : ''} · Completed ${when(form.completed_at)}`, fontSize: 10, color: '#52525B', margin: [0, 0, 0, 14] },
