@@ -14,7 +14,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - **Push any time.** `main` goes to the **Demo** clinic (PedsDesk, made-up data) right away: the API by `kidz-lounge-api`'s `deploy.yml`, the site by Demo's Vercel project, which builds `main` with `VITE_CLINIC=pedsdesk`. Check it there.
   - **11 PM New York time:** `kidz-lounge-api`'s `release.yml` deploys `main` to Kidz Lounge's Lambda and runs its migrations. At 11:30 PM this repo's `.github/workflows/release.yml` moves the `production` branch up to `main`, and Kidz Lounge's Vercel project (production branch = `production`) deploys it. It stops if the API's release failed. A `production` branch equal to `main` means nothing is waiting.
   - **Urgent fix:** Actions → "Nightly release to Kidz Lounge" → Run workflow, in the API repo first, then this one.
-  - Release status: `https://api.github.com/repos/cookkieran2004-hue/<repo>/actions/runs?per_page=5`. Frontend deploys: `https://api.github.com/repos/cookkieran2004-hue/kidz-lounge/commits/<sha>/status`.
+  - Release status: `https://api.github.com/repos/kieran04289/<repo>/actions/runs?per_page=5`. Frontend deploys: `https://api.github.com/repos/kieran04289/kidz-lounge/commits/<sha>/status`.
   - The API-first order is automatic now, so push the two repos in either order. Tell him when a change only reaches Kidz Lounge tonight.
   - End commit messages with the `Co-Authored-By` trailer.
 - **Kieran pushes, not Claude** (since Sept 27 2026). Build and verify, report what changed, and list the changed files (flag new untracked files, say when the API must go first, and give any migration command). Don't commit or push, and don't offer to. Push only when he explicitly asks.
