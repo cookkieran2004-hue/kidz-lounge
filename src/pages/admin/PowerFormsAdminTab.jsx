@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { useStaffNames } from '../../staffDirectory';
-import { PowerFormInputs, PowerFormField, PowerFormLetterhead } from '../../PowerFormFields';
+import { PowerFormInputs, PowerFormField, PowerFormLetterhead, PatientLabel } from '../../PowerFormFields';
 import { startingAnswers } from '../../powerForms';
 import { Tag } from '../../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, ACCENT, TONES, NUMERIC, buttonStyle, choiceStyle } from '../../uiTokens';
@@ -65,6 +65,18 @@ function OptionsEditor({ field, onChange }) {
   );
 }
 
+// The preview's answers: starting answers, and "[Child's full name]" where
+// a question fills in from the chart (a real patient's details when sent).
+function previewAnswers(fields, setup) {
+  const out = startingAnswers(fields);
+  for (const f of fields) {
+    if (!f.prefill) continue;
+    if (f.type === 'date') out[f.id] = f.prefill === 'today' ? new Date().toLocaleDateString('en-CA') : '2023-01-15';
+    else if (f.type !== 'phone' && f.type !== 'email') out[f.id] = `[${setup.prefill?.[f.prefill]?.label || f.prefill}]`;
+  }
+  return out;
+}
+
 // What a question starts with (filled in by the office before it's sent;
 // the parent can change it). Not for dates, signatures or headings.
 function StartingAnswer({ field, onChange }) {
@@ -117,9 +129,11 @@ function QuestionEditor({ field, index, count, setup, onChange, onMove, onDuplic
   const set = (patch) => onChange({ ...field, ...patch });
   const heading = field.type === 'heading';
   const chartChoices = Object.entries(setup.chart_fields).filter(([, v]) => v.types.includes(field.type));
+  const prefillChoices = Object.entries(setup.prefill || {}).filter(([, v]) => v.types.includes(field.type));
   const changeType = (type) => {
     const patch = { type, default: undefined };
     if (!setup.chart_fields[field.chart_field]?.types.includes(type)) patch.chart_field = '';
+    if (!setup.prefill?.[field.prefill]?.types.includes(type)) patch.prefill = '';
     if (hasOptions(type) && !(field.options || []).length) patch.options = ['Option 1'];
     set(patch);
   };
@@ -142,6 +156,16 @@ function QuestionEditor({ field, index, count, setup, onChange, onMove, onDuplic
       {hasOptions(field.type) && <OptionsEditor field={field} onChange={options => set({ options })} />}
       {!heading && !hasOptions(field.type) && (
         <div style={{ fontSize: 13.5, color: SUBTLE, borderBottom: `1px dashed ${HAIRLINE}`, padding: '4px 2px 6px', maxWidth: 360 }}>{ANSWER_HINT[field.type]}</div>
+      )}
+      {prefillChoices.length > 0 && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13, color: MUTED }}>
+          Fill in from the chart
+          <select value={field.prefill || ''} onChange={e => set({ prefill: e.target.value })} style={{ ...input, width: 'auto', padding: '5px 8px', fontSize: 13 }}>
+            <option value="">Don't fill in</option>
+            {prefillChoices.map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+          {field.prefill && <span>The parent can change it.</span>}
+        </label>
       )}
       <StartingAnswer field={field} onChange={v => set({ default: v })} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${HAIRLINE}`, paddingTop: 12 }}>
@@ -190,8 +214,11 @@ function QuestionPreview({ field, setup }) {
       <div aria-hidden="true" style={{ pointerEvents: 'none', opacity: empty ? 0.6 : 1 }}>
         <PowerFormField field={shown} value={field.default} onChange={() => {}} disabled />
       </div>
-      {field.chart_field && (
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: MUTED }}>Updates chart: {setup.chart_fields[field.chart_field]?.label}</p>
+      {(field.prefill || field.chart_field) && (
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: MUTED }}>
+          {[field.prefill && `Filled in from the chart: ${setup.prefill?.[field.prefill]?.label || field.prefill}`,
+            field.chart_field && `Updates chart: ${setup.chart_fields[field.chart_field]?.label}`].filter(Boolean).join(' · ')}
+        </p>
       )}
     </div>
   );
@@ -275,7 +302,7 @@ function TemplateEditor({ template, setup, onDone, onCancel }) {
         <span style={{ flex: 1 }} />
         <div role="tablist" aria-label="View" style={{ display: 'inline-flex', gap: 6 }}>
           <button type="button" role="tab" aria-selected={!preview} onClick={() => setPreview(false)} style={choiceStyle(!preview)}>Edit</button>
-          <button type="button" role="tab" aria-selected={preview} onClick={() => { setPreviewValues(startingAnswers(fields)); setPreview(true); }} style={choiceStyle(preview)}>Preview</button>
+          <button type="button" role="tab" aria-selected={preview} onClick={() => { setPreviewValues(previewAnswers(fields, setup)); setPreview(true); }} style={choiceStyle(preview)}>Preview</button>
         </div>
         <button type="button" onClick={save} disabled={busy} style={buttonStyle('primary')}>{busy ? 'Saving...' : 'Save form'}</button>
       </div>
@@ -293,7 +320,10 @@ function TemplateEditor({ template, setup, onDone, onCancel }) {
           <div style={{ maxWidth: 680, margin: '0 auto' }}>
             <PowerFormLetterhead />
             <div style={{ ...card, padding: '22px 20px' }}>
-              <h3 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 6px', color: INK }}>{name || 'Untitled form'}</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 6 }}>
+                <h3 style={{ fontSize: 26, fontWeight: 650, margin: '2px 0 0', color: INK, lineHeight: 1.25, flex: '1 1 260px' }}>{name || 'Untitled form'}</h3>
+                <PatientLabel label={{ name: 'Sample Child', dob: '2023-01-15', id_number: '1234567' }} />
+              </div>
               {intro && <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.5, whiteSpace: 'pre-wrap', color: INK }}>{intro}</p>}
               <PowerFormInputs fields={fields.filter(f => f.label.trim()).map(f => ({ ...f, options: (f.options || []).filter(o => o.trim()) }))}
                 values={previewValues} onChange={(id, v) => setPreviewValues(x => ({ ...x, [id]: v }))} />

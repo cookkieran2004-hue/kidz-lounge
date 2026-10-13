@@ -206,7 +206,7 @@ function FormDetail({ id, patient, onChanged, onClose }) {
   const download = async () => {
     setBusy('pdf'); setError(null);
     try {
-      const blob = await buildPowerFormPdf(form, patient.Name);
+      const blob = await buildPowerFormPdf(form, patient);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = pdfName(); a.click();
@@ -219,7 +219,7 @@ function FormDetail({ id, patient, onChanged, onClose }) {
   const saveToDocuments = async () => {
     setBusy('save'); setError(null); setNote(null);
     try {
-      const blob = await buildPowerFormPdf(form, patient.Name);
+      const blob = await buildPowerFormPdf(form, patient);
       const filename = pdfName();
       const { uploadUrl, s3Key } = await api.getDocumentUploadUrl(patient.id, filename, 'application/pdf');
       const up = await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'application/pdf' } });
@@ -315,7 +315,8 @@ function FormRow({ r, first, inPacket, onOpen, onLink, onChanged }) {
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState(null);
   const st = r.needs_review ? STATUS.needs_review : STATUS[r.status] || STATUS.sent;
-  const open = r.status === 'sent' || r.status === 'opened';
+  // Not filled in (expired too): can be cancelled, which removes it.
+  const open = r.status === 'sent' || r.status === 'opened' || r.status === 'expired';
   const cancel = async () => {
     try { await api.cancelPowerForm(r.id); onChanged(); } catch (err) { setError(err.message); }
     setConfirm(false);
@@ -340,10 +341,10 @@ function FormRow({ r, first, inPacket, onOpen, onLink, onChanged }) {
         {error && <div role="alert" style={{ fontSize: 12, color: TONES.danger.fg }}>{error}</div>}
       </div>
       {r.status === 'completed' && <button type="button" onClick={onOpen} style={buttonStyle(r.needs_review ? 'primary' : 'secondary')}>{r.needs_review ? 'Review' : 'View answers'}</button>}
-      {r.status !== 'completed' && (!inPacket || r.status === 'cancelled') && <button type="button" onClick={newLink} style={buttonStyle('text')}>{inPacket ? 'Add back' : 'New link'}</button>}
+      {r.status !== 'completed' && !inPacket && <button type="button" onClick={newLink} style={buttonStyle('text')}>New link</button>}
       {open && (confirm ? (
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 12.5 }}>Cancel this form?</span>
+          <span style={{ fontSize: 12.5 }}>Cancel and remove this form?</span>
           <button type="button" onClick={cancel} style={buttonStyle('danger', { padding: '4px 10px' })}>Cancel form</button>
           <button type="button" onClick={() => setConfirm(false)} style={buttonStyle('secondary', { padding: '4px 10px' })}>Keep</button>
         </span>

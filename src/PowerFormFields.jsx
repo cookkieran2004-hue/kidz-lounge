@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { DateField } from './pages/SchedulePage';
 import { formatPhone } from './phone';
 import { INK, MUTED, HAIRLINE, TONES, NUMERIC, buttonStyle } from './uiTokens';
-import { pfInputStyle, answerText, LETTERHEAD } from './powerForms';
+import { pfInputStyle, answerText, LETTERHEAD, labelDate } from './powerForms';
 
 // Power Forms' fields (kidz-lounge-api lib/powerForms.js): filled in by a
 // parent on the public page (PowerFormPage.jsx) and shown to staff with the
@@ -163,12 +163,29 @@ function FieldInput({ field, value, onChange, error, disabled }) {
 // details beside it (under it on a phone).
 export function PowerFormLetterhead() {
   return (
-    <div style={{ display: 'flex', gap: '8px 16px', alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-      <img src="/logo.png" alt="The Kidz Lounge" style={{ display: 'block', height: 56, width: 'auto' }} />
-      <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.45, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, color: INK }}>{LETTERHEAD.name}</div>
+    <div style={{ display: 'flex', gap: '10px 20px', alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
+      <img src="/logo.png" alt="The Kidz Lounge" style={{ display: 'block', height: 84, width: 'auto' }} />
+      <div style={{ fontSize: 14, color: MUTED, lineHeight: 1.5, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, color: INK, fontSize: 17 }}>{LETTERHEAD.name}</div>
         {LETTERHEAD.lines.map(l => <div key={l}>{l}</div>)}
         <div style={{ fontStyle: 'italic' }}>{LETTERHEAD.tagline}</div>
+      </div>
+    </div>
+  );
+}
+
+// Who the form is for, shown like a label stuck on a chart: the child's
+// name, date of birth and ID #. label: { name, dob ('YYYY-MM-DD'), id_number }.
+export function PatientLabel({ label }) {
+  if (!label?.name) return null;
+  return (
+    <div role="note" aria-label={`This form is for ${label.name}`}
+      style={{ border: `1.5px solid ${INK}`, borderRadius: 4, padding: '7px 12px 8px', background: 'white', minWidth: 200, maxWidth: '100%', boxSizing: 'border-box' }}>
+      <div style={{ fontSize: 11.5, color: MUTED }}>Patient</div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: INK, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{label.name}</div>
+      <div style={{ fontSize: 13, color: INK, marginTop: 2, display: 'flex', gap: '2px 14px', flexWrap: 'wrap', ...NUMERIC }}>
+        {label.dob && <span>DOB {labelDate(label.dob)}</span>}
+        {label.id_number && <span>ID # {label.id_number}</span>}
       </div>
     </div>
   );

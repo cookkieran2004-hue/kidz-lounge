@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { DateField } from './SchedulePage';
-import { PowerFormInputs, PowerFormLetterhead } from '../PowerFormFields';
+import { PowerFormInputs, PowerFormLetterhead, PatientLabel } from '../PowerFormFields';
 import { pfInputStyle, startingAnswers } from '../powerForms';
 import { INK, MUTED, HAIRLINE, PAGE_BG, FONT, TONES, ACCENT, buttonStyle } from '../uiTokens';
 
@@ -111,7 +111,7 @@ export default function PowerFormPage() {
   if (stage === 'dob') {
     return (
       <Shell>
-        <h1 style={{ fontSize: 19, fontWeight: 600, margin: '0 0 6px' }}>{info?.form_name}</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 650, margin: '0 0 8px', lineHeight: 1.25 }}>{info?.form_name}</h1>
         <p style={{ margin: '0 0 16px', fontSize: 15, lineHeight: 1.5 }}>To open this form, enter your child's date of birth.</p>
         <label htmlFor="pf-dob" style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Child's date of birth</label>
         <DateField id="pf-dob" ariaLabel="Child's date of birth" yearNav style={{ ...pfInputStyle, maxWidth: 260 }} value={dob} onChange={v => setDob(v || '')} />
@@ -126,9 +126,12 @@ export default function PowerFormPage() {
     <Shell>
       {form.packet && (
         <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: `1px solid ${HAIRLINE}` }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>{form.form_name}</div>
-          <div style={{ fontSize: 13, color: MUTED, margin: '2px 0 8px' }}>
-            {form.forms.filter(f => f.status === 'completed').length} of {form.forms.length} done{form.child_first_name ? ` · for ${form.child_first_name}` : ''}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 600 }}>{form.form_name}</div>
+              <div style={{ fontSize: 13.5, color: MUTED, marginTop: 2 }}>{form.forms.filter(f => f.status === 'completed').length} of {form.forms.length} done</div>
+            </div>
+            <PatientLabel label={form.label} />
           </div>
           <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 3 }}>
             {form.forms.map(f => (
@@ -146,8 +149,10 @@ export default function PowerFormPage() {
           </ol>
         </div>
       )}
-      <h1 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 4px' }}>{current.form_name}</h1>
-      {!form.packet && form.child_first_name && <p style={{ margin: '0 0 12px', fontSize: 14, color: MUTED }}>For {form.child_first_name}</p>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 650, margin: '2px 0 4px', lineHeight: 1.25, flex: '1 1 260px' }}>{current.form_name}</h1>
+        {!form.packet && <PatientLabel label={form.label} />}
+      </div>
       {current.intro && <p style={{ margin: '8px 0 18px', fontSize: 15, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{current.intro}</p>}
       <PowerFormInputs key={currentId} fields={current.fields} values={values} errors={errors} disabled={busy}
         onChange={(id, v) => { setValuesById(x => ({ ...x, [currentId]: { ...(x[currentId] || {}), [id]: v } })); setErrors(e => ({ ...e, [id]: undefined })); }} />
