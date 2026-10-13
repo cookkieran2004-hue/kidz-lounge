@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useTasks } from '../TasksContext';
@@ -86,22 +86,69 @@ function TaskRow({ task, currentUsername, onToggleDone, onDelete, canDelete, onO
   );
 }
 
-function NewTaskForm({ staffOptions, defaultAssignee, onCreate }) {
+// Who a task goes to: one or several people (each gets their own copy).
+// A field-like button that opens a checklist.
+function AssigneePicker({ options, value, onChange, fieldStyle, layout }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  const picked = new Set(value);
+  const toggle = (username) => onChange(picked.has(username) ? value.filter(u => u !== username) : [...value, username]);
+  const names = options.filter(o => picked.has(o.username)).map(o => o.name);
+  const summary = names.length === 0 ? 'Assign to…' : names.length <= 2 ? names.join(', ') : `${names.length} people`;
+  const linkBtn = { border: 'none', background: 'none', padding: 0, fontSize: 12.5, fontWeight: 600, color: BRAND_COLOR, cursor: 'pointer', fontFamily: 'inherit' };
+  return (
+    <div ref={ref} style={{ position: 'relative', ...layout }}>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open}
+        style={{ ...fieldStyle, width: '100%', textAlign: 'left', background: 'white', cursor: 'pointer', fontFamily: 'inherit', color: names.length ? '#111827' : '#9ca3af', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</span>
+        <span aria-hidden="true" style={{ color: '#6b7280', fontSize: 10 }}>▼</span>
+      </button>
+      {open && (
+        <div role="listbox" aria-multiselectable="true" style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, minWidth: 240, zIndex: 40, background: 'white', border: `1px solid ${BORDER}`, borderRadius: 8, boxShadow: '0 8px 16px rgba(0,0,0,0.08)', padding: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px 8px', borderBottom: `1px solid ${BORDER}`, marginBottom: 4 }}>
+            <button type="button" style={linkBtn} onClick={() => onChange(options.map(o => o.username))}>Select all</button>
+            {value.length > 0 && <button type="button" style={{ ...linkBtn, color: '#6b7280' }} onClick={() => onChange([])}>Clear</button>}
+          </div>
+          <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+            {options.map(o => (
+              <label key={o.username} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 6, fontSize: 13, cursor: 'pointer', background: picked.has(o.username) ? 'var(--brand-tint)' : 'transparent' }}>
+                <input type="checkbox" checked={picked.has(o.username)} onChange={() => toggle(o.username)} />
+                <span>{o.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NewTaskForm({ staffOptions, onCreate }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [assignedTo, setAssignedTo] = useState(defaultAssignee);
+  // The Board's form: anyone, as many as needed. "My tasks": always me.
+  const [assignedTo, setAssignedTo] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const isMobile = useIsMobile();
 
   const submit = async () => {
     if (!title.trim()) return;
+    if (staffOptions && !assignedTo.length) { setError('Pick at least one person.'); return; }
     setSaving(true);
     setError(null);
     try {
-      await onCreate({ title: title.trim(), description: description.trim() || undefined, due_date: dueDate || undefined, assigned_to: assignedTo });
-      setTitle(''); setDescription(''); setDueDate('');
+      await onCreate({ title: title.trim(), description: description.trim() || undefined, due_date: dueDate || undefined, ...(staffOptions ? { assigned_to: assignedTo } : {}) });
+      setTitle(''); setDescription(''); setDueDate(''); setAssignedTo([]);
     } catch (err) {
       setError(err.message || 'Failed to add task.');
     } finally {
@@ -121,9 +168,8 @@ function NewTaskForm({ staffOptions, defaultAssignee, onCreate }) {
           style={{ ...fieldStyle, flex: isMobile ? 'none' : 2, width: isMobile ? '100%' : 'auto' }}
         />
         {staffOptions && (
-          <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)} style={{ ...fieldStyle, flex: isMobile ? 'none' : 1, width: isMobile ? '100%' : 'auto' }}>
-            {staffOptions.map(s => <option key={s.username} value={s.username}>{s.display}</option>)}
-          </select>
+          <AssigneePicker options={staffOptions} value={assignedTo} onChange={(v) => { setAssignedTo(v); setError(null); }}
+            fieldStyle={fieldStyle} layout={{ flex: isMobile ? 'none' : 1, width: isMobile ? '100%' : 'auto', minWidth: 0 }} />
         )}
         <DateField clearable floating={!isMobile} placeholder="Due date" ariaLabel="Due date (optional)" value={dueDate} onChange={setDueDate} style={{ ...fieldStyle, width: isMobile ? '100%' : 'auto' }} />
       </div>
@@ -223,7 +269,8 @@ export default function TasksPage() {
   const openMine = tasks.filter(t => t.status === 'open');
   const doneMine = tasks.filter(isRecentlyCompleted);
 
-  const staffOptions = staff.map(s => ({ username: s.username, display: `${staffDisplayName(s)} (${s.username})` }));
+  const staffOptions = staff.map(s => ({ username: s.username, name: staffDisplayName(s) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const grouped = {};
   boardTasks.forEach(t => {
@@ -276,7 +323,7 @@ export default function TasksPage() {
 
       {view === 'mine' ? (
         <>
-          <NewTaskForm staffOptions={null} defaultAssignee={user?.username} onCreate={createMyTask} />
+          <NewTaskForm staffOptions={null} onCreate={createMyTask} />
 
           <p style={{ fontSize: 11.5, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 8px' }}>
             Open ({openMine.length})
@@ -306,7 +353,7 @@ export default function TasksPage() {
         </>
       ) : view === 'board' ? (
         <>
-          <NewTaskForm staffOptions={staffOptions} defaultAssignee={staffOptions[0]?.username || ''} onCreate={createAssignedTask} />
+          <NewTaskForm staffOptions={staffOptions} onCreate={createAssignedTask} />
 
           {loadingBoard ? (
             <p style={{ fontSize: 13, color: '#9ca3af' }}>Loading...</p>
