@@ -8,8 +8,8 @@ import TaskDetailModal, { taskHasComments } from '../TaskDetailModal';
 import { canManage } from '../roles';
 import Linkify from '../Linkify';
 
-const BRAND_PURPLE = '#6D28D9';
-const BRAND_TINT = '#F5F3FF';
+const BRAND_COLOR = 'var(--brand-primary)';
+const BRAND_TINT = 'var(--brand-tint)';
 const BORDER = '#E2E4E9';
 
 function formatDueDate(dateStr) {
@@ -48,7 +48,7 @@ function TaskRow({ task, currentUsername, onToggleDone, onDelete, canDelete, onO
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: isMobile ? 14 : 12, padding: isMobile ? '14px' : '12px 14px', borderBottom: `1px solid ${BORDER}` }}>
       <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer', marginTop: 2, padding: isMobile ? '4px' : 0 }}>
         <input type="checkbox" checked={task.status === 'done'} onChange={() => onToggleDone(task)} style={{ cursor: 'pointer', width: isMobile ? 20 : 16, height: isMobile ? 20 : 16 }} />
-        <span style={{ fontSize: isMobile ? 9.5 : 9, fontWeight: 700, color: task.status === 'done' ? '#9ca3af' : BRAND_PURPLE, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: isMobile ? 9.5 : 9, fontWeight: 700, color: task.status === 'done' ? '#9ca3af' : BRAND_COLOR, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
           {task.status === 'done' ? 'Completed' : 'Mark Complete'}
         </span>
       </label>
@@ -137,7 +137,7 @@ function NewTaskForm({ staffOptions, defaultAssignee, onCreate }) {
         <button
           onClick={submit}
           disabled={saving || !title.trim()}
-          style={{ padding: isMobile ? '12px 16px' : '8px 16px', borderRadius: 6, fontSize: isMobile ? 15 : 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}
+          style={{ padding: isMobile ? '12px 16px' : '8px 16px', borderRadius: 6, fontSize: isMobile ? 15 : 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}
         >
           {saving ? 'Adding...' : 'Add Task'}
         </button>
@@ -341,7 +341,7 @@ export default function TasksPage() {
             <div style={{ position: 'relative', marginLeft: 'auto' }}>
               <button
                 onClick={() => setShowLogCalendar(o => !o)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${BRAND_PURPLE}`, background: logDateFilter ? BRAND_TINT : 'white', color: BRAND_PURPLE }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${BRAND_COLOR}`, background: logDateFilter ? BRAND_TINT : 'white', color: BRAND_COLOR }}
               >
                 {logDateFilter ? new Date(logDateFilter + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Filter by date'}
               </button>

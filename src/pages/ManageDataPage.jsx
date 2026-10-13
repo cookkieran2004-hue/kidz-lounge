@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { INK, MUTED, HAIRLINE, PAGE_BG, ACCENT, FONT, NUMERIC, TONES, buttonStyle, choiceStyle } from '../uiTokens';
+import { CLINIC, THEME } from '../brand';
 import { Avatar } from '../Avatar';
 import { refreshPatientAlerts } from '../patientAlerts';
 import { DateField, TimeField } from './SchedulePage';
@@ -420,7 +421,7 @@ function ScheduleChangeForm({ providerName, existing, onDone, onCancel }) {
   };
 
   return (
-    <div style={{ border: '1.5px solid #D6CCEF', borderRadius: 10, padding: 14, background: '#FCFBFE', marginBottom: 12 }}>
+    <div style={{ border: '1.5px solid var(--brand-border3)', borderRadius: 10, padding: 14, background: 'var(--brand-wash)', marginBottom: 12 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end', marginBottom: 12 }}>
         <div>
           <label htmlFor="kl-change-start" style={labelStyle()}>New hours start</label>
@@ -474,9 +475,9 @@ export function ScheduleChangesEditor({ providerName }) {
   const card = (c) => {
     const status = changeStatus(c, today);
     return (
-      <div key={c.id} style={{ border: '1px solid #E7E2F3', borderRadius: 10, padding: '10px 12px', marginBottom: 8, background: 'white' }}>
+      <div key={c.id} style={{ border: '1px solid var(--brand-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 8, background: 'white' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <strong style={{ fontSize: 13.5, color: '#241A33' }}>
+          <strong style={{ fontSize: 13.5, color: 'var(--brand-ink)' }}>
             {c.end_date ? `${formatLongDate(c.start_date)} \u2013 ${formatLongDate(c.end_date)}` : `From ${formatLongDate(c.start_date)}`}
           </strong>
           <span style={{ fontSize: 11, color: '#6b7280' }}>{c.end_date ? 'Temporary' : 'Permanent'}</span>
@@ -509,7 +510,7 @@ export function ScheduleChangesEditor({ providerName }) {
       )}
       {past.length > 0 && (
         <div style={{ marginTop: 12 }}>
-          <button type="button" onClick={() => setShowPast(v => !v)} style={{ border: 'none', background: 'none', color: '#6D28D9', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+          <button type="button" onClick={() => setShowPast(v => !v)} style={{ border: 'none', background: 'none', color: 'var(--brand-primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
             {showPast ? 'Hide' : 'Show'} {past.length} past {past.length === 1 ? 'change' : 'changes'}
           </button>
           {showPast && <div style={{ marginTop: 8 }}>{past.map(c => (editing && editing !== 'new' && editing.id === c.id
@@ -1740,7 +1741,7 @@ function LinksCell({ patient, cellStyle, onCommit }) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
               <button type="button" onClick={() => setOpen(false)} style={{ padding: '7px 14px', borderRadius: 7, border: '1.5px solid #E2E8F0', background: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
               <button type="button" onClick={() => { setOpen(false); if (draft !== (patient.Google_Link || '')) onCommit(draft); }}
-                style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: '#6D28D9', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Save</button>
+                style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: 'var(--brand-primary)', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Save</button>
             </div>
           </div>
         </div>,
@@ -1811,7 +1812,7 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
           style={{ ...cellStyle, textAlign: 'left', cursor: 'pointer', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3, minHeight: 22, minWidth: columnKey === 'Mandate' ? 160 : 130 }}>
           {columnKey === 'Program'
             ? (programs.length ? programs.map(s => (
-              <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: '#EDE9FE', color: '#6D28D9' }}>{s}</span>
+              <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: 'var(--brand-tint2)', color: 'var(--brand-primary)' }}>{s}</span>
             )) : <span style={{ color: '#9ca3af' }}>--</span>)
             : (patient.Mandate || <span style={{ color: '#9ca3af' }}>--</span>)}
         </button>
@@ -1913,7 +1914,7 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
           }}
         >
           {selected.length > 0 ? selected.map(s => (
-            <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: '#EDE9FE', color: '#6D28D9' }}>
+            <span key={s} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: 'var(--brand-tint2)', color: 'var(--brand-primary)' }}>
               {s}
             </span>
           )) : <span style={{ color: '#9ca3af' }}>--</span>}
@@ -1942,7 +1943,7 @@ function EditableTableCell({ patient, columnKey, value, onCommit, staffDirectory
       onChange={e => setLocalValue(e.target.value)}
       onBlur={() => commit()}
       onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-      onFocus={e => { e.currentTarget.style.border = '1.5px solid #6D28D9'; e.currentTarget.style.background = 'white'; }}
+      onFocus={e => { e.currentTarget.style.border = '1.5px solid var(--brand-primary)'; e.currentTarget.style.background = 'white'; }}
       style={cellStyle}
       title={status === 'error' ? 'Failed to save -- try again' : undefined}
     />
@@ -2180,22 +2181,22 @@ export function printPatientTable({ rows, totalCount, searchText, filters, sortC
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #111827; }
     header { margin-bottom: 8px; }
-    h1 { font-size: 13pt; margin: 0 0 2px; color: #4C1D95; }
+    h1 { font-size: 13pt; margin: 0 0 2px; color: ${THEME.primaryDeep}; }
     .meta { font-size: 8pt; color: #4b5563; margin: 0; }
     .confidential { font-size: 7.5pt; color: #6b7280; margin: 2px 0 0; font-style: italic; }
     table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 5.6pt; line-height: 1.25; }
     thead { display: table-header-group; }
-    th { background: #F3F0FB; color: #374151; font-weight: 700; text-align: left; font-size: 5.3pt; overflow-wrap: break-word; }
-    th, td { border: 0.5pt solid #b8b5c4; padding: 1.5pt 1.5pt; vertical-align: top; overflow-wrap: break-word; }
+    th { background: ${THEME.tint4}; color: #374151; font-weight: 700; text-align: left; font-size: 5.3pt; overflow-wrap: break-word; }
+    th, td { border: 0.5pt solid ${THEME.subtle}; padding: 1.5pt 1.5pt; vertical-align: top; overflow-wrap: break-word; }
     td.name { font-weight: 700; }
     td.nowrap { white-space: nowrap; overflow: hidden; }
     td.email, td.link { overflow-wrap: anywhere; word-break: break-all; }
     td.link { font-size: 5.4pt; }
     tr { page-break-inside: avoid; break-inside: avoid; }
-    tbody tr:nth-child(even) td { background: #FAF9FD; }
+    tbody tr:nth-child(even) td { background: ${THEME.wash2}; }
   </style></head><body>
     <header>
-      <h1>The Kidz Lounge &middot; Patient Data</h1>
+      <h1>${escapeHtml(CLINIC.name)} &middot; Patient Data</h1>
       <p class="meta">${rows.length} of ${totalCount} records &middot; ${escapeHtml(describeTableView({ searchText, filters, sortColumn, sortDirection }))}</p>
       <p class="meta">Printed ${escapeHtml(printedAt)}${printedBy ? ` by ${escapeHtml(printedBy)}` : ''}</p>
       <p class="confidential">Confidential patient information. Handle and dispose of securely.</p>

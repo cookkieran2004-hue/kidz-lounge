@@ -7,7 +7,7 @@ import { canManage } from './roles';
 import Linkify from './Linkify';
 import LinkTextarea from './LinkTextarea';
 
-const BRAND_PURPLE = '#6D28D9';
+const BRAND_COLOR = 'var(--brand-primary)';
 const BORDER = '#E2E4E9';
 
 function formatDueDate(dateStr) {
@@ -83,7 +83,7 @@ function CommentRow({ comment, isAdmin, currentUsername, onEdit, onDelete, isMob
             style={{ width: '100%', minHeight: isMobile ? 56 : 44, padding: isMobile ? '8px 10px' : '6px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 14.5 : 12.5, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }}
           />
           <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-            <button onClick={save} disabled={saving || !text.trim()} style={{ fontSize: isMobile ? 13 : 11.5, fontWeight: 600, padding: isMobile ? '7px 14px' : '4px 10px', borderRadius: 5, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer' }}>
+            <button onClick={save} disabled={saving || !text.trim()} style={{ fontSize: isMobile ? 13 : 11.5, fontWeight: 600, padding: isMobile ? '7px 14px' : '4px 10px', borderRadius: 5, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer' }}>
               {saving ? 'Saving...' : 'Save'}
             </button>
             <button onClick={() => { setEditing(false); setText(comment.text); }} style={{ fontSize: isMobile ? 13 : 11.5, fontWeight: 600, padding: isMobile ? '7px 14px' : '4px 10px', borderRadius: 5, border: `1px solid ${BORDER}`, background: 'white', color: '#374151', cursor: 'pointer' }}>
@@ -185,7 +185,7 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
             <input
               value={editTitle}
               onChange={e => setEditTitle(e.target.value)}
-              style={{ flex: 1, fontSize: isMobile ? 17 : 16, fontWeight: 700, padding: isMobile ? '8px 10px' : '6px 8px', borderRadius: 6, border: `1.5px solid ${BRAND_PURPLE}`, marginRight: 8, boxSizing: 'border-box' }}
+              style={{ flex: 1, fontSize: isMobile ? 17 : 16, fontWeight: 700, padding: isMobile ? '8px 10px' : '6px 8px', borderRadius: 6, border: `1.5px solid ${BRAND_COLOR}`, marginRight: 8, boxSizing: 'border-box' }}
             />
           ) : (
             <h2 style={{ fontSize: isMobile ? 18 : 17, fontWeight: 700, margin: 0, color: '#111827', textDecoration: task.status === 'done' ? 'line-through' : 'none' }}>{task.title}</h2>
@@ -210,7 +210,7 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
               style={{ padding: isMobile ? '9px 10px' : '7px 9px', borderRadius: 6, border: `1px solid ${BORDER}`, fontSize: isMobile ? 15 : 13, marginBottom: 10, width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 8 }}>
-              <button onClick={handleSaveEdit} disabled={savingEdit || !editTitle.trim()} style={{ padding: isMobile ? '11px 14px' : '7px 14px', borderRadius: 6, fontSize: isMobile ? 14.5 : 12.5, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}>
+              <button onClick={handleSaveEdit} disabled={savingEdit || !editTitle.trim()} style={{ padding: isMobile ? '11px 14px' : '7px 14px', borderRadius: 6, fontSize: isMobile ? 14.5 : 12.5, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}>
                 {savingEdit ? 'Saving...' : 'Save Changes'}
               </button>
               <button onClick={() => setEditingTask(false)} style={{ padding: isMobile ? '11px 14px' : '7px 14px', borderRadius: 6, fontSize: isMobile ? 14.5 : 12.5, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', color: '#374151', cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}>
@@ -239,8 +239,8 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
                 onClick={() => onToggleDone(task)}
                 style={{
                   padding: isMobile ? '11px 14px' : '7px 14px', borderRadius: 6, fontSize: isMobile ? 14.5 : 12.5, fontWeight: 600, cursor: 'pointer',
-                  border: `1.5px solid ${BRAND_PURPLE}`, background: task.status === 'done' ? 'white' : BRAND_PURPLE,
-                  color: task.status === 'done' ? BRAND_PURPLE : 'white', width: isMobile ? '100%' : 'auto',
+                  border: `1.5px solid ${BRAND_COLOR}`, background: task.status === 'done' ? 'white' : BRAND_COLOR,
+                  color: task.status === 'done' ? BRAND_COLOR : 'white', width: isMobile ? '100%' : 'auto',
                 }}
               >
                 {task.status === 'done' ? 'Reopen Task' : 'Mark Complete'}
@@ -285,7 +285,7 @@ export default function TaskDetailModal({ task, currentUser, onClose, onToggleDo
           <button
             onClick={handleSendComment}
             disabled={sending || !newComment.trim()}
-            style={{ padding: isMobile ? '11px 14px' : '8px 14px', borderRadius: 8, fontSize: isMobile ? 15 : 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}
+            style={{ padding: isMobile ? '11px 14px' : '8px 14px', borderRadius: 8, fontSize: isMobile ? 15 : 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer', width: isMobile ? '100%' : 'auto' }}
           >
             {sending ? '...' : 'Send'}
           </button>

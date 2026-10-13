@@ -28,7 +28,7 @@ export default function EiHubPanel({ month, full = true }) {
           <button key={s.key} type="button" role="tab" aria-selected={section === s.key} onClick={() => setSection(s.key)}
             style={{
               padding: '7px 14px', border: 'none', borderRight: i < SECTIONS.length - 1 ? `1px solid ${HAIRLINE}` : 'none',
-              background: section === s.key ? '#F5F3FF' : 'white', color: section === s.key ? ACCENT : INK,
+              background: section === s.key ? 'var(--brand-tint)' : 'white', color: section === s.key ? ACCENT : INK,
               fontSize: 13, fontWeight: section === s.key ? 600 : 500, fontFamily: 'inherit', cursor: 'pointer',
             }}>
             {s.label}

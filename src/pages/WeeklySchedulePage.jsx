@@ -381,7 +381,7 @@ export default function WeeklySchedulePage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
+            <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
               Schedule
             </h1>
             {isAdmin ? (
@@ -389,12 +389,12 @@ export default function WeeklySchedulePage() {
                 value={selectedProvider}
                 onChange={e => setSelectedProvider(e.target.value)}
                 aria-label="Provider"
-                style={{ flex: 1, minWidth: 0, maxWidth: 360, height: MOBILE_CONTROL_H, padding: '0 10px', borderRadius: 8, border: `1.5px solid ${BRAND.box}`, fontWeight: 600, color: '#241A33', background: 'white' }}
+                style={{ flex: 1, minWidth: 0, maxWidth: 360, height: MOBILE_CONTROL_H, padding: '0 10px', borderRadius: 8, border: `1.5px solid ${BRAND.box}`, fontWeight: 600, color: 'var(--brand-ink)', background: 'white' }}
               >
                 {providers.map(p => <option key={p.id} value={p.Name}>{p.Name}</option>)}
               </select>
             ) : (
-              <span style={{ flex: 1, minWidth: 0, maxWidth: 360, height: MOBILE_CONTROL_H, display: 'flex', alignItems: 'center', boxSizing: 'border-box', padding: '0 12px', borderRadius: 8, border: `1.5px solid ${BRAND.box}`, fontSize: 14, fontWeight: 600, color: '#241A33', background: BRAND.tint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ flex: 1, minWidth: 0, maxWidth: 360, height: MOBILE_CONTROL_H, display: 'flex', alignItems: 'center', boxSizing: 'border-box', padding: '0 12px', borderRadius: 8, border: `1.5px solid ${BRAND.box}`, fontSize: 14, fontWeight: 600, color: 'var(--brand-ink)', background: BRAND.tint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {lockedProvider || 'No provider linked'}
               </span>
             )}
@@ -411,7 +411,7 @@ export default function WeeklySchedulePage() {
                   onClick={() => setShowDatePicker(o => !o)}
                   style={{
                     width: '100%', height: MOBILE_CONTROL_H, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 10px', borderRadius: 8,
-                    border: `1.5px solid ${BRAND.box}`, background: 'white', fontWeight: 600, fontSize: 14, color: '#241A33', cursor: 'pointer', boxSizing: 'border-box',
+                    border: `1.5px solid ${BRAND.box}`, background: 'white', fontWeight: 600, fontSize: 14, color: 'var(--brand-ink)', cursor: 'pointer', boxSizing: 'border-box',
                   }}
                 >
                   <CalendarIcon size={14} color={BRAND.forest} />
@@ -447,7 +447,7 @@ export default function WeeklySchedulePage() {
             margin: '-20px -28px 0', padding: '20px 28px 16px',
           }}
         >
-          <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
+          <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
             Weekly Schedule
           </h1>
 
@@ -455,12 +455,12 @@ export default function WeeklySchedulePage() {
             <select
               value={selectedProvider}
               onChange={e => setSelectedProvider(e.target.value)}
-              style={{ padding: '6px 12px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13, fontWeight: 600, color: '#241A33', background: 'white' }}
+              style={{ padding: '6px 12px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13, fontWeight: 600, color: 'var(--brand-ink)', background: 'white' }}
             >
               {providers.map(p => <option key={p.id} value={p.Name}>{p.Name}</option>)}
             </select>
           ) : (
-            <span style={{ padding: '6px 12px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13, fontWeight: 600, color: '#241A33', background: BRAND.tint }}>
+            <span style={{ padding: '6px 12px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13, fontWeight: 600, color: 'var(--brand-ink)', background: BRAND.tint }}>
               {lockedProvider || 'No provider linked'}
             </span>
           )}
@@ -474,7 +474,7 @@ export default function WeeklySchedulePage() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 4,
                 border: `1.5px solid ${BRAND.box}`, background: 'white', fontWeight: 600, fontSize: 13,
-                color: '#241A33', cursor: 'pointer', width: 210, justifyContent: 'center',
+                color: 'var(--brand-ink)', cursor: 'pointer', width: 210, justifyContent: 'center',
                 boxSizing: 'border-box',
               }}
             >

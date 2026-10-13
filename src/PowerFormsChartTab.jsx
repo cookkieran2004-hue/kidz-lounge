@@ -7,6 +7,7 @@ import { PowerFormAnswers } from './PowerFormFields';
 import { buildPowerFormPdf } from './powerForms';
 import { Tag } from './dashboardUi';
 import { INK, MUTED, HAIRLINE, TONES, NUMERIC, buttonStyle } from './uiTokens';
+import { CLINIC } from './brand';
 
 // The patient chart's Power Forms tab (Reception, Admins and Developers;
 // kidz-lounge-api routes/powerForms.js). Send a form built in Admin -> Power
@@ -46,7 +47,7 @@ const show = (v) => (v === true ? 'Yes' : v === false ? 'No' : v === null || v =
 // The link to send, shown once (only a scrambled copy is kept).
 function LinkBox({ token, days, many, onClose }) {
   const link = `${window.location.origin}/f/${token}`;
-  const message = `Hi, Kidz Lounge has ${many ? 'some forms' : 'a form'} for you to fill in: ${link}\nYou'll need your child's date of birth to open it. The link works for ${days} days.`;
+  const message = `Hi, ${CLINIC.shortName} has ${many ? 'some forms' : 'a form'} for you to fill in: ${link}\nYou'll need your child's date of birth to open it. The link works for ${days} days.`;
   const [copied, setCopied] = useState(null);
   const copy = async (what, text) => {
     try { await navigator.clipboard.writeText(text); setCopied(what); } catch { setCopied('failed'); }

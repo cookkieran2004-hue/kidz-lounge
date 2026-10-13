@@ -48,7 +48,7 @@ export default function LinkTextarea({ value, onChange, style, ...props }) {
           <input style={box} value={panel.url} onChange={e => setPanel(p => ({ ...p, url: e.target.value }))} placeholder="https://..." aria-label="Link address"
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); insert(); } if (e.key === 'Escape') setPanel(null); }} />
           <button type="button" onClick={insert} disabled={!panel.url.trim()}
-            style={{ border: 'none', borderRadius: 6, background: '#6D28D9', color: 'white', fontWeight: 600, fontSize: 12, padding: '6px 10px', cursor: 'pointer', opacity: panel.url.trim() ? 1 : 0.5 }}>
+            style={{ border: 'none', borderRadius: 6, background: 'var(--brand-primary)', color: 'white', fontWeight: 600, fontSize: 12, padding: '6px 10px', cursor: 'pointer', opacity: panel.url.trim() ? 1 : 0.5 }}>
             {panel.editing ? 'Update' : 'Insert'}
           </button>
           <button type="button" onClick={() => setPanel(null)} style={{ border: 'none', background: 'none', color: '#6b7280', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
@@ -61,13 +61,13 @@ export default function LinkTextarea({ value, onChange, style, ...props }) {
               {named.map((l, i) => (
                 <span key={i}>
                   {i > 0 && ' · '}
-                  <a href={l.href} target="_blank" rel="noopener noreferrer" style={{ color: '#6D28D9', textDecoration: 'underline' }}>{l.text}</a>
+                  <a href={l.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-primary)', textDecoration: 'underline' }}>{l.text}</a>
                 </span>
               ))}
             </span>
           )}
           <button type="button" onMouseDown={e => e.preventDefault()} onClick={open}
-            style={{ marginLeft: 'auto', flexShrink: 0, border: 'none', background: 'none', color: '#6D28D9', fontWeight: 600, fontSize: 11.5, cursor: 'pointer', padding: '2px 0' }}>
+            style={{ marginLeft: 'auto', flexShrink: 0, border: 'none', background: 'none', color: 'var(--brand-primary)', fontWeight: 600, fontSize: 11.5, cursor: 'pointer', padding: '2px 0' }}>
             Insert link
           </button>
         </div>

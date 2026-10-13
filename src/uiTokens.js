@@ -9,7 +9,7 @@ export const MUTED = '#71717A';
 export const SUBTLE = '#A1A1AA';
 export const HAIRLINE = '#E4E4E7';
 export const PAGE_BG = '#F7F7F8';
-export const ACCENT = '#6D28D9';
+export const ACCENT = 'var(--brand-primary)';
 export const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
 export const NUMERIC = { fontVariantNumeric: 'tabular-nums' };
 
@@ -19,7 +19,7 @@ export const TONES = {
   success: { bg: '#ECFDF3', fg: '#067647' },
   warning: { bg: '#FFFAEB', fg: '#B54708' },
   danger: { bg: '#FEF3F2', fg: '#B42318' },
-  accent: { bg: '#F5F3FF', fg: '#5B21B6' },
+  accent: { bg: 'var(--brand-tint)', fg: 'var(--brand-primary-strong)' },
 };
 
 export const buttonStyle = (variant = 'secondary', extra = {}) => ({

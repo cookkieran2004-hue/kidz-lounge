@@ -35,8 +35,8 @@ export const CARD_MARGIN = 3;
 // "Practice Ledger" design direction: used for the Appointment modal and
 // patient-facing surfaces that should read as an official clinical record
 // rather than a typical flat SaaS form.
-export const BRAND = { forest: '#6D28D9', brass: '#7C3AED', brassText: '#5B21B6', tint: '#F5F3FF', muted: '#6B6280', box: '#D6CCEF' };
-export const BRAND_SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
+export const BRAND = { forest: 'var(--brand-primary)', brass: 'var(--brand-primary-bright)', brassText: 'var(--brand-primary-strong)', tint: 'var(--brand-tint)', muted: 'var(--brand-muted)', box: 'var(--brand-border3)' };
+export const BRAND_SERIF = 'inherit'; // headings use the app's one font (Oct 2026)
 
 function ledgerSectionHeaderStyle() {
   return { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: BRAND.muted, margin: '0 0 8px 0' };
@@ -678,9 +678,9 @@ function PatientDetailsPanel({ patientName }) {
   const row = (label, value) => {
     if (!value) return null;
     return (
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, padding: '5px 0', borderBottom: '1px solid #EDE9F7' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, padding: '5px 0', borderBottom: '1px solid var(--brand-line)' }}>
         <span style={{ color: BRAND.muted }}>{label}</span>
-        <span style={{ color: '#241A33', fontWeight: 500, textAlign: 'right' }}>{value}</span>
+        <span style={{ color: 'var(--brand-ink)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
       </div>
     );
   };
@@ -711,7 +711,7 @@ function PatientDetailsPanel({ patientName }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: BRAND_SERIF, fontSize: 18, fontWeight: 700, color: '#241A33' }}>{patient.Name}</span>
+        <span style={{ fontFamily: BRAND_SERIF, fontSize: 18, fontWeight: 700, color: 'var(--brand-ink)' }}>{patient.Name}</span>
         {programValues.map(prog => (
           <span key={prog} style={{
             fontSize: 10.5, fontWeight: 700, borderRadius: 3, padding: '2px 8px', letterSpacing: '0.03em', textTransform: 'uppercase',
@@ -724,7 +724,7 @@ function PatientDetailsPanel({ patientName }) {
 
       <div style={{ marginBottom: 16 }}>
         {sectionHeader('Parent / Guardian')}
-        <div style={{ border: `1.5px solid ${BRAND.box}`, borderRadius: 3, background: '#FCFBFE', padding: hasParentInfo ? '2px 12px' : '10px 12px' }}>
+        <div style={{ border: `1.5px solid ${BRAND.box}`, borderRadius: 3, background: 'var(--brand-wash)', padding: hasParentInfo ? '2px 12px' : '10px 12px' }}>
           {hasParentInfo ? (
             <>
               {row('Name', patient.Parent_Name)}
@@ -738,7 +738,7 @@ function PatientDetailsPanel({ patientName }) {
 
       <div style={{ marginBottom: 16 }}>
         {sectionHeader('Patient Info')}
-        <div style={{ border: `1.5px solid ${BRAND.box}`, borderRadius: 3, background: '#FCFBFE', padding: hasPatientInfo ? '2px 12px' : '10px 12px' }}>
+        <div style={{ border: `1.5px solid ${BRAND.box}`, borderRadius: 3, background: 'var(--brand-wash)', padding: hasPatientInfo ? '2px 12px' : '10px 12px' }}>
           {hasPatientInfo ? (
             <>
               {row('Date of Birth', formatDateMMDDYYYY(patient.Date_of_Birth))}
@@ -908,7 +908,7 @@ function TimePicker({ value, onChange }) {
             {hours.map(hh => (
               <button
                 type="button" key={hh} onClick={() => onChange(`${hh}:${minuteAllowed(hh, m) ? m : '00'}`)}
-                style={{ padding: '5px 0', borderRadius: 6, border: 'none', fontSize: 11, cursor: 'pointer', background: h === hh ? '#6D28D9' : '#f3f4f6', color: h === hh ? 'white' : '#374151' }}
+                style={{ padding: '5px 0', borderRadius: 6, border: 'none', fontSize: 11, cursor: 'pointer', background: h === hh ? 'var(--brand-primary)' : '#f3f4f6', color: h === hh ? 'white' : '#374151' }}
               >
                 {formatSlotLabel(`${hh}:00`).replace(':00', '')}
               </button>
@@ -921,7 +921,7 @@ function TimePicker({ value, onChange }) {
             {minutes.map(mm => (
               <button
                 type="button" key={mm} disabled={!minuteAllowed(h, mm)} onClick={() => onChange(`${h}:${mm}`)}
-                style={{ padding: '5px 0', borderRadius: 6, border: 'none', fontSize: 11, cursor: minuteAllowed(h, mm) ? 'pointer' : 'not-allowed', background: m === mm ? '#6D28D9' : '#f3f4f6', color: m === mm ? 'white' : minuteAllowed(h, mm) ? '#374151' : '#c9ccd1' }}
+                style={{ padding: '5px 0', borderRadius: 6, border: 'none', fontSize: 11, cursor: minuteAllowed(h, mm) ? 'pointer' : 'not-allowed', background: m === mm ? 'var(--brand-primary)' : '#f3f4f6', color: m === mm ? 'white' : minuteAllowed(h, mm) ? '#374151' : '#c9ccd1' }}
               >
                 :{mm}
               </button>
@@ -1124,7 +1124,7 @@ function CommentsThread({ table, recordId, comments, currentUser, onUpdated, isV
           disabled={sending || !newComment.trim()}
           style={{
             padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: sending || !newComment.trim() ? 'not-allowed' : 'pointer',
-            border: 'none', background: sending || !newComment.trim() ? '#C4B5FD' : '#6D28D9', color: 'white',
+            border: 'none', background: sending || !newComment.trim() ? 'var(--brand-primary-faint)' : 'var(--brand-primary)', color: 'white',
           }}
         >
           {sending ? '...' : 'Send'}
@@ -1232,7 +1232,7 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <button type="button" onClick={saveOffsite} disabled={!setting} title={setting ? undefined : 'Choose Center, School or Home first'} style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: 'none', background: '#6D28D9', color: 'white', fontSize: 12.5, fontWeight: 600, cursor: setting ? 'pointer' : 'not-allowed', opacity: setting ? 1 : 0.5 }}>
+            <button type="button" onClick={saveOffsite} disabled={!setting} title={setting ? undefined : 'Choose Center, School or Home first'} style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: 'none', background: 'var(--brand-primary)', color: 'white', fontSize: 12.5, fontWeight: 600, cursor: setting ? 'pointer' : 'not-allowed', opacity: setting ? 1 : 0.5 }}>
               Save
             </button>
             <button type="button" onClick={() => setOffsiteMode(false)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e4e9', background: 'white', color: '#374151', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
@@ -1415,7 +1415,7 @@ function ScheduleUnavailableOnMobile() {
       </p>
       <button
         onClick={() => navigate('/weekly')}
-        style={{ padding: '9px 18px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: '#6D28D9', color: 'white', cursor: 'pointer' }}
+        style={{ padding: '9px 18px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: 'var(--brand-primary)', color: 'white', cursor: 'pointer' }}
       >
         Go to Weekly View
       </button>
@@ -2008,7 +2008,7 @@ function ScheduleApp() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: '#241A33', whiteSpace: 'nowrap' }}>
+          <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, margin: 0, color: 'var(--brand-ink)', whiteSpace: 'nowrap' }}>
             Today's Appointments
           </h1>
 
@@ -2020,7 +2020,7 @@ function ScheduleApp() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 4,
                 border: `1.5px solid ${BRAND.box}`, background: 'white', fontWeight: 600, fontSize: 13,
-                color: '#241A33', cursor: 'pointer', width: 236, boxSizing: 'border-box', justifyContent: 'flex-start',
+                color: 'var(--brand-ink)', cursor: 'pointer', width: 236, boxSizing: 'border-box', justifyContent: 'flex-start',
               }}
             >
               <CalendarIcon size={14} color={BRAND.forest} />
@@ -2072,9 +2072,9 @@ function ScheduleApp() {
 
       {/* On the grid views a closed day gets the diagonal sash instead (ClosedDaySash). */}
       {closedInfo && viewMode === 'unassigned' && (
-        <div style={{ marginBottom: 10, borderRadius: 10, background: '#F3F0FB', border: `1.5px solid ${BRAND.box}`, padding: '14px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ marginBottom: 10, borderRadius: 10, background: 'var(--brand-tint4)', border: `1.5px solid ${BRAND.box}`, padding: '14px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
           <CalendarIcon size={16} color={BRAND.forest} />
-          <span style={{ fontSize: 13.5, fontWeight: 600, color: '#241A33' }}>{closedInfo.reason} — the office is closed on {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.</span>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--brand-ink)' }}>{closedInfo.reason} — the office is closed on {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.</span>
         </div>
       )}
 
@@ -2374,7 +2374,7 @@ function ScheduleApp() {
                     background: `color-mix(in srgb, ${roomColor(apt.treatment_area)} 12%, white)`, color: roomColor(apt.treatment_area),
                   } : {
                     display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', borderRadius: 999, padding: '3px 10px',
-                    border: '1px dashed #c4b5fd', background: '#F5F3FF', color: '#6D28D9',
+                    border: '1px dashed var(--brand-primary-faint)', background: 'var(--brand-tint)', color: 'var(--brand-primary)',
                   }}
                 >
                   <HouseIcon size={11} color="currentColor" strokeWidth={2} />
@@ -2515,7 +2515,7 @@ export function iconBtnStyle() {
   return { width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid #e2e4e9', background: 'white', color: '#6b7280', cursor: 'pointer' };
 }
 export function primaryBtnStyle() {
-  return { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: '#6D28D9', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
+  return { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--brand-primary)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
 }
 export function secondaryBtnStyle(disabled) {
   return { display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1px solid #e2e4e9', background: 'white', color: disabled ? '#c1c5cc' : '#374151', fontSize: 13, fontWeight: 500, cursor: disabled ? 'not-allowed' : 'pointer' };
@@ -2554,7 +2554,7 @@ function modalBtnStyle(primary, danger) {
   return {
     padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
     border: primary ? 'none' : danger ? '1px solid #dc2626' : '1px solid #e2e4e9',
-    background: primary ? '#6D28D9' : 'white',
+    background: primary ? 'var(--brand-primary)' : 'white',
     color: primary ? 'white' : danger ? '#dc2626' : '#374151',
   };
 }
@@ -3126,7 +3126,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           {promptError && <p style={{ fontSize: 13, color: '#B42318', margin: '10px 0 0' }}>{promptError}</p>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
             <button type="button" onClick={onSaved} disabled={busy} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #E4E4E7', background: 'white', color: '#18181B', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Keep on waitlist</button>
-            <button type="button" onClick={applyWaitlistPrompt} disabled={busy || !picked.length} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #6D28D9', background: '#6D28D9', color: 'white', fontSize: 13, fontWeight: 500, cursor: busy || !picked.length ? 'default' : 'pointer', opacity: busy || !picked.length ? 0.6 : 1, fontFamily: 'inherit' }}>
+            <button type="button" onClick={applyWaitlistPrompt} disabled={busy || !picked.length} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid var(--brand-primary)', background: 'var(--brand-primary)', color: 'white', fontSize: 13, fontWeight: 500, cursor: busy || !picked.length ? 'default' : 'pointer', opacity: busy || !picked.length ? 0.6 : 1, fontFamily: 'inherit' }}>
               {busy ? 'Saving...' : 'Remove from waitlist'}
             </button>
           </div>
@@ -3223,7 +3223,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                         <div
                           key={p.id}
                           onClick={() => { setPatientSearch(p.Name); setPatientConfirmed(true); setShowPatientDropdown(false); if (isHoldPatient(p)) setStatus(HOLD_STATUS); }}
-                          style={{ padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid #EDE9F7' }}
+                          style={{ padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid var(--brand-line)' }}
                         >
                           {p.Name}
                         </div>
@@ -3396,7 +3396,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
 
         {confirmingRecurringEdit ? (
           <div style={{ marginTop: 16, padding: 12, borderRadius: 3, background: BRAND.tint, border: `1.5px solid ${BRAND.box}` }}>
-            <p style={{ fontSize: 13, color: '#241A33', margin: '0 0 10px 0', fontWeight: 500 }}>
+            <p style={{ fontSize: 13, color: 'var(--brand-ink)', margin: '0 0 10px 0', fontWeight: 500 }}>
               {pendingSeriesId
                 ? 'This is part of a repeating series. Apply this change to just this occurrence, or to this and all future occurrences?'
                 : <>This looks like part of a repeating series — there {futureMatches.length === 1 ? 'is' : 'are'} {futureMatches.length} future {futureMatches.length === 1 ? 'occurrence' : 'occurrences'} on the same day of week and time. Apply this change to just this one, or to this and all future occurrences?</>}

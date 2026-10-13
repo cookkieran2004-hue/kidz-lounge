@@ -3,6 +3,7 @@ import { api } from './api';
 import { readEiHubFile } from './eiHubFile';
 import { Card, Tag } from './dashboardUi';
 import { INK, MUTED, HAIRLINE, TONES, NUMERIC, buttonStyle } from './uiTokens';
+import { CLINIC } from './brand';
 
 // Billing -> EI-Hub Entry -> Import (Reception, Admins and Developers;
 // kidz-lounge-api lib/eiImport.js). Choose EI-Hub's Child Info and
@@ -133,7 +134,7 @@ export default function EiHubImport() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 300px', fontSize: 13, color: INK, ...NUMERIC }}>
                 <strong>{file.name}</strong>
-                <span style={{ color: MUTED }}> · {plural(preview.children, 'child')}: {preview.matched} with sessions, {preview.unmatched.length} not in Kidz Lounge · {plural(preview.changes.length, 'change')}{preview.unchanged ? ` · ${preview.unchanged} already up to date` : ''}</span>
+                <span style={{ color: MUTED }}> · {plural(preview.children, 'child')}: {preview.matched} with sessions, {preview.unmatched.length} not in {CLINIC.shortName} · {plural(preview.changes.length, 'change')}{preview.unchanged ? ` · ${preview.unchanged} already up to date` : ''}</span>
               </div>
               {preview.changes.length > 0 && (
                 <>
@@ -148,13 +149,13 @@ export default function EiHubImport() {
             </div>
             {preview.skipped.no_sessions > 0 && (
               <p style={{ margin: '8px 0 0', fontSize: 12.5, color: MUTED, ...NUMERIC }}>
-                Left out: {plural(preview.skipped.no_sessions, 'child')} with no sessions in Kidz Lounge ({plural(preview.skipped.rows, 'row')}).
+                Left out: {plural(preview.skipped.no_sessions, 'child')} with no sessions in {CLINIC.shortName} ({plural(preview.skipped.rows, 'row')}).
               </p>
             )}
             {!preview.authorizations_available && (
               <p style={{ margin: '10px 0 0', fontSize: 12.5, color: TONES.warning.fg }}>Authorizations can't be saved until the 2026-10-24 database update is run. Ask an admin to run it.</p>
             )}
-            {preview.changes.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 13, color: MUTED }}>{preview.rows_used ? 'Everything in this file is already in Kidz Lounge.' : 'None of the children in this file have sessions in Kidz Lounge.'}</p>}
+            {preview.changes.length === 0 && <p style={{ margin: '10px 0 0', fontSize: 13, color: MUTED }}>{preview.rows_used ? `Everything in this file is already in ${CLINIC.shortName}.` : `None of the children in this file have sessions in ${CLINIC.shortName}.`}</p>}
           </Card>
 
           {byPatient.map(g => (
@@ -191,7 +192,7 @@ export default function EiHubImport() {
           ))}
 
           {preview.unmatched.length > 0 && (
-            <Card title="Not in Kidz Lounge" pad={16}>
+            <Card title={`Not in ${CLINIC.shortName}`} pad={16}>
               <p style={{ margin: '-6px 0 8px', fontSize: 12.5, color: MUTED }}>No patient has these EI child IDs, and none has the same name and date of birth. Pick the patient to bring them in (their ID # is set to the EI child ID), or add the patient first.</p>
               {preview.unmatched.map(u => (
                 <div key={u.key || u.ei_child_id} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', padding: '6px 0', borderTop: `1px solid ${HAIRLINE}`, fontSize: 13, ...NUMERIC }}>

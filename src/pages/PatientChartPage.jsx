@@ -21,8 +21,8 @@ const EVAL_BLUE = '#1D4ED8';
 
 const PATIENT_CHART_PHONE_BREAKPOINT = 768;
 
-const BRAND = { forest: '#6D28D9', brass: '#7C3AED', brassText: '#5B21B6', tint: '#F5F3FF', muted: '#6B6280', box: '#D6CCEF' };
-const BRAND_SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
+const BRAND = { forest: 'var(--brand-primary)', brass: 'var(--brand-primary-bright)', brassText: 'var(--brand-primary-strong)', tint: 'var(--brand-tint)', muted: 'var(--brand-muted)', box: 'var(--brand-border3)' };
+const BRAND_SERIF = 'inherit'; // headings use the app's one font (Oct 2026)
 
 function programColor(programValue) {
   const map = {
@@ -57,15 +57,15 @@ function sectionHeaderStyle() {
   return { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: BRAND.muted, margin: '0 0 8px 0' };
 }
 function cardStyle() {
-  return { border: `1.5px solid ${BRAND.box}`, borderRadius: 3, background: '#FCFBFE', padding: '12px 16px', marginBottom: 20 };
+  return { border: `1.5px solid ${BRAND.box}`, borderRadius: 3, background: 'var(--brand-wash)', padding: '12px 16px', marginBottom: 20 };
 }
 
 function InfoRow({ label, value }) {
   if (!value) return null;
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, padding: '5px 0', borderBottom: '1px solid #EDE9F7' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, padding: '5px 0', borderBottom: '1px solid var(--brand-line)' }}>
       <span style={{ color: BRAND.muted }}>{label}</span>
-      <span style={{ color: '#241A33', fontWeight: 500, textAlign: 'right' }}>{value}</span>
+      <span style={{ color: 'var(--brand-ink)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
     </div>
   );
 }
@@ -171,13 +171,13 @@ function ProgramHistory({ patient, onChanged }) {
       <p style={sectionHeaderStyle()}>Programs and mandates</p>
       <div style={cardStyle()}>
         {rows.map(r => (
-          <div key={r.id} style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', fontSize: 13, padding: '6px 0', borderBottom: '1px solid #EDE9F7', color: r.end_date ? BRAND.muted : '#241A33' }}>
+          <div key={r.id} style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', fontSize: 13, padding: '6px 0', borderBottom: '1px solid var(--brand-line)', color: r.end_date ? BRAND.muted : 'var(--brand-ink)' }}>
             <span style={{ fontWeight: 600, minWidth: 90 }}>{r.program}</span>
             <span style={{ flex: 1 }}>{mandate(r)}</span>
             <span style={{ fontSize: 12.5 }}>{span(r)}{!r.end_date && <span style={{ marginLeft: 6, fontWeight: 600, color: '#067647' }}>Current</span>}</span>
             {canDelete && (confirming === r.id ? (
               <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: '#241A33' }}>{r.end_date ? 'Delete this entry?' : 'Delete this and bring back what it replaced?'}</span>
+                <span style={{ color: 'var(--brand-ink)' }}>{r.end_date ? 'Delete this entry?' : 'Delete this and bring back what it replaced?'}</span>
                 <button type="button" disabled={busy} onClick={() => remove(r.id)} style={{ border: 'none', background: '#B42318', color: 'white', borderRadius: 4, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{busy ? 'Deleting...' : 'Delete'}</button>
                 <button type="button" disabled={busy} onClick={() => setConfirming(null)} style={{ border: '1px solid #E4E4E7', background: 'white', borderRadius: 4, padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Keep</button>
               </span>
@@ -210,10 +210,10 @@ function AppointmentRow({ apt, onOpen }) {
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(apt); } }}
       title="Open appointment"
       className="kl-chart-appt"
-      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 6px', margin: '0 -6px', borderBottom: '1px solid #EDE9F7', gap: 12, cursor: 'pointer', borderRadius: 6 }}
+      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 6px', margin: '0 -6px', borderBottom: '1px solid var(--brand-line)', gap: 12, cursor: 'pointer', borderRadius: 6 }}
     >
       <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#241A33', display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-ink)', display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span>{formatDate(apt.appointment_date)} &middot; {formatTime(apt.appointment_time)}</span>
           {hasComments && <span title="Has comments" aria-label="Has comments" style={{ color: '#dc2626', fontWeight: 700, fontSize: 13, lineHeight: 1 }}>*</span>}
           {/* Make-ups, same marks as the schedule: MUS = a make-up is booked for this one; MU = this is a make-up. */}
@@ -293,9 +293,9 @@ function PatientBanner({ patient, appointments }) {
 
 
   return (
-    <div style={{ padding: isMobile ? '12px 16px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${BRAND.box}`, background: '#FCFBFE', flexShrink: 0 }}>
+    <div style={{ padding: isMobile ? '12px 16px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${BRAND.box}`, background: 'var(--brand-wash)', flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14, flexWrap: 'wrap', marginBottom: 10 }}>
-        <h1 style={{ fontFamily: BRAND_SERIF, fontSize: isMobile ? 19 : 26, fontWeight: 700, color: '#241A33', margin: 0, lineHeight: 1.15 }}>
+        <h1 style={{ fontFamily: BRAND_SERIF, fontSize: isMobile ? 19 : 26, fontWeight: 700, color: 'var(--brand-ink)', margin: 0, lineHeight: 1.15 }}>
           {patient.Name}
         </h1>
         {patient.mrn && (
@@ -332,7 +332,7 @@ function PatientBanner({ patient, appointments }) {
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: BRAND.muted, whiteSpace: 'nowrap' }}>
               {f.label}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#241A33', whiteSpace: 'nowrap' }}>{f.value}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-ink)', whiteSpace: 'nowrap' }}>{f.value}</span>
           </div>
         ))}
       </div>
@@ -535,11 +535,11 @@ function AppointmentsTab({ patient, appointments, onChanged }) {
   const past = appointments.filter(a => a.appointment_date < todayStr).filter(matches).sort((a, b) => chronological(b, a));
   const filtering = !!(providerFilter || statusFilter);
 
-  const selectStyle = { padding: '6px 9px', borderRadius: 6, border: '1px solid #D6CCEF', fontSize: 12.5, background: 'white', color: '#241A33' };
+  const selectStyle = { padding: '6px 9px', borderRadius: 6, border: '1px solid var(--brand-border3)', fontSize: 12.5, background: 'white', color: 'var(--brand-ink)' };
 
   return (
     <div>
-      <style>{'.kl-chart-appt:hover, .kl-chart-appt:focus-visible { background: #F5F3FF; outline: none; }'}</style>
+      <style>{'.kl-chart-appt:hover, .kl-chart-appt:focus-visible { background: var(--brand-tint); outline: none; }'}</style>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <label style={{ fontSize: 12, fontWeight: 600, color: BRAND.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
           Provider
@@ -668,7 +668,7 @@ function DocumentEditorModal({ patient, existing, onClose, onSaved }) {
         onClick={e => e.stopPropagation()}
       >
         <div style={{ padding: '18px 24px', borderBottom: `1.5px solid ${BRAND.box}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontFamily: BRAND_SERIF, fontSize: 18, fontWeight: 700, margin: 0, color: '#241A33' }}>
+          <h2 style={{ fontFamily: BRAND_SERIF, fontSize: 18, fontWeight: 700, margin: 0, color: 'var(--brand-ink)' }}>
             {existing ? 'Edit Document' : 'New Document'}
           </h2>
           <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: BRAND.muted, lineHeight: 1 }}>&times;</button>
@@ -742,7 +742,7 @@ function UploadFileModal({ patient, onClose, onUploaded }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20 }} onClick={onClose}>
       <div style={{ background: 'white', borderRadius: 8, width: '100%', maxWidth: 440, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', padding: 24 }} onClick={e => e.stopPropagation()}>
-        <h2 style={{ fontFamily: BRAND_SERIF, fontSize: 18, fontWeight: 700, margin: '0 0 16px', color: '#241A33' }}>Upload Document</h2>
+        <h2 style={{ fontFamily: BRAND_SERIF, fontSize: 18, fontWeight: 700, margin: '0 0 16px', color: 'var(--brand-ink)' }}>Upload Document</h2>
 
         <label style={sectionHeaderStyle()}>Document Type</label>
         <select value={documentType} onChange={e => setDocumentType(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 4, border: `1.5px solid ${BRAND.box}`, fontSize: 13.5, boxSizing: 'border-box', marginBottom: 14 }}>
@@ -909,13 +909,13 @@ function DocumentsTab({ patient, isMobile }) {
                   onClick={() => setSelectedKey(item.key)}
                   onDoubleClick={() => { if (item.kind === 'clinical') setEditingDoc(item.raw); }}
                   style={{
-                    padding: '10px 14px', borderBottom: '1px solid #EDE9F7', cursor: 'pointer',
+                    padding: '10px 14px', borderBottom: '1px solid var(--brand-line)', cursor: 'pointer',
                     background: item.key === selectedKey ? BRAND.tint : 'white',
                     borderLeft: item.key === selectedKey ? `3px solid ${BRAND.forest}` : '3px solid transparent',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#241A33', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       {item.title}
                     </span>
                     {item.kind === 'file' && <span style={{ fontSize: 9, color: BRAND.muted, flexShrink: 0 }}>&#128206;</span>}
@@ -932,7 +932,7 @@ function DocumentsTab({ patient, isMobile }) {
           </div>
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', border: `1.5px solid ${BRAND.box}`, borderRadius: 4, padding: isMobile ? '16px 18px' : '24px 32px', background: '#FCFBFE' }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', border: `1.5px solid ${BRAND.box}`, borderRadius: 4, padding: isMobile ? '16px 18px' : '24px 32px', background: 'var(--brand-wash)' }}>
           {!selected ? (
             <p style={{ fontSize: 13, color: BRAND.muted, fontStyle: 'italic' }}>Select a document to view it, or create/upload a new one.</p>
           ) : selected.kind === 'clinical' ? (
@@ -942,7 +942,7 @@ function DocumentsTab({ patient, isMobile }) {
                   <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: BRAND.brassText, margin: '0 0 6px' }}>
                     {selected.raw.document_type}
                   </p>
-                  <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 24, fontWeight: 700, color: '#241A33', margin: '0 0 18px' }}>
+                  <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 24, fontWeight: 700, color: 'var(--brand-ink)', margin: '0 0 18px' }}>
                     {selected.raw.subject}
                   </h1>
                 </div>
@@ -950,11 +950,11 @@ function DocumentsTab({ patient, isMobile }) {
                   Delete
                 </button>
               </div>
-              <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7, color: '#241A33', marginBottom: 30 }}>
+              <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7, color: 'var(--brand-ink)', marginBottom: 30 }}>
                 {selected.raw.body || <span style={{ color: BRAND.muted, fontStyle: 'italic' }}>(no content)</span>}
               </div>
               <div style={{ borderTop: `1.5px solid ${BRAND.box}`, paddingTop: 14 }}>
-                <p style={{ fontFamily: BRAND_SERIF, fontSize: 14, fontWeight: 700, color: '#241A33', margin: 0 }}>
+                <p style={{ fontFamily: BRAND_SERIF, fontSize: 14, fontWeight: 700, color: 'var(--brand-ink)', margin: 0 }}>
                   {providerDisplayName(selected.raw.signer_first_name, selected.raw.signer_last_name, selected.raw.signer_credentials)}
                 </p>
                 <p style={{ fontSize: 12, color: BRAND.muted, margin: '2px 0 0' }}>
@@ -969,7 +969,7 @@ function DocumentsTab({ patient, isMobile }) {
                   <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: BRAND.brassText, margin: '0 0 6px' }}>
                     {selected.raw.document_type || 'Uncategorized'}
                   </p>
-                  <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 24, fontWeight: 700, color: '#241A33', margin: '0 0 18px', wordBreak: 'break-word' }}>
+                  <h1 style={{ fontFamily: BRAND_SERIF, fontSize: 24, fontWeight: 700, color: 'var(--brand-ink)', margin: '0 0 18px', wordBreak: 'break-word' }}>
                     {selected.raw.filename}
                   </h1>
                 </div>

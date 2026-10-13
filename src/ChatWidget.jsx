@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import { useChat } from './ChatContext';
 import Linkify from './Linkify';
 
-const BRAND_PURPLE = '#6D28D9';
+const BRAND_COLOR = 'var(--brand-primary)';
 const BORDER = '#E2E4E9';
 
 const WARNING_TEXT = 'Chats are temporary and automatically deleted after 72 hours. For anything you need to keep, use Tasks or the patient\u2019s chart instead.';
@@ -112,7 +112,7 @@ function NewChatView({ directory, onCreate, onCancel }) {
         <button
           onClick={submit}
           disabled={creating || selected.length === 0}
-          style={{ flex: 1, padding: '8px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer' }}
+          style={{ flex: 1, padding: '8px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer' }}
         >
           {creating ? 'Starting...' : selected.length > 1 ? 'Start Group' : 'Start Chat'}
         </button>
@@ -181,7 +181,7 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
           {conversationTitle(conversation, directoryMap, currentUser)}
         </span>
         {conversation.type === 'group' && (
-          <button onClick={() => setAddingPerson(o => !o)} title="Add someone" style={{ border: `1px solid ${BORDER}`, background: 'white', borderRadius: 6, width: 24, height: 24, cursor: 'pointer', fontSize: 14, lineHeight: 1, color: BRAND_PURPLE }}>
+          <button onClick={() => setAddingPerson(o => !o)} title="Add someone" style={{ border: `1px solid ${BORDER}`, background: 'white', borderRadius: 6, width: 24, height: 24, cursor: 'pointer', fontSize: 14, lineHeight: 1, color: BRAND_COLOR }}>
             +
           </button>
         )}
@@ -216,7 +216,7 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
               )}
               <div style={{
                 maxWidth: '80%', padding: '7px 11px', borderRadius: 12,
-                background: isOwn ? BRAND_PURPLE : '#f1f2f4', color: isOwn ? 'white' : '#111827', fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0,
+                background: isOwn ? BRAND_COLOR : '#f1f2f4', color: isOwn ? 'white' : '#111827', fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0,
               }}>
                 <Linkify text={m.text} color={isOwn ? 'white' : undefined} />
               </div>
@@ -237,7 +237,7 @@ function ThreadView({ conversation, directory, directoryMap, currentUser, onBack
         <button
           onClick={send}
           disabled={sending || !text.trim()}
-          style={{ padding: '7px 14px', borderRadius: 16, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer', flexShrink: 0 }}
+          style={{ padding: '7px 14px', borderRadius: 16, fontSize: 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer', flexShrink: 0 }}
         >
           Send
         </button>
@@ -301,7 +301,7 @@ export default function ChatWidget() {
           background: 'white', borderRadius: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
           marginBottom: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden', border: `1px solid ${BORDER}`,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: BRAND_PURPLE, color: 'white' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: BRAND_COLOR, color: 'white' }}>
             <span style={{ fontSize: 14, fontWeight: 700 }}>Chat</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {activeConversationId === null && subView === 'list' && (
@@ -352,7 +352,7 @@ export default function ChatWidget() {
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 6 }}>
                           {c.unread_count > 0 && (
-                            <span style={{ background: BRAND_PURPLE, color: 'white', fontSize: 10, fontWeight: 700, borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+                            <span style={{ background: BRAND_COLOR, color: 'white', fontSize: 10, fontWeight: 700, borderRadius: 999, minWidth: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
                               {c.unread_count}
                             </span>
                           )}
@@ -377,7 +377,7 @@ export default function ChatWidget() {
       <button
         onClick={() => { setWidgetOpen(o => !o); if (!widgetOpen) setActiveConversationId(null); }}
         style={{
-          position: 'relative', width: 56, height: 56, borderRadius: '50%', background: BRAND_PURPLE, border: 'none',
+          position: 'relative', width: 56, height: 56, borderRadius: '50%', background: BRAND_COLOR, border: 'none',
           boxShadow: '0 6px 20px rgba(109,40,217,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginLeft: 'auto',
         }}

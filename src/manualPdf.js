@@ -1,5 +1,6 @@
 import { Marked } from 'marked';
 import { loadManual, MANUALS } from './manual';
+import { CLINIC, THEME } from './brand';
 
 // Builds a user manual as a real PDF (selectable text, headings, lists,
 // tables, tips and the screenshots) from the same Markdown the manual is
@@ -12,7 +13,7 @@ const lexer = new Marked({ gfm: true });
 const PAGE_WIDTH = 612 - 2 * 54; // US Letter minus the side margins
 const INK = '#18181B';
 const MUTED = '#71717A';
-const ACCENT = '#6D28D9';
+const ACCENT = THEME.primary;
 const HAIRLINE = '#E4E4E7';
 
 const decode = (s) => String(s ?? '')
@@ -91,7 +92,7 @@ async function blocks(tokens, cache, first = { h2: true }) {
     } else if (t.type === 'blockquote') {
       const inner = await blocks(t.tokens, cache, first);
       out.push({
-        table: { widths: ['*'], body: [[{ stack: inner, fillColor: '#F5F3FF', margin: [8, 6, 8, 2] }]] },
+        table: { widths: ['*'], body: [[{ stack: inner, fillColor: THEME.tint, margin: [8, 6, 8, 2] }]] },
         layout: 'noBorders', margin: [0, 2, 0, 10],
       });
     } else if (t.type === 'table') {
@@ -144,7 +145,7 @@ export function buildManualPdf(manual) {
       const doc = {
         pageSize: 'LETTER',
         pageMargins: [54, 60, 54, 54],
-        info: { title: `The Kidz Lounge – ${title}`, author: 'The Kidz Lounge' },
+        info: { title: `${CLINIC.name} – ${title}`, author: CLINIC.name },
         defaultStyle: { font: 'Roboto', fontSize: 10.5, lineHeight: 1.3, color: INK },
         styles: {
           coverTitle: { fontSize: 30, bold: true, margin: [0, 210, 0, 6] },
@@ -157,10 +158,10 @@ export function buildManualPdf(manual) {
           list: { margin: [0, 0, 0, 8] },
           caption: { fontSize: 8.5, color: MUTED, alignment: 'center', margin: [0, 0, 0, 10] },
         },
-        header: (page) => (page <= 2 ? null : { text: `The Kidz Lounge · ${title}`, fontSize: 8.5, color: MUTED, margin: [54, 28, 54, 0] }),
+        header: (page) => (page <= 2 ? null : { text: `${CLINIC.name} · ${title}`, fontSize: 8.5, color: MUTED, margin: [54, 28, 54, 0] }),
         footer: (page, pages) => (page === 1 ? null : { text: `Page ${page} of ${pages}`, fontSize: 8.5, color: MUTED, alignment: 'right', margin: [54, 18, 54, 0] }),
         content: [
-          { text: 'The Kidz Lounge', fontSize: 12, color: ACCENT, bold: true, margin: [0, 160, 0, 0] },
+          { text: CLINIC.name, fontSize: 12, color: ACCENT, bold: true, margin: [0, 160, 0, 0] },
           { text: title, style: 'coverTitle', margin: [0, 8, 0, 6] },
           { text: `How to use the app · ${today}`, style: 'coverSub' },
           ...intro,

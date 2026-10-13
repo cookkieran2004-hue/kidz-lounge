@@ -1,20 +1,29 @@
-// The clinic's name and contact details, written once (white-label
-// groundwork, Oct 2026). New code reads them from here instead of typing
-// "Kidz Lounge"; the older mentions move here when the generic version is
-// built.
-export const CLINIC = {
-  name: 'The Kidz Lounge', // titles, PDFs, the logo's alt text
-  shortName: 'Kidz Lounge', // in sentences: "Kidz Lounge has received your form"
-  logo: '/logo.png',
-  // The letterhead on Power Forms (the parent's page and the PDF copies),
-  // as on the paper forms (Kieran, Oct 2026: "full letterhead").
-  letterhead: {
-    name: 'The Kidz Lounge Related Services, LLC',
-    lines: [
-      '82-12 151st Ave, Howard Beach, NY 11414 · (718) 848-0875',
-      'kidzlounge.net · thekidzloungeny@gmail.com',
-      'www.confidentkidzny.com · www.languageloungeny.com',
-    ],
-    tagline: 'Providing Occupational, Physical and Speech Therapy. We also offer classes for kidz.',
-  },
-};
+// The clinic's brand: name, logo, letterhead and colors, picked at build time
+// by VITE_CLINIC (.env sets kidzlounge; the Demo build sets pedsdesk). New
+// code reads the clinic's name and details from CLINIC instead of typing
+// them, and colors from the CSS variables applyBrand() sets, e.g.
+// 'var(--brand-primary)'. Code that can't use CSS variables (PDFs, the print
+// window) uses THEME's values directly.
+import kidzlounge from './brands/kidzlounge';
+import pedsdesk from './brands/pedsdesk';
+
+const BRANDS = { kidzlounge, pedsdesk };
+
+export const CLINIC = BRANDS[import.meta.env.VITE_CLINIC] || kidzlounge;
+export const THEME = CLINIC.theme;
+export const PRODUCT = 'PedsDesk';
+// Shown small in the footer and on the sign-in page of every clinic but the
+// product's own.
+export const POWERED_BY = CLINIC.name === PRODUCT ? null : `Powered by ${PRODUCT}`;
+
+// tint2 -> --brand-tint2, primaryBright -> --brand-primary-bright
+const cssName = (key) => `--brand-${key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`)}`;
+
+// Before the first render: the color variables, the tab title and the icon.
+export function applyBrand() {
+  const root = document.documentElement.style;
+  for (const [key, value] of Object.entries(THEME)) root.setProperty(cssName(key), value);
+  document.title = CLINIC.name;
+  const icon = document.querySelector('link[rel="icon"]');
+  if (icon) icon.href = CLINIC.favicon;
+}

@@ -4,8 +4,8 @@ import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
 import { canAdminister } from '../roles';
 
-const BRAND_PURPLE = '#6D28D9';
-const BRAND_TINT = '#F5F3FF';
+const BRAND_COLOR = 'var(--brand-primary)';
+const BRAND_TINT = 'var(--brand-tint)';
 const BORDER = '#e2e4e9';
 
 const BALANCE_TYPES = ['Vacation', 'Sick', 'Personal'];
@@ -180,7 +180,7 @@ function RequestForm({ onSubmitted, onCancel }) {
       {error && <p style={{ color: '#dc2626', fontSize: 12.5, marginBottom: 10 }}>{error}</p>}
 
       <div style={{ display: 'flex', gap: 8, flexDirection: isMobile ? 'column' : 'row' }}>
-        <button onClick={handleSubmit} disabled={saving} style={{ padding: isMobile ? '11px' : '8px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer' }}>
+        <button onClick={handleSubmit} disabled={saving} style={{ padding: isMobile ? '11px' : '8px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer' }}>
           {saving ? 'Submitting...' : 'Submit Request'}
         </button>
         <button onClick={onCancel} disabled={saving} style={{ padding: isMobile ? '11px' : '8px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', color: '#374151', cursor: 'pointer' }}>
@@ -197,7 +197,7 @@ function BalanceCards({ balances, isMobile }) {
       {balances.map(b => (
         <div key={b.balance_type} style={{ padding: 16, borderRadius: 10, border: `1.5px solid ${BORDER}`, background: b.balance_days < 0 ? '#FEF2F2' : BRAND_TINT }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 4 }}>{b.balance_type}</div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: b.balance_days < 0 ? '#991B1B' : '#241A33' }}>
+          <div style={{ fontSize: 26, fontWeight: 700, color: b.balance_days < 0 ? '#991B1B' : 'var(--brand-ink)' }}>
             {b.balance_days} <span style={{ fontSize: 13, fontWeight: 500 }}>days</span>
           </div>
         </div>
@@ -215,7 +215,7 @@ function RequestList({ requests, isMobile, showUsername, onApprove, onDeny }) {
       {requests.map(req => (
         <div key={req.id} style={{ padding: '12px 4px', borderBottom: `1px solid #f1f2f4`, display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: 8 }}>
           <div>
-            {showUsername && <div style={{ fontSize: 12, fontWeight: 700, color: BRAND_PURPLE, marginBottom: 2 }}>{req.username}</div>}
+            {showUsername && <div style={{ fontSize: 12, fontWeight: 700, color: BRAND_COLOR, marginBottom: 2 }}>{req.username}</div>}
             <div style={{ fontSize: 13.5, color: '#111827' }}>{requestSummary(req)}</div>
             {req.notes && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{req.notes}</div>}
             {req.status === 'denied' && req.review_note && <div style={{ fontSize: 12, color: '#991B1B', marginTop: 2 }}>Reason: {req.review_note}</div>}
@@ -277,7 +277,7 @@ export default function TimeOffPage() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: isMobile ? 16 : 28, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
-      <h1 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, color: '#241A33', marginBottom: 18 }}>Time Off</h1>
+      <h1 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, color: 'var(--brand-ink)', marginBottom: 18 }}>Time Off</h1>
 
       <BalanceCards balances={balances} isMobile={isMobile} />
 
@@ -286,7 +286,7 @@ export default function TimeOffPage() {
       ) : (
         <button
           onClick={() => setShowForm(true)}
-          style={{ padding: isMobile ? '12px' : '9px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer', marginBottom: 20, width: isMobile ? '100%' : 'auto' }}
+          style={{ padding: isMobile ? '12px' : '9px 16px', borderRadius: 6, fontSize: isMobile ? 14.5 : 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer', marginBottom: 20, width: isMobile ? '100%' : 'auto' }}
         >
           + Request Time Off
         </button>
@@ -301,8 +301,8 @@ export default function TimeOffPage() {
               style={{
                 padding: '9px 14px', border: 'none', background: 'none', cursor: 'pointer',
                 fontSize: 13.5, fontWeight: tab === t.key ? 700 : 500,
-                color: tab === t.key ? BRAND_PURPLE : '#6b7280',
-                borderBottom: tab === t.key ? `2px solid ${BRAND_PURPLE}` : '2px solid transparent',
+                color: tab === t.key ? BRAND_COLOR : '#6b7280',
+                borderBottom: tab === t.key ? `2px solid ${BRAND_COLOR}` : '2px solid transparent',
                 marginBottom: -2,
               }}
             >

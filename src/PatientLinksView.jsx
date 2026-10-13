@@ -44,7 +44,7 @@ export function PatientLinksEditor({ value, onChange, inputStyle }) {
         </div>
       ))}
       <button type="button" onClick={() => setRows([...rows, { text: '', url: '' }])}
-        style={{ justifySelf: 'start', border: 'none', background: 'none', color: '#6D28D9', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+        style={{ justifySelf: 'start', border: 'none', background: 'none', color: 'var(--brand-primary)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
         + Add link
       </button>
       <span style={{ fontSize: 11.5, color: MUTED }}>The text is what people see; leave it empty to show the address.</span>

@@ -24,7 +24,7 @@ export function CredentialsCard({ username, tempPassword, title, personName, chi
     });
   };
   return (
-    <div style={cardStyle({ padding: 18, background: '#FCFBFE' })}>
+    <div style={cardStyle({ padding: 18, background: 'var(--brand-wash)' })}>
       <p style={{ margin: 0, fontWeight: 700, color: INK, fontSize: 15 }}>{title}</p>
       <p style={{ ...hintStyle(), marginBottom: 12 }}>
         Share these with {personName || username}. They'll set their own password the first time they sign in. This password
@@ -299,7 +299,7 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
                       ...(on ? { background: BRAND.tint, borderColor: BRAND.forest, color: BRAND.brassText, boxShadow: `inset 0 0 0 1px ${BRAND.forest}` } : {}),
                     }}
                   >
-                    <span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${on ? BRAND.forest : '#C9C3D6'}`, background: on ? `radial-gradient(${BRAND.forest} 45%, transparent 50%)` : 'white', flexShrink: 0 }} />
+                    <span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${on ? BRAND.forest : 'var(--brand-subtle3)'}`, background: on ? `radial-gradient(${BRAND.forest} 45%, transparent 50%)` : 'white', flexShrink: 0 }} />
                     {c.label}
                   </button>
                 );
@@ -307,7 +307,7 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
             </div>}
 
             {providerChoice === 'new' && (
-              <div style={{ ...cardStyle({ padding: 16, marginTop: 12, background: '#FCFBFE' }) }}>
+              <div style={{ ...cardStyle({ padding: 16, marginTop: 12, background: 'var(--brand-wash)' }) }}>
                 <ScheduleNameLine name={scheduleName} clash={nameClash} />
                 <div style={{ display: 'grid', gridTemplateColumns: twoCol, gap: 12, marginTop: 14 }}>
                   {/* Not <Field>: its <label> would turn clicks on the options into clicks on the dropdown button. */}
@@ -322,7 +322,7 @@ export default function NewStaffModal({ providers, isMobile, onClose, onCreated,
             )}
 
             {providerChoice === 'existing' && (
-              <div style={{ ...cardStyle({ padding: 16, marginTop: 12, background: '#FCFBFE' }) }}>
+              <div style={{ ...cardStyle({ padding: 16, marginTop: 12, background: 'var(--brand-wash)' }) }}>
                 <p style={{ margin: 0, fontSize: 13.5, color: BODY }}>
                   This account will be linked to the provider <strong style={{ color: INK }}>{existingProvider}</strong>
                   {initialProvider?.specialty ? <span style={{ color: BRAND.muted }}> &middot; {initialProvider.specialty}</span> : null}.

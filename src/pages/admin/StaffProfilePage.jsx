@@ -56,7 +56,7 @@ function Detail({ label, value }) {
   return (
     <div>
       <p style={{ margin: 0, fontSize: 12, color: BRAND.muted }}>{label}</p>
-      <p style={{ margin: '2px 0 0', fontSize: 14, color: value ? INK : '#A8A2B5' }}>{value || 'Not set'}</p>
+      <p style={{ margin: '2px 0 0', fontSize: 14, color: value ? INK : 'var(--brand-subtle2)' }}>{value || 'Not set'}</p>
     </div>
   );
 }

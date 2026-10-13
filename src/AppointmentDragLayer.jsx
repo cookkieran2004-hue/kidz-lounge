@@ -4,7 +4,7 @@ import { useDragFrame } from './useAppointmentDrag';
 import { describeDrop, isMissedAppt } from './scheduleDrag';
 import { stickyStackHeight } from './stickyLayout';
 
-const ACCENT = '#6D28D9';
+const ACCENT = 'var(--brand-primary)';
 const MAKEUP_GREEN = '#15803D';
 // Drawn on document.body, outside the schedule page's own font setting.
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';

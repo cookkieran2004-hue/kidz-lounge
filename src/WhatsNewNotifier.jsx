@@ -50,7 +50,7 @@ export default function WhatsNewNotifier() {
             Open user manual
           </button>
           <button ref={okRef} type="button" onClick={dismiss}
-            style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: '#6D28D9', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: 'var(--brand-primary)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             Got it
           </button>
         </div>

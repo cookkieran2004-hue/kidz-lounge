@@ -16,10 +16,10 @@ import LinkTextarea from './LinkTextarea';
 // meeting blocks not linked to a My time entry pass `blockRef`
 // ({ series_id } or { ooo_id }) instead of `requestId`.
 
-const INK = '#241A33';
-const MUTED = '#6B6280';
-const BORDER = '#E7E2F3';
-const PURPLE = '#6D28D9';
+const INK = 'var(--brand-ink)';
+const MUTED = 'var(--brand-muted)';
+const BORDER = 'var(--brand-border)';
+const BRAND_COLOR = 'var(--brand-primary)';
 
 function formatWeekLabel(dateStr) {
   if (!dateStr) return '';
@@ -39,7 +39,7 @@ function Column({ title, hint, children }) {
 function ReadOnlyText({ text }) {
   return (
     <div style={{
-      flex: 1, minHeight: 64, padding: '8px 10px', borderRadius: 8, border: `1px solid ${BORDER}`, background: '#FAF9FD',
+      flex: 1, minHeight: 64, padding: '8px 10px', borderRadius: 8, border: `1px solid ${BORDER}`, background: 'var(--brand-wash2)',
       fontSize: 13, color: INK, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
     }}>
       <Linkify text={text} />
@@ -197,7 +197,7 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
         {!editing ? (
           <button type="button" onClick={() => { setEditing(true); setStatus(null); }}
-            style={{ padding: '7px 14px', borderRadius: 6, border: `1px solid ${PURPLE}`, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'white', color: PURPLE }}>
+            style={{ padding: '7px 14px', borderRadius: 6, border: `1px solid ${BRAND_COLOR}`, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'white', color: BRAND_COLOR }}>
             Edit agenda
           </button>
         ) : (
@@ -206,7 +206,7 @@ export function MeetingAgendaEditor({ requestId, blockRef, initialDate, fixedDat
               type="button"
               onClick={() => save()}
               disabled={saving || !dirty}
-              style={{ padding: '7px 14px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, cursor: saving || !dirty ? 'default' : 'pointer', background: saving || !dirty ? '#C4B5FD' : PURPLE, color: 'white' }}
+              style={{ padding: '7px 14px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, cursor: saving || !dirty ? 'default' : 'pointer', background: saving || !dirty ? 'var(--brand-primary-faint)' : BRAND_COLOR, color: 'white' }}
             >
               {saving ? 'Saving...' : 'Save agenda'}
             </button>

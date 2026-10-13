@@ -3,6 +3,7 @@ import { DateField } from './pages/SchedulePage';
 import { formatPhone } from './phone';
 import { INK, MUTED, HAIRLINE, TONES, NUMERIC, buttonStyle } from './uiTokens';
 import { pfInputStyle, answerText, LETTERHEAD, labelDate } from './powerForms';
+import { CLINIC } from './brand';
 
 // Power Forms' fields (kidz-lounge-api lib/powerForms.js): filled in by a
 // parent on the public page (PowerFormPage.jsx) and shown to staff with the
@@ -164,7 +165,7 @@ function FieldInput({ field, value, onChange, error, disabled }) {
 export function PowerFormLetterhead() {
   return (
     <div style={{ display: 'flex', gap: '10px 20px', alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
-      <img src="/logo.png" alt="The Kidz Lounge" style={{ display: 'block', height: 84, width: 'auto' }} />
+      <img src={CLINIC.logo} alt={CLINIC.name} style={{ display: 'block', height: 84, width: 'auto' }} />
       <div style={{ fontSize: 14, color: MUTED, lineHeight: 1.5, minWidth: 0 }}>
         <div style={{ fontWeight: 600, color: INK, fontSize: 17 }}>{LETTERHEAD.name}</div>
         {LETTERHEAD.lines.map(l => <div key={l}>{l}</div>)}

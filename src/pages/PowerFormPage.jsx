@@ -5,6 +5,7 @@ import { DateField } from './SchedulePage';
 import { PowerFormInputs, PowerFormLetterhead, PatientLabel } from '../PowerFormFields';
 import { pfInputStyle, startingAnswers } from '../powerForms';
 import { INK, MUTED, HAIRLINE, PAGE_BG, FONT, TONES, ACCENT, buttonStyle } from '../uiTokens';
+import { CLINIC } from '../brand';
 
 // The page a parent opens from a Power Form link (/f/<token>; Kieran, Oct
 // 2026). No sign-in: the link itself plus the child's date of birth unlock
@@ -103,7 +104,7 @@ export default function PowerFormPage() {
       <Shell>
         <h1 style={{ fontSize: 19, fontWeight: 600, margin: '0 0 8px' }}>Thank you</h1>
         <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
-          Kidz Lounge has received your {info?.form_name || form?.form_name || 'form'}. You can close this page.
+          {CLINIC.shortName} has received your {info?.form_name || form?.form_name || 'form'}. You can close this page.
         </p>
       </Shell>
     );

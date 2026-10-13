@@ -42,7 +42,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString('en-US', { month: 'sho
 let logoPromise = null;
 function logoDataUrl() {
   if (!logoPromise) {
-    logoPromise = fetch('/logo.png')
+    logoPromise = fetch(CLINIC.logoPng || CLINIC.logo)
       .then(r => (r.ok ? r.blob() : null))
       .then(blob => blob && new Promise(resolve => { const fr = new FileReader(); fr.onload = () => resolve(fr.result); fr.onerror = () => resolve(null); fr.readAsDataURL(blob); }))
       .catch(() => null);

@@ -1,6 +1,6 @@
 # Admin manual
 
-Everything in the Kidz Lounge app, including the Admin area: staff accounts and roles, time off approvals and balances, and office hours.
+Everything in the {{clinic}} app, including the Admin area: staff accounts and roles, time off approvals and balances, and office hours.
 
 <!-- include: shared/getting-started.md -->
 <!-- include: shared/admin-staff.md -->

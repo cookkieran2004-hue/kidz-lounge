@@ -2,7 +2,7 @@
 
 ### Signing in
 
-Go to the Kidz Lounge app and sign in with your username and password.
+Go to the {{clinic}} app and sign in with your username and password.
 
 ![The sign-in page](../img/login.png)
 

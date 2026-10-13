@@ -10,6 +10,7 @@
 //
 // Image paths are written relative to the file they're in (so VS Code's
 // Markdown preview shows them) and turned into site paths here.
+import { CLINIC } from './brand';
 
 export const MANUALS = [
   { key: 'staff', label: 'Staff' },
@@ -75,9 +76,10 @@ async function expand(path, manual, depth = 0) {
   return out.join('');
 }
 
-// The finished Markdown for one manual.
-export function loadManual(manual) {
-  return expand(`${manual}.md`, manual);
+// The finished Markdown for one manual. {{clinic}} in the text becomes the
+// clinic's short name, so one set of manuals serves every clinic.
+export async function loadManual(manual) {
+  return (await expand(`${manual}.md`, manual)).replace(/\{\{clinic\}\}/g, CLINIC.shortName);
 }
 
 export const slugify = (text) => String(text).toLowerCase().replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

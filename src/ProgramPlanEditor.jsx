@@ -14,7 +14,7 @@ import { MANDATE_SERVICES, MINUTE_OPTIONS, mandateLabel, planFromRows, planKey, 
 // first; `legacyMandate` is the old free-text mandate, shown until
 // per-service mandates are entered.
 
-const PRIMARY = '#6D28D9';
+const PRIMARY = 'var(--brand-primary)';
 const BORDER = '#E4E4E7';
 const MUTED = '#71717A';
 const INK = '#18181B';

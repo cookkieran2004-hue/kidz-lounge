@@ -1,6 +1,6 @@
 # Reception manual
 
-How to run the front desk in the Kidz Lounge app: booking and changing appointments, rooms, conflicts, the waitlist, patients and tasks.
+How to run the front desk in the {{clinic}} app: booking and changing appointments, rooms, conflicts, the waitlist, patients and tasks.
 
 Reception can do everything an admin can, except the Admin area (staff accounts, time off approvals and office hours).
 

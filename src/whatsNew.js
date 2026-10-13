@@ -1,3 +1,4 @@
+import { CLINIC } from './brand';
 // The "What's new" pop-up (WhatsNewNotifier.jsx). Everyone sees it once
 // after signing in, until they click Got it. To announce something new,
 // replace the items and change `id`: a new id shows again to everyone.
@@ -5,7 +6,7 @@
 // someone who uses two computers sees it once on each.
 export const WHATS_NEW = {
   id: '2026-10-08',
-  title: "What's new in Kidz Lounge",
+  title: `What's new in ${CLINIC.shortName}`,
   items: [
     ['Drag and drop on the schedule', 'drag an appointment to a new time, provider, room or day. On a phone or tablet, press and hold it first. Undo appears at the bottom.'],
     ['Make-ups', 'open a canceled or no-show appointment and click Schedule make up, or drag the canceled card to a free spot. Make Up and MUS are no longer statuses.'],

@@ -10,11 +10,12 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 
 ## Working with Kieran (how we've been doing things)
 
-- **Shipping = commit + push to `main`**, which deploys to production:
-  - **Frontend:** Vercel. Check `https://api.github.com/repos/cookkieran2004-hue/kidz-lounge/commits/<sha>/status` until it reports `success`.
-  - **API:** GitHub Actions to Lambda.
-  - When both change, push the **API first**.
-  - **Release after clinic hours** (Kieran, Oct 13 2026): pushes go out after 6 PM on weekdays or at weekends, so nobody's open tab changes mid-session. Urgent fixes are the exception. When handing over changes during the day, remind him to push after hours.
+- **Shipping (Oct 13 2026): push to `main` = Demo now, Kidz Lounge at 11 PM.**
+  - **Push any time.** `main` goes to the **Demo** clinic (PedsDesk, made-up data) right away: the API by `kidz-lounge-api`'s `deploy.yml`, the site by Demo's Vercel project, which builds `main` with `VITE_CLINIC=pedsdesk`. Check it there.
+  - **11 PM New York time:** `kidz-lounge-api`'s `release.yml` deploys `main` to Kidz Lounge's Lambda and runs its migrations. At 11:30 PM this repo's `.github/workflows/release.yml` moves the `production` branch up to `main`, and Kidz Lounge's Vercel project (production branch = `production`) deploys it. It stops if the API's release failed. A `production` branch equal to `main` means nothing is waiting.
+  - **Urgent fix:** Actions → "Nightly release to Kidz Lounge" → Run workflow, in the API repo first, then this one.
+  - Release status: `https://api.github.com/repos/cookkieran2004-hue/<repo>/actions/runs?per_page=5`. Frontend deploys: `https://api.github.com/repos/cookkieran2004-hue/kidz-lounge/commits/<sha>/status`.
+  - The API-first order is automatic now, so push the two repos in either order. Tell him when a change only reaches Kidz Lounge tonight.
   - End commit messages with the `Co-Authored-By` trailer.
 - **Kieran pushes, not Claude** (since Sept 27 2026). Build and verify, report what changed, and list the changed files (flag new untracked files, say when the API must go first, and give any migration command). Don't commit or push, and don't offer to. Push only when he explicitly asks.
   - When he says something "isn't working" right after pushing, check the deploy status first and remind him to reload: an open tab keeps the old bundle.
@@ -115,7 +116,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 ## Styling
 
 - Mostly inline `style={{...}}` objects.
-- **Brand colors:** `BRAND` / `BRAND_SERIF` are exported from `src/pages/StaffPage.jsx` (purple palette). The admin pages re-export them, plus `INK`, `HAIRLINE`, `DANGER` and others, from `src/pages/admin/adminUi.js`. Dashboard pages use `src/dashboardUi.jsx`. Reuse these instead of adding new hex values.
+- **Brand colors are per clinic** (Oct 2026). `src/brands/<clinic>.js` holds each clinic's name, logo, letterhead and `theme`. `VITE_CLINIC` picks one at build time: `.env` says `kidzlounge`, and the Demo build sets `pedsdesk` (PedsDesk: blue `#1D4ED8`, yellow `#F59E0B` for small accents only). `applyBrand()` (`src/main.jsx`) turns the theme into CSS variables, so components write `'var(--brand-primary)'`, `'var(--brand-tint)'`, `'var(--brand-ink)'` and so on (theme key `tint2` -> `--brand-tint2`, `primaryBright` -> `--brand-primary-bright`). Where CSS variables don't work (pdfmake PDFs, the print window), use `THEME.<key>` from `src/brand.js`. `BRAND` (in `StaffPage.jsx`, re-exported by `adminUi.js`) and the `BRAND_COLOR` constants now hold these variables. `BRAND_SERIF` is `'inherit'`: one sans-serif font everywhere. The schedule's own colors (statuses, rooms, programs, `timeTypes.js`) are not brand colors and stay as they are.
 - **Alert colors and icons** are in `src/patientAlerts.jsx`.
 - **Responsive layout:** `useIsMobile()` (breakpoint 1024px; pages often pass 768). Use `minmax(0, 1fr)` grid columns so content can't push a card wider than the screen. The daily schedule shows a "use the weekly view" message on phones. The patient Data Table goes full-screen on phones, with 16px inputs so iOS doesn't zoom.
 
@@ -132,8 +133,8 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 
 Kieran plans to deploy this app for other pediatric therapy clinics, one deployment each (plan: "White-label plan" doc). Until that's built, new code mustn't add more Kidz Lounge-specific details:
 
-- **Never type the clinic's name or contact details.** Use `CLINIC` from `src/brand.js` (`name`, `shortName`, `logo`, `letterhead`). Don't confuse it with `BRAND`, the purple palette from `StaffPage.jsx`. Older hard-coded mentions stay until the generic version is built.
-- **No new hex values in components.** Use the existing palettes (see Styling: `uiTokens.js`, `adminUi.js`, `BRAND`) and add a named token if one is missing. Schedule colors still come from `timeTypes.js`.
+- **Never type the clinic's name or contact details.** Use `CLINIC` from `src/brand.js` (`name`, `shortName`, `logo`, `logoPng` for PDFs, `letterhead`). In the manuals, write `{{clinic}}`. `POWERED_BY` is the small "Powered by PedsDesk" shown at every clinic except PedsDesk itself. To see the Demo look locally: `VITE_CLINIC=pedsdesk npx vite`.
+- **No new brand hex values in components.** Use `var(--brand-…)` (see Styling), and add a key to every `src/brands/*.js` if one is missing. Grays and status colors come from `uiTokens.js`; schedule colors still come from `timeTypes.js`.
 - **Lists a clinic would set** (rooms, session lengths, credentials, billing codes) live in ONE exported constant. Import it; never copy it into another file.
 - **Optional features stay self-contained** (their own page, components and API route) so they can be switched off per clinic. The planned add-on modules are EI-Hub, the Billing sheet, Time off and Power Forms.
 

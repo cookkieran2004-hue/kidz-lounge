@@ -211,7 +211,7 @@ export default function EiHubSessions({ month }) {
           <div role="tablist" aria-label="Show" style={{ display: 'inline-flex', border: `1px solid ${HAIRLINE}`, borderRadius: 6, overflow: 'hidden' }}>
             {FILTERS.map((f, i) => (
               <button key={f.key} type="button" role="tab" aria-selected={filter === f.key} onClick={() => { setFilter(f.key); setConfirming(null); }}
-                style={{ padding: '6px 12px', border: 'none', borderRight: i < FILTERS.length - 1 ? `1px solid ${HAIRLINE}` : 'none', background: filter === f.key ? '#F5F3FF' : 'white', color: filter === f.key ? ACCENT : INK, fontSize: 13, fontWeight: filter === f.key ? 600 : 500, fontFamily: 'inherit', cursor: 'pointer' }}>
+                style={{ padding: '6px 12px', border: 'none', borderRight: i < FILTERS.length - 1 ? `1px solid ${HAIRLINE}` : 'none', background: filter === f.key ? 'var(--brand-tint)' : 'white', color: filter === f.key ? ACCENT : INK, fontSize: 13, fontWeight: filter === f.key ? 600 : 500, fontFamily: 'inherit', cursor: 'pointer' }}>
                 {f.label} <span style={{ color: f.key === 'action' && counts.action ? TONES.danger.fg : SUBTLE, ...NUMERIC }}>{counts[f.key]}</span>
               </button>
             ))}
@@ -242,7 +242,7 @@ export default function EiHubSessions({ month }) {
               {shown.map(s => {
                 const charge = s.lines.reduce((t, l) => t + l.charge, 0);
                 return (
-                  <tr key={s.key} style={{ background: selected.has(s.key) && selectable(s) ? '#FAF8FF' : 'white' }}>
+                  <tr key={s.key} style={{ background: selected.has(s.key) && selectable(s) ? 'var(--brand-wash3)' : 'white' }}>
                     <td style={td}>
                       <input type="checkbox" aria-label={`Choose ${s.patient_name}, ${fmtDate(s.date)}`} disabled={!selectable(s)} checked={selected.has(s.key) && selectable(s)} onChange={() => toggle(s.key)} />
                     </td>

@@ -29,7 +29,7 @@ export default function Linkify({ text, color }) {
     const href = /^https?:\/\//i.test(m[2]) ? m[2] : `https://${m[2]}`;
     out.push(
       <a key={`n${m.index}`} href={href} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-        style={{ color: color || '#6D28D9', textDecoration: 'underline', overflowWrap: 'anywhere' }}>
+        style={{ color: color || 'var(--brand-primary)', textDecoration: 'underline', overflowWrap: 'anywhere' }}>
         {m[1]}
       </a>
     );
@@ -60,7 +60,7 @@ function BareLinks({ text, color }) {
       <a
         key={start} href={href} target="_blank" rel="noopener noreferrer"
         onClick={e => e.stopPropagation()}
-        style={{ color: color || '#6D28D9', textDecoration: 'underline', overflowWrap: 'anywhere' }}
+        style={{ color: color || 'var(--brand-primary)', textDecoration: 'underline', overflowWrap: 'anywhere' }}
       >
         {url}
       </a>

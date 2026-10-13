@@ -8,8 +8,9 @@ import { Avatar } from './Avatar';
 import { usePendingTimeOff } from './PendingTimeOffContext';
 import { useSupportOpenCount, canSeeSupportTickets } from './supportCount';
 import { canAdminister } from './roles';
+import { CLINIC } from './brand';
 
-const BRAND_PURPLE = '#6D28D9';
+const BRAND_COLOR = 'var(--brand-primary)';
 
 const TABS = [
   { to: '/', label: 'Schedule', end: true },
@@ -25,7 +26,7 @@ const barStyle = {
   gap: 4,
   padding: '8px 20px',
   background: 'white',
-  borderBottom: `1.5px solid ${BRAND_PURPLE}`,
+  borderBottom: "2px solid var(--brand-highlight)",
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   // Stays at the top of every page (see src/stickyLayout.js).
   position: 'sticky',
@@ -40,8 +41,8 @@ function tabStyle({ isActive }) {
     fontSize: 13,
     fontWeight: 600,
     textDecoration: 'none',
-    color: isActive ? BRAND_PURPLE : '#6b7280',
-    background: isActive ? '#F5F3FF' : 'transparent',
+    color: isActive ? BRAND_COLOR : '#6b7280',
+    background: isActive ? 'var(--brand-tint)' : 'transparent',
   };
 }
 
@@ -51,8 +52,8 @@ function mobileTabStyle({ isActive }) {
     fontSize: 15,
     fontWeight: 600,
     textDecoration: 'none',
-    color: isActive ? BRAND_PURPLE : '#374151',
-    background: isActive ? '#F5F3FF' : 'transparent',
+    color: isActive ? BRAND_COLOR : '#374151',
+    background: isActive ? 'var(--brand-tint)' : 'transparent',
     borderBottom: '1px solid #f1f2f4',
   };
 }
@@ -128,9 +129,9 @@ function menuItemStyle({ isActive }) {
   return {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
     padding: '8px 14px', fontSize: 13, fontWeight: isActive ? 700 : 500, textDecoration: 'none',
-    color: isActive ? BRAND_PURPLE : '#374151',
+    color: isActive ? BRAND_COLOR : '#374151',
     // background left unset when inactive so the .kl-menu-item:hover rule in index.css can apply
-    ...(isActive ? { background: '#F5F3FF' } : {}),
+    ...(isActive ? { background: 'var(--brand-tint)' } : {}),
   };
 }
 
@@ -174,7 +175,7 @@ function UserMenu({ user, links, pendingCount, supportCount, onSignOut }) {
         aria-expanded={open}
         style={{
           display: 'flex', alignItems: 'center', gap: 7, border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6,
-          background: open ? '#F5F3FF' : 'transparent', color: BRAND_PURPLE, fontFamily: 'inherit',
+          background: open ? 'var(--brand-tint)' : 'transparent', color: BRAND_COLOR, fontFamily: 'inherit',
         }}
       >
         <Avatar name={displayNameFor(user)} size={26} />
@@ -190,7 +191,7 @@ function UserMenu({ user, links, pendingCount, supportCount, onSignOut }) {
           <div
             role="menu"
             style={{
-              minWidth: 190, background: 'white', border: '1px solid #e5e1f0', borderRadius: 8,
+              minWidth: 190, background: 'white', border: '1px solid var(--brand-border2)', borderRadius: 8,
               boxShadow: '0 10px 24px rgba(36,26,51,0.12)', padding: '6px 0', overflow: 'hidden',
             }}
           >
@@ -201,7 +202,7 @@ function UserMenu({ user, links, pendingCount, supportCount, onSignOut }) {
                 {link.supportOnly && <SupportBadge count={supportCount} />}
               </NavLink>
             ))}
-            <div style={{ height: 1, background: '#eee9f7', margin: '6px 0' }} />
+            <div style={{ height: 1, background: 'var(--brand-tint5)', margin: '6px 0' }} />
             <button
               type="button"
               role="menuitem"
@@ -244,7 +245,7 @@ export default function NavBar() {
   if (!isMobile) {
     return (
       <nav ref={navRef} style={barStyle}>
-        <img src="/logo.png" alt="The Kidz Lounge" style={{ height: 34, width: 'auto', marginRight: 16 }} />
+        <img src={CLINIC.logo} alt={CLINIC.name} style={{ height: 34, width: 'auto', marginRight: 16 }} />
         {visibleTabs.map(tab => (
           <NavLink key={tab.to} to={tab.to} end={tab.end} style={tabStyle}>
             {tab.label}
@@ -255,7 +256,7 @@ export default function NavBar() {
             onClick={() => setDrawerOpen(o => !o)}
             aria-label="Toggle task drawer"
             style={{
-              position: 'relative', border: 'none', background: 'none', color: drawerOpen ? BRAND_PURPLE : '#6b7280',
+              position: 'relative', border: 'none', background: 'none', color: drawerOpen ? BRAND_COLOR : '#6b7280',
               cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center',
             }}
           >
@@ -277,12 +278,12 @@ export default function NavBar() {
 
   return (
     <nav ref={navRef} style={barStyle}>
-      <img src="/logo.png" alt="The Kidz Lounge" style={{ height: 30, width: 'auto' }} />
+      <img src={CLINIC.logo} alt={CLINIC.name} style={{ height: 30, width: 'auto' }} />
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
         <button
           onClick={() => setDrawerOpen(o => !o)}
           aria-label="Toggle task drawer"
-          style={{ position: 'relative', border: 'none', background: 'none', color: drawerOpen ? BRAND_PURPLE : '#6b7280', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center' }}
+          style={{ position: 'relative', border: 'none', background: 'none', color: drawerOpen ? BRAND_COLOR : '#6b7280', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center' }}
         >
           <BellIcon />
           {openCount > 0 && (
@@ -298,7 +299,7 @@ export default function NavBar() {
           onClick={() => setMenuOpen(o => !o)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           style={{
-            position: 'relative', border: 'none', background: 'none', color: BRAND_PURPLE,
+            position: 'relative', border: 'none', background: 'none', color: BRAND_COLOR,
             cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center',
           }}
         >
@@ -316,7 +317,7 @@ export default function NavBar() {
         <div
           style={{
             position: 'absolute', top: '100%', left: 0, right: 0, background: 'white',
-            borderBottom: `1.5px solid ${BRAND_PURPLE}`, boxShadow: '0 8px 16px rgba(0,0,0,0.08)',
+            borderBottom: "2px solid var(--brand-highlight)", boxShadow: '0 8px 16px rgba(0,0,0,0.08)',
             zIndex: 50, display: 'flex', flexDirection: 'column',
           }}
         >
@@ -325,9 +326,9 @@ export default function NavBar() {
               {tab.label}
             </NavLink>
           ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px 6px', borderTop: `1px solid #e5e1f0`, marginTop: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px 6px', borderTop: `1px solid var(--brand-border2)`, marginTop: 6 }}>
             <Avatar name={displayNameFor(user)} size={30} />
-            <span style={{ fontSize: 13, color: BRAND_PURPLE, fontWeight: 600 }}>{user.username}</span>
+            <span style={{ fontSize: 13, color: BRAND_COLOR, fontWeight: 600 }}>{user.username}</span>
             <SupportBadge count={supportCount} />
             <CountBadge count={badgeCount} />
           </div>
@@ -343,7 +344,7 @@ export default function NavBar() {
           <button
             type="button"
             onClick={logout}
-            style={{ textAlign: 'left', padding: '14px 20px', fontSize: 15, fontWeight: 600, border: 'none', borderTop: '1px solid #e5e1f0', background: 'white', color: '#6b7280', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ textAlign: 'left', padding: '14px 20px', fontSize: 15, fontWeight: 600, border: 'none', borderTop: '1px solid var(--brand-border2)', background: 'white', color: '#6b7280', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Sign out
           </button>

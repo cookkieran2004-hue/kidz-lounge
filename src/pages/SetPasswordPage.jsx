@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
+import { CLINIC } from '../brand';
 
-const BRAND_PURPLE = '#7c3aed';
-const BRAND_PURPLE_DARK = '#6d28d9';
+const BRAND_COLOR = 'var(--brand-primary-bright)';
+const BRAND_COLOR_DARK = 'var(--brand-primary)';
 
 function wrapStyle() {
   return {
@@ -12,7 +13,7 @@ function wrapStyle() {
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
-    background: 'linear-gradient(160deg, #faf5ff 0%, #f5f3ff 40%, #f9fafb 100%)',
+    background: 'linear-gradient(160deg, var(--brand-tint7) 0%, var(--brand-tint) 40%, #f9fafb 100%)',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     padding: 20,
   };
@@ -20,7 +21,7 @@ function wrapStyle() {
 function blobStyle(top, left, size, opacity) {
   return {
     position: 'absolute', top, left, width: size, height: size, borderRadius: '50%',
-    background: BRAND_PURPLE, opacity, filter: 'blur(70px)', pointerEvents: 'none',
+    background: BRAND_COLOR, opacity, filter: 'blur(70px)', pointerEvents: 'none',
   };
 }
 function cardStyle() {
@@ -28,7 +29,7 @@ function cardStyle() {
     position: 'relative', zIndex: 1,
     background: 'white', borderRadius: 20, padding: '36px 32px 32px', width: '100%', maxWidth: 400,
     boxShadow: '0 20px 50px rgba(109, 40, 217, 0.12), 0 2px 8px rgba(0,0,0,0.04)',
-    border: '1px solid #f1eafe',
+    border: '1px solid var(--brand-tint3)',
   };
 }
 function labelStyle() {
@@ -37,7 +38,7 @@ function labelStyle() {
 function inputStyle(focused) {
   return {
     width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14, boxSizing: 'border-box',
-    border: `1.5px solid ${focused ? BRAND_PURPLE : '#e2e4e9'}`,
+    border: `1.5px solid ${focused ? BRAND_COLOR : '#e2e4e9'}`,
     outline: 'none',
     boxShadow: focused ? '0 0 0 3px rgba(124, 58, 237, 0.12)' : 'none',
     transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -80,7 +81,7 @@ export default function SetPasswordPage() {
 
       <div style={cardStyle()}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <img src="/logo.png" alt="The Kidz Lounge" style={{ height: 76, width: 'auto', marginBottom: 4 }} />
+          <img src={CLINIC.logo} alt={CLINIC.name} style={{ height: 76, width: 'auto', marginBottom: 4 }} />
           <h1 style={{ fontSize: 19, fontWeight: 700, color: '#111827', margin: '10px 0 2px' }}>Set a New Password</h1>
           <p style={{ fontSize: 13, color: '#9ca3af', margin: 0, maxWidth: 280 }}>
             You're signed in with a temporary password. Choose a permanent one to continue.
@@ -122,8 +123,8 @@ export default function SetPasswordPage() {
               width: '100%', marginTop: 20, padding: '11px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600,
               cursor: loading ? 'default' : 'pointer', border: 'none', color: 'white',
               background: btnHover && !loading
-                ? `linear-gradient(135deg, ${BRAND_PURPLE_DARK}, ${BRAND_PURPLE_DARK})`
-                : `linear-gradient(135deg, ${BRAND_PURPLE}, ${BRAND_PURPLE_DARK})`,
+                ? `linear-gradient(135deg, ${BRAND_COLOR_DARK}, ${BRAND_COLOR_DARK})`
+                : `linear-gradient(135deg, ${BRAND_COLOR}, ${BRAND_COLOR_DARK})`,
               boxShadow: '0 4px 14px rgba(124, 58, 237, 0.28)',
               transition: 'background 0.15s, transform 0.1s',
               transform: btnHover && !loading ? 'translateY(-1px)' : 'none',

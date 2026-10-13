@@ -1,6 +1,6 @@
 # Staff manual
 
-How to use the Kidz Lounge app day to day: your schedule, your patients, your time off and your tasks.
+How to use the {{clinic}} app day to day: your schedule, your patients, your time off and your tasks.
 
 <!-- include: shared/getting-started.md -->
 <!-- include: shared/schedule.md -->

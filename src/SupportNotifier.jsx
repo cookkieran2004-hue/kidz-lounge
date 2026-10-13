@@ -75,7 +75,7 @@ export default function SupportNotifier() {
         <p style={{ margin: '0 0 16px', fontSize: 12.5, color: '#6b7280' }}>Still having trouble? Send a new ticket from Help &amp; Support at the bottom of the page.</p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
           {notices.length > 1 && <span style={{ fontSize: 12, color: '#9ca3af', marginRight: 'auto' }}>{notices.length - 1} more</span>}
-          <button ref={okRef} type="button" onClick={dismiss} style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: '#6D28D9', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>OK</button>
+          <button ref={okRef} type="button" onClick={dismiss} style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: 'var(--brand-primary)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>OK</button>
         </div>
       </div>
     </div>

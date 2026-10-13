@@ -329,7 +329,7 @@ export default function EiHubChildren() {
         <div role="tablist" aria-label="Show" style={{ display: 'inline-flex', border: `1px solid ${HAIRLINE}`, borderRadius: 6, overflow: 'hidden' }}>
           {[['missing', 'Missing details', missingCount], ['all', 'All EI children', withProblems.length]].map(([k, label, n], i) => (
             <button key={k} type="button" role="tab" aria-selected={filter === k} onClick={() => setFilter(k)}
-              style={{ padding: '6px 12px', border: 'none', borderRight: i === 0 ? `1px solid ${HAIRLINE}` : 'none', background: filter === k ? '#F5F3FF' : 'white', color: filter === k ? '#6D28D9' : INK, fontSize: 13, fontWeight: filter === k ? 600 : 500, fontFamily: 'inherit', cursor: 'pointer' }}>
+              style={{ padding: '6px 12px', border: 'none', borderRight: i === 0 ? `1px solid ${HAIRLINE}` : 'none', background: filter === k ? 'var(--brand-tint)' : 'white', color: filter === k ? 'var(--brand-primary)' : INK, fontSize: 13, fontWeight: filter === k ? 600 : 500, fontFamily: 'inherit', cursor: 'pointer' }}>
               {label} <span style={{ color: '#A1A1AA', ...NUMERIC }}>{n}</span>
             </button>
           ))}

@@ -7,6 +7,7 @@ import { PAGE_BG, FONT, TONES, buttonStyle } from '../uiTokens';
 import { MANUALS, manualForRole } from '../manual';
 import { buildManualPdf } from '../manualPdf';
 import PdfViewer from '../PdfViewer';
+import { CLINIC } from '../brand';
 
 // User manuals (footer > User manual). Each manual is built into a PDF from
 // its Markdown in public/manuals (src/manualPdf.js; edit the text there --
@@ -53,7 +54,7 @@ export default function ManualPage() {
 
   const ready = pdf.manual === manual && pdf.blob;
   const label = MANUALS.find(m => m.key === manual)?.label || '';
-  const fileName = `The Kidz Lounge - ${label} manual.pdf`;
+  const fileName = `${CLINIC.name} - ${label} manual.pdf`;
   const pick = (key) => setSearchParams(key === manualForRole(user?.role) ? {} : { manual: key }, { replace: true });
 
   const download = () => {

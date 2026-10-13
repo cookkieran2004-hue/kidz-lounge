@@ -35,8 +35,8 @@ const FirstAidIcon = (p) => <MiniIcon {...p} path={<><rect x="3" y="7" width="18
 // Same "Practice Ledger" visual language as the Patient Chart -- a serif
 // for headers, a violet palette -- so this reads as part of the same
 // product rather than a bolted-on new page.
-export const BRAND = { forest: '#6D28D9', brass: '#7C3AED', brassText: '#5B21B6', tint: '#F5F3FF', muted: '#6B6280', box: '#D6CCEF' };
-export const BRAND_SERIF = '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
+export const BRAND = { forest: 'var(--brand-primary)', brass: 'var(--brand-primary-bright)', brassText: 'var(--brand-primary-strong)', tint: 'var(--brand-tint)', muted: 'var(--brand-muted)', box: 'var(--brand-border3)' };
+export const BRAND_SERIF = 'inherit'; // headings use the app's one font (Oct 2026)
 const BORDER = '#e2e4e9';
 
 const BALANCE_TYPES = ['PTO', 'UPTO'];
@@ -56,7 +56,7 @@ export function calculateTenure(hireDate) {
 }
 
 function sectionHeaderStyle() {
-  return { fontFamily: BRAND_SERIF, fontSize: 15, fontWeight: 700, color: '#241A33', margin: '0 0 10px' };
+  return { fontFamily: BRAND_SERIF, fontSize: 15, fontWeight: 700, color: 'var(--brand-ink)', margin: '0 0 10px' };
 }
 function cardStyle() {
   return { border: `1.5px solid ${BRAND.box}`, borderRadius: 8, padding: '14px 16px', marginBottom: 20, background: 'white' };
@@ -91,7 +91,7 @@ function requestSummary(req) {
 }
 
 const BALANCE_TYPE_STYLE = {
-  PTO: { bg: '#F5F3FF', text: '#3C3489', icon: BeachIcon },
+  PTO: { bg: 'var(--brand-tint)', text: 'var(--brand-primary-deeper)', icon: BeachIcon },
   UPTO: { bg: '#E6F1FB', text: '#0C447C', icon: FirstAidIcon },
 };
 
@@ -99,7 +99,7 @@ function BalanceCards({ balances, isMobile }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
       {balances.map(b => {
-        const style = BALANCE_TYPE_STYLE[b.balance_type] || { bg: BRAND.tint, text: '#241A33', icon: UserIcon };
+        const style = BALANCE_TYPE_STYLE[b.balance_type] || { bg: BRAND.tint, text: 'var(--brand-ink)', icon: UserIcon };
         const TypeIcon = style.icon;
         const negative = b.balance_hours < 0;
         return (
@@ -108,7 +108,7 @@ function BalanceCards({ balances, isMobile }) {
               <TypeIcon size={14} color={negative ? '#991B1B' : style.text} />
               <span style={{ fontSize: 10.5, fontWeight: 700, color: negative ? '#991B1B' : style.text, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{b.balance_type}</span>
             </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: negative ? '#991B1B' : '#241A33', fontFamily: BRAND_SERIF }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: negative ? '#991B1B' : 'var(--brand-ink)', fontFamily: BRAND_SERIF }}>
               {b.balance_hours} <span style={{ fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>hours</span>
             </div>
           </div>
@@ -493,7 +493,7 @@ function RequestList({ requests, isMobile, showUsername, onApprove, onDeny, onEd
             {req.replaces_request_id && (
               <div style={{ fontSize: 11, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Change request</div>
             )}
-            <div style={{ fontSize: 13.5, color: '#241A33' }}>{req.replaces_request_id ? 'New: ' : ''}{requestSummary(req)}</div>
+            <div style={{ fontSize: 13.5, color: 'var(--brand-ink)' }}>{req.replaces_request_id ? 'New: ' : ''}{requestSummary(req)}</div>
             {req.replaces_request_id && (
               <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>
                 {req.original ? <>Currently: {requestSummary(req.original)}</> : 'The entry it changes has since been removed.'}
@@ -544,7 +544,7 @@ function EditTimeOffPanel({ request, isMobile, adminApplies, initialDate, onDone
     <div style={{ padding: isMobile ? 14 : 18, border: `1px solid ${UI_HAIRLINE}`, borderRadius: 6, margin: '12px 0 20px', background: '#FAFAFA' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
         <div>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#241A33', margin: 0 }}>Edit time off</p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--brand-ink)', margin: 0 }}>Edit time off</p>
           <p style={{ fontSize: 12.5, color: BRAND.muted, margin: '2px 0 0' }}>{requestSummary(request)}</p>
         </div>
         <button onClick={onCancel} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', color: '#374151', cursor: 'pointer', flexShrink: 0 }}>Close</button>
@@ -602,7 +602,7 @@ function MeetingsImIn({ isMobile }) {
         <div key={m.id} style={{ padding: '12px 4px', borderBottom: '1px solid #f1f2f4' }}>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: 8 }}>
             <div>
-              <div style={{ fontSize: 13.5, color: '#241A33' }}>{requestSummary(m)}</div>
+              <div style={{ fontSize: 13.5, color: 'var(--brand-ink)' }}>{requestSummary(m)}</div>
               <div style={{ fontSize: 12, color: BRAND.muted, marginTop: 2 }}>
                 Organized by {nameFor(m.username)}
                 {(m.attendees || []).length > 1 && <> &middot; with {m.attendees.map(nameFor).join(', ')}</>}
@@ -1081,7 +1081,7 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
   return (
     <div style={{ padding: embedded ? 0 : (isMobile ? 16 : '24px 28px 40px') }}>
       {adding && (
-        <div style={{ border: '1px solid #EEEAF6', borderRadius: 14, padding: 16, marginBottom: 16, background: '#FCFBFE' }}>
+        <div style={{ border: '1px solid var(--brand-tint6)', borderRadius: 14, padding: 16, marginBottom: 16, background: 'var(--brand-wash)' }}>
           <p style={{ ...sectionHeaderStyle(), marginBottom: 12 }}>Add time off{forUsername ? ` for ${nameFor(forUsername)}` : ''}</p>
           {!forUsername && (
             <div style={{ marginBottom: 12 }}>
@@ -1168,11 +1168,11 @@ export function TimeOffManageTab({ isMobile, embedded, onChanged, forUsername, o
       {denyingId && (
         <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(36,26,51,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 16 }} onClick={() => setDenyingId(null)}>
           <div role="dialog" aria-modal="true" aria-label="Deny request" style={{ background: 'white', borderRadius: 16, padding: 22, maxWidth: 420, width: '100%', boxShadow: '0 24px 60px rgba(36,26,51,0.3)' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, color: '#241A33', margin: '0 0 6px' }}>Deny this request?</h3>
+            <h3 style={{ fontFamily: BRAND_SERIF, fontSize: 19, fontWeight: 700, color: 'var(--brand-ink)', margin: '0 0 6px' }}>Deny this request?</h3>
             {(() => { const r = (requests || []).find(x => x.id === denyingId); return r ? <p style={{ fontSize: 13, color: BRAND.muted, margin: '0 0 12px' }}>{nameFor(r.username)} · {r.request_type} · {requestWhen(r)}</p> : null; })()}
-            <textarea placeholder="Reason (optional, shown to the employee)" value={denyNote} onChange={e => setDenyNote(e.target.value)} style={{ width: '100%', minHeight: 80, padding: 10, borderRadius: 10, border: '1px solid #E7E2F3', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14, resize: 'vertical' }} />
+            <textarea placeholder="Reason (optional, shown to the employee)" value={denyNote} onChange={e => setDenyNote(e.target.value)} style={{ width: '100%', minHeight: 80, padding: 10, borderRadius: 10, border: '1px solid var(--brand-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14, resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setDenyingId(null)} style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 600, border: '1px solid #E7E2F3', background: 'white', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => setDenyingId(null)} style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 600, border: '1px solid var(--brand-border)', background: 'white', cursor: 'pointer' }}>Cancel</button>
               <button type="button" onClick={handleDenyConfirm} style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 700, border: 'none', background: '#B42318', color: 'white', cursor: 'pointer' }}>Deny request</button>
             </div>
           </div>
@@ -1245,7 +1245,7 @@ export function OfficeHoursTab({ isMobile, embedded }) {
           const closed = !day;
           return (
             <div key={weekday} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: weekday < 6 ? '1px solid #f1f2f4' : 'none', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-              <span style={{ fontSize: 13, width: 90, color: '#241A33', flexShrink: 0 }}>{label}</span>
+              <span style={{ fontSize: 13, width: 90, color: 'var(--brand-ink)', flexShrink: 0 }}>{label}</span>
               {closed ? (
                 <span style={{ fontSize: 12.5, color: BRAND.muted, fontStyle: 'italic' }}>Closed</span>
               ) : (
@@ -1288,7 +1288,7 @@ export function OfficeHoursTab({ isMobile, embedded }) {
         ) : (
           closures.map((c, i) => (
             <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < closures.length - 1 ? '1px solid #f1f2f4' : 'none' }}>
-              <span style={{ fontSize: 13, color: '#241A33' }}>{formatDate(c.closure_date)}{c.closure_type === 'emergency' ? ' · Emergency closure' : ' · Holiday'}{c.reason ? ` \u2014 ${c.reason}` : ''}</span>
+              <span style={{ fontSize: 13, color: 'var(--brand-ink)' }}>{formatDate(c.closure_date)}{c.closure_type === 'emergency' ? ' · Emergency closure' : ' · Holiday'}{c.reason ? ` \u2014 ${c.reason}` : ''}</span>
               <button onClick={() => handleRemoveClosure(c.id)} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: `1px solid ${BORDER}`, background: 'white', color: '#991B1B', cursor: 'pointer' }}>Remove</button>
             </div>
           ))

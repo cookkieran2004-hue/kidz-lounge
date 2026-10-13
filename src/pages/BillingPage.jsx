@@ -29,7 +29,7 @@ const MARK_STYLE = {
   // green (MU), E = the eval blue (Eval tag) -- SchedulePage.jsx.
   A: { bg: statusColor('Canceled'), fg: 'white', title: 'Child absent' },
   PA: { bg: '#D97706', fg: 'white', title: 'Provider absent' },
-  H: { bg: '#7C3AED', fg: 'white', title: 'Holiday' },
+  H: { bg: 'var(--brand-primary-bright)', fg: 'white', title: 'Holiday' },
   Z: { bg: '#0F766E', fg: 'white', title: 'Emergency closure' },
   M: { bg: '#15803D', fg: 'white', title: 'Make-up' },
   E: { bg: '#1D4ED8', fg: 'white', title: 'Eval' },
@@ -176,7 +176,7 @@ export default function BillingPage() {
   const colgroup = <colgroup>{widths.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>;
   const tableStyle = { borderCollapse: 'separate', borderSpacing: 0, width: '100%', minWidth: tableWidth, tableLayout: 'fixed', ...NUMERIC };
   const stickyName = { position: 'sticky', left: 0, zIndex: 1, background: 'white', minWidth: NAME_W, maxWidth: NAME_W, overflow: 'hidden', textOverflow: 'ellipsis' };
-  const dayBg = (d) => (sheet?.closures?.[dateOf(d)] ? '#F5F3FF' : (weekday(d) === 0 || weekday(d) === 6) ? '#F4F4F5' : dateOf(d) === sheet?.today ? '#FFFBEB' : undefined);
+  const dayBg = (d) => (sheet?.closures?.[dateOf(d)] ? 'var(--brand-tint)' : (weekday(d) === 0 || weekday(d) === 6) ? '#F4F4F5' : dateOf(d) === sheet?.today ? '#FFFBEB' : undefined);
   // Sessions provided (X, M or E) on each day, across every patient.
   const perDay = Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => e.mark === 'X' || e.mark === 'M' || e.mark === 'E').length, 0)]));
   const grand = grouped.reduce((t, g) => ({ scheduled: t.scheduled + g.scheduled, total: t.total + g.total }), { scheduled: 0, total: 0 });

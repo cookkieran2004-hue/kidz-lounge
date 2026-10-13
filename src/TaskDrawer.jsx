@@ -6,7 +6,7 @@ import { useTasks } from './TasksContext';
 import { useIsMobile } from './useIsMobile';
 import TaskDetailModal, { taskHasComments } from './TaskDetailModal';
 
-const BRAND_PURPLE = '#6D28D9';
+const BRAND_COLOR = 'var(--brand-primary)';
 
 function formatDueDate(dateStr) {
   if (!dateStr) return null;
@@ -123,7 +123,7 @@ export default function TaskDrawer() {
             <button
               onClick={quickAdd}
               disabled={adding || !quickTitle.trim()}
-              style={{ padding: isMobile ? '10px 16px' : '7px 12px', borderRadius: 6, fontSize: isMobile ? 15 : 13, fontWeight: 600, border: 'none', background: BRAND_PURPLE, color: 'white', cursor: 'pointer' }}
+              style={{ padding: isMobile ? '10px 16px' : '7px 12px', borderRadius: 6, fontSize: isMobile ? 15 : 13, fontWeight: 600, border: 'none', background: BRAND_COLOR, color: 'white', cursor: 'pointer' }}
             >
               +
             </button>
@@ -141,7 +141,7 @@ export default function TaskDrawer() {
                 <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: isMobile ? 12 : 10, padding: isMobile ? '14px 8px' : '10px 8px', borderBottom: '1px solid #f3f4f6' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'pointer', marginTop: 2, padding: isMobile ? '4px' : 0 }}>
                     <input type="checkbox" checked={false} onChange={() => toggleDone(task)} style={{ cursor: 'pointer', width: isMobile ? 20 : 14, height: isMobile ? 20 : 14 }} />
-                    <span style={{ fontSize: isMobile ? 9 : 8.5, fontWeight: 700, color: BRAND_PURPLE, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>Mark Complete</span>
+                    <span style={{ fontSize: isMobile ? 9 : 8.5, fontWeight: 700, color: BRAND_COLOR, textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>Mark Complete</span>
                   </label>
                   <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setDetailTask(task)}>
                     <div style={{ fontSize: isMobile ? 15 : 13.5, color: '#111827', fontWeight: 500 }}>
@@ -191,7 +191,7 @@ export default function TaskDrawer() {
         <div style={{ padding: 14, borderTop: '1px solid #e2e4e9' }}>
           <button
             onClick={() => { setDrawerOpen(false); navigate('/tasks'); }}
-            style={{ width: '100%', padding: isMobile ? '12px 12px' : '9px 12px', borderRadius: 6, fontSize: isMobile ? 15 : 13, fontWeight: 600, border: `1.5px solid ${BRAND_PURPLE}`, background: 'white', color: BRAND_PURPLE, cursor: 'pointer' }}
+            style={{ width: '100%', padding: isMobile ? '12px 12px' : '9px 12px', borderRadius: 6, fontSize: isMobile ? 15 : 13, fontWeight: 600, border: `1.5px solid ${BRAND_COLOR}`, background: 'white', color: BRAND_COLOR, cursor: 'pointer' }}
           >
             View Full List
           </button>

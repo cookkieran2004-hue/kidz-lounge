@@ -510,7 +510,7 @@ export default function MyTimePage() {
     });
     data.closures.forEach(c => {
       if (c.closure_date < today || c.closure_date > addDays(today, 120)) return;
-      items.push({ date: c.closure_date, title: 'Office closed', accent: '#4B4659', accentBg: '#F1F0F4', detail: c.reason || longDate(c.closure_date) });
+      items.push({ date: c.closure_date, title: 'Office closed', accent: 'var(--brand-muted3)', accentBg: 'var(--brand-gray)', detail: c.reason || longDate(c.closure_date) });
     });
     items.sort((a, b) => a.date.localeCompare(b.date));
 

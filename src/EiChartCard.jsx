@@ -11,12 +11,12 @@ import { ChildPanel } from './EiHubChildren';
 // Import) are listed with their dates and session counts; otherwise auth #s
 // come from the EI mandate in the patient form.
 
-const MUTED = '#6B6280';
-const INK = '#241A33';
-const LINE = '#EDE9F7';
+const MUTED = 'var(--brand-muted)';
+const INK = 'var(--brand-ink)';
+const LINE = 'var(--brand-line)';
 const RED = '#B42318';
 const GREEN = '#067647';
-const ACCENT = '#6D28D9';
+const ACCENT = 'var(--brand-primary)';
 
 const fmt = (s) => (s ? new Date(`${String(s).slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null);
 const zipText = (z) => (z && z.length === 9 ? `${z.slice(0, 5)}-${z.slice(5)}` : z);

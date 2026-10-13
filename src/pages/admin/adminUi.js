@@ -4,10 +4,10 @@ import { BRAND, BRAND_SERIF } from '../StaffPage';
 
 export { BRAND, BRAND_SERIF };
 
-export const INK = '#241A33';        // headings / names
+export const INK = 'var(--brand-ink)';        // headings / names
 export const BODY = '#374151';       // body text
-export const HAIRLINE = '#E7E2F3';   // soft purple-grey borders
-export const PAGE_BG = '#FAF9FD';    // very faint lilac behind cards
+export const HAIRLINE = 'var(--brand-border)';   // soft purple-grey borders
+export const PAGE_BG = 'var(--brand-wash2)';    // very faint lilac behind cards
 export const DANGER = '#B42318';
 export const DANGER_BG = '#FEF3F2';
 export const SUCCESS = '#067647';
@@ -56,7 +56,7 @@ export function labelStyle() {
 
 export function pill(kind = 'neutral') {
   const kinds = {
-    neutral: { background: '#F3F2F7', color: '#5F5A6B' },
+    neutral: { background: 'var(--brand-gray2)', color: 'var(--brand-muted2)' },
     brand: { background: BRAND.tint, color: BRAND.brassText },
     alert: { background: DANGER_BG, color: DANGER },
     warn: { background: '#FFFAEB', color: '#93370D' },

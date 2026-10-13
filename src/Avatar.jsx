@@ -15,7 +15,7 @@ export function Avatar({ name, size = 44 }) {
     .join('');
   return (
     <div style={{
-      width: size, height: size, borderRadius: '50%', background: '#6D28D9', color: 'white',
+      width: size, height: size, borderRadius: '50%', background: 'var(--brand-primary)', color: 'white',
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       fontSize: Math.round(size * 0.38), fontWeight: 600, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
     }}>

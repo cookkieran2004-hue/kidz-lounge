@@ -45,3 +45,7 @@ These lines are hidden when the manual is shown in the app. VS Code's preview sh
 ## Screenshots
 
 The screenshots were taken from a test copy of the app using made-up staff and patients, so no real patient information appears. To replace one, save a new picture over the file in `img/` with the same name. Or ask Claude to retake it.
+
+## The clinic's name
+
+Write `{{clinic}}` wherever the clinic's name belongs ("Go to the {{clinic}} app"). The app fills in the clinic's short name, so the same manuals serve every clinic.
