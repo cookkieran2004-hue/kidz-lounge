@@ -297,6 +297,10 @@ export const api = {
   getClosedDates: (start, end) => request(`/office-hours/closed-dates?start=${start}&end=${end}`),
   getProviderContractedGaps: (providerName, start, end) =>
     request(`/providers/${encodeURIComponent(providerName)}/contracted-gaps?start=${start}&end=${end}`),
+  // { start_time, end_time } or null: a provider's contracted hours on one date.
+  getContractedHours: (providerName, date) => request(`/providers/${encodeURIComponent(providerName)}/contracted-hours?date=${date}`),
+  // A provider's Outside hours sessions in a month: { sessions, hours } (My time).
+  getOutsideHoursSummary: (month, provider) => request(`/appointments/outside-hours?month=${month}${provider ? `&provider=${encodeURIComponent(provider)}` : ''}`),
   getContractedGapsBatch: (start, end) => request(`/providers/contracted-gaps-batch?start=${start}&end=${end}`),
   setOfficeHours: (record) => request('/office-hours', { method: 'PUT', body: JSON.stringify(record) }),
   getOfficeClosures: () => request('/office-closures'),

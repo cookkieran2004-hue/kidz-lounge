@@ -904,13 +904,16 @@ export function CalendarPicker({ value, onChange, min, max, yearNav }) {
 // practice's day), so 6 PM itself only goes with :00.
 const PICKER_FIRST_HOUR = 8;
 const PICKER_LAST_HOUR = 18;
-function TimePicker({ value, onChange }) {
+// anyTime: the whole day (midnight to 11:45 PM), for Outside hours sessions.
+function TimePicker({ value, onChange, anyTime }) {
   const [h, m] = (value || '09:00').split(':');
+  const first = anyTime ? 0 : PICKER_FIRST_HOUR;
+  const last = anyTime ? 23 : PICKER_LAST_HOUR;
   const hours = [];
-  for (let i = PICKER_FIRST_HOUR; i <= PICKER_LAST_HOUR; i++) hours.push(String(i).padStart(2, '0'));
+  for (let i = first; i <= last; i++) hours.push(String(i).padStart(2, '0'));
   const minutes = ['00', '15', '30', '45'];
   const lastHour = String(PICKER_LAST_HOUR).padStart(2, '0');
-  const minuteAllowed = (hh, mm) => hh !== lastHour || mm === '00';
+  const minuteAllowed = (hh, mm) => anyTime || hh !== lastHour || mm === '00';
 
   return (
     <div style={{ border: '1px solid #e2e4e9', borderRadius: 8, padding: 10, marginBottom: 12 }}>
@@ -1008,7 +1011,7 @@ export function DateField({ label, value, onChange, style, placeholder = 'Select
   );
 }
 
-export function TimeField({ label, value, onChange, style, placeholder = 'Select time', disabled, floating, id, ariaLabel, clearable }) {
+export function TimeField({ label, value, onChange, style, placeholder = 'Select time', disabled, floating, id, ariaLabel, clearable, anyTime }) {
   const [open, setOpen] = useState(false);
   return (
     <PickerField
@@ -1018,7 +1021,7 @@ export function TimeField({ label, value, onChange, style, placeholder = 'Select
       icon={<ClockIcon size={13} color="#6b7280" />}
       text={value ? formatSlotLabel(value) : placeholder}
     >
-      <TimePicker value={value} onChange={onChange} />
+      <TimePicker value={value} onChange={onChange} anyTime={anyTime} />
     </PickerField>
   );
 }
@@ -1296,6 +1299,38 @@ function OffsiteLocationField({ patientName, value, onChange, inputStyle, labelS
 
 export function closedDayLabel(reason) {
   return !reason || reason === 'Office closed' ? 'Office closed' : `Office closed \u00b7 ${reason}`;
+}
+
+// Outside hours sessions for the day (Oct 2026): extra offsite visits on a
+// random schedule, any time, so they aren't placed on the 8-6 grid. One line
+// each, in time order; clicking opens the appointment as usual.
+export function OutsideHoursStrip({ appointments, onOpen, title = 'Outside hours', compact = false }) {
+  if (!appointments.length) return null;
+  const sorted = [...appointments].sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
+  const range = (a) => {
+    const start = timeToMinutes(a.appointment_time.slice(0, 5));
+    const end = start + (Number(a.duration) || 30);
+    const hhmm = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    return `${formatSlotLabel(hhmm(start))} – ${formatSlotLabel(hhmm(end))}`;
+  };
+  return (
+    <div style={{ background: 'white', borderRadius: compact ? 8 : 12, border: '1px solid #eef0f3', padding: compact ? 8 : '12px 16px', marginTop: compact ? 0 : 12 }}>
+      {title && <p style={{ fontSize: 12, fontWeight: 700, color: '#374151', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{title}</p>}
+      {sorted.map((a, i) => {
+        const color = statusColor(a.appointment_status);
+        return (
+          <button key={a.id} type="button" onClick={() => onOpen(a)}
+            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: compact ? '2px 8px' : '4px 14px', width: '100%', textAlign: 'left', padding: compact ? '5px 4px' : '8px 4px', border: 'none', borderTop: i ? '1px solid #f1f2f4' : 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: compact ? 11.5 : 13 }}>
+            <span style={{ fontWeight: 600, color: '#111827', minWidth: compact ? 0 : 150, fontVariantNumeric: 'tabular-nums' }}>{range(a)}</span>
+            {!compact && <span style={{ color: '#4b5563', minWidth: 120 }}>{a.provider}</span>}
+            <span style={{ fontWeight: 600, color: '#111827' }}>{a.patient_name}</span>
+            <span style={{ fontSize: compact ? 10 : 11, color: '#2F6479', background: '#F0F7FA', border: '1px solid #cfe0e7', borderRadius: 'var(--brand-pill-radius)', padding: '0 6px' }}>{roomBadgeLabel(a.treatment_area) || 'Offsite'}</span>
+            <span style={{ fontSize: compact ? 10 : 11, fontWeight: 600, color, background: `color-mix(in srgb, ${color} 16%, white)`, borderRadius: 10, padding: '1px 7px' }}>{a.appointment_status}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ClosedDaySash({ reason, style }) {
@@ -1850,6 +1885,9 @@ function ScheduleApp() {
     });
 
     appointments.forEach(apt => {
+      // Outside hours sessions live in their own strip under the grid; on the
+      // grid a 7:30 PM visit would land in the last slot (5:30 PM).
+      if (apt.outside_hours) return;
       const providerName = apt.provider || 'Unassigned';
       if (!map[providerName]) return;
       const aptMinutes = timeToMinutes(apt.appointment_time.slice(0, 5));
@@ -2349,6 +2387,13 @@ function ScheduleApp() {
         </div>
       )}
 
+      {!loading && !error && (
+        <OutsideHoursStrip
+          appointments={appointments.filter(a => a.outside_hours && (viewMode !== 'provider' || gridProviders.some(p => p.Name === a.provider)))}
+          onOpen={(apt) => { setEditingAppointment(apt); setShowModal(true); }}
+        />
+      )}
+
       {!loading && !error && viewMode === 'unassigned' && (
         <div style={{ background: 'white', borderRadius: 12, overflow: 'clip', boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 1px 6px rgba(0,0,0,0.04)', border: '1px solid #eef0f3', padding: 16 }}>
           <p style={{ fontSize: 12.5, color: '#6b7280', margin: '0 0 12px 0' }}>
@@ -2605,6 +2650,25 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   // Only for a canceled offsite session; anything else saves no reason.
   const [cancelReason, setCancelReason] = useState(existing?.cancel_reason || '');
   const reasonToSave = status === 'Canceled' && roomChoice === OFFSITE ? (cancelReason || null) : null;
+  // Outside hours (Oct 2026): an extra offsite visit outside contracted and
+  // office hours -- any time, any day, shown under the grid. Offsite only.
+  const [outsideHoursFlag, setOutsideHoursFlag] = useState(!!existing?.outside_hours || !!prefill?.outsideHours);
+  const outsideHours = roomChoice === OFFSITE && outsideHoursFlag;
+  // The provider's contracted hours that day, to warn when an Outside hours
+  // visit falls inside them.
+  const [contracted, setContracted] = useState(null);
+  useEffect(() => {
+    if (!outsideHours || !provider || !appointmentDate) { setContracted(null); return undefined; }
+    let alive = true;
+    api.getContractedHours(provider, appointmentDate).then(h => { if (alive) setContracted(h); }).catch(() => { if (alive) setContracted(null); });
+    return () => { alive = false; };
+  }, [outsideHours, provider, appointmentDate]);
+  const insideContracted = (() => {
+    if (!outsideHours || !contracted || !appointmentTime) return false;
+    const start = timeToMinutes(appointmentTime);
+    const end = start + (Number(duration) || 30);
+    return start < timeToMinutes(contracted.end_time) && timeToMinutes(contracted.start_time) < end;
+  })();
   // prefill.makeupFor: booking a make-up for this canceled / no-show
   // appointment -- one time only (no repeat), linked to it on save.
   const makeupFor = !existing ? prefill?.makeupFor || null : null;
@@ -2642,6 +2706,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
       treatment_area: areaAfterStatus(status, treatmentArea),
       appointment_status: status,
       cancel_reason: reasonToSave,
+      outside_hours: outsideHours,
     });
     setMaterializedRecord(created);
     return created;
@@ -2747,6 +2812,12 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
       setError('Patient (selected from the list), date, time, and provider are required.');
       return;
     }
+    // Normal sessions stay within the 8 AM - 6 PM day; only Outside hours
+    // ones can be any time.
+    if (!outsideHours && (appointmentTime < '08:00' || appointmentTime > '18:00')) {
+      setError('Times are 8 AM – 6 PM. For an extra visit outside those hours, choose Offsite and tick Outside hours.');
+      return;
+    }
     // Billing needs to know where an offsite session is (C / S / H).
     if (roomChoice === OFFSITE && status !== 'Canceled' && !offsiteSettingChoice) {
       setError('Choose whether this offsite session is at a center, school or home.');
@@ -2765,6 +2836,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         treatment_area: areaAfterStatus(status, treatmentArea),
         appointment_status: status,
       cancel_reason: reasonToSave,
+      outside_hours: outsideHours,
       };
 
       // An occurrence linked to the NEW rule-based series -- either still
@@ -2799,6 +2871,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 treatment_area: areaAfterStatus(status, treatmentArea),
                 appointment_status: status,
       cancel_reason: reasonToSave,
+      outside_hours: outsideHours,
               });
             } else {
               // Already a real exception row from a previous edit --
@@ -2868,6 +2941,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           duration: Number(duration),
           treatment_area: areaAfterStatus(status, treatmentArea),
           appointment_status: 'Scheduled',
+          outside_hours: outsideHours,
           start_date: appointmentDate,
         });
       } catch (err) {
@@ -2904,6 +2978,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         treatment_area: areaAfterStatus(status, treatmentArea),
         appointment_status: status,
       cancel_reason: reasonToSave,
+      outside_hours: outsideHours,
         fin: groupFin,
         ...(makeupFor ? { makeup_for: makeupFor.id } : {}),
         ...(bookingEval ? { is_eval: true } : {}),
@@ -2954,6 +3029,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           duration: pendingEditRecord.duration,
           treatment_area: pendingEditRecord.treatment_area,
           appointment_status: pendingEditRecord.appointment_status,
+          outside_hours: !!pendingEditRecord.outside_hours,
         });
       } else {
         // Either not linked to a series at all, or already a real
@@ -2998,6 +3074,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           duration: pendingEditRecord.duration,
           treatment_area: pendingEditRecord.treatment_area,
           appointment_status: pendingEditRecord.appointment_status,
+          outside_hours: !!pendingEditRecord.outside_hours,
           start_date: pendingEditRecord.appointment_date,
         });
       } else {
@@ -3276,7 +3353,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.8fr)', gap: '0 12px' }}>
               <DateField label="Date *" value={appointmentDate} onChange={setAppointmentDate} />
-              <TimeField label="Time *" value={appointmentTime} onChange={setAppointmentTime} />
+              <TimeField label="Time *" value={appointmentTime} onChange={setAppointmentTime} anyTime={outsideHours} />
               <div>
                 <label style={labelStyle()}>Minutes</label>
                 <select style={inputStyle()} value={duration} onChange={e => setDuration(e.target.value)}>
@@ -3289,6 +3366,17 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 <span style={{ ...labelStyle(), display: 'block' }}>Setting *</span>
                 <OffsiteSettingButtons value={offsiteSettingChoice} onChange={setOffsiteSettingChoice} />
               </div>
+            )}
+            {roomChoice === OFFSITE && (
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#374151', margin: '0 0 12px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={outsideHoursFlag} onChange={e => setOutsideHoursFlag(e.target.checked)} style={{ marginTop: 2 }} />
+                <span><strong>Outside hours</strong> <span style={{ color: BRAND.muted }}>(an extra visit outside contracted and office hours: any time, any day, shown under the schedule)</span></span>
+              </label>
+            )}
+            {insideContracted && (
+              <p style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 6, padding: '9px 12px', margin: '0 0 12px', fontSize: 12.5, color: '#92400E' }}>
+                This is inside {provider}'s contracted hours ({formatSlotLabel(contracted.start_time)} – {formatSlotLabel(contracted.end_time)}). Is it really outside hours? You can still save.
+              </p>
             )}
             {roomChoice === OFFSITE && (
               <OffsiteLocationField

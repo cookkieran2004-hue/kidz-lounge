@@ -75,13 +75,15 @@ const fmtTime = (t) => { const [h, m] = t.split(':').map(Number); return `${((h 
 
 function Mark({ entry }) {
   if (!entry.mark) {
-    return <span title={`Booked ${fmtTime(entry.time)} · ${entry.status}`} style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: SUBTLE }} />;
+    return <span title={`Booked ${fmtTime(entry.time)} · ${entry.status}${entry.outside_hours ? ' · Outside hours' : ''}`} style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: SUBTLE }} />;
   }
   const s = MARK_STYLE[entry.mark] || MARK_STYLE.X;
   return (
-    <span title={`${s.title} · ${fmtTime(entry.time)} · ${entry.status}`}
-      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, padding: entry.mark.length > 1 ? '0 3px' : 0, boxSizing: 'border-box', borderRadius: 9, background: s.bg, color: s.fg, fontSize: 10, fontWeight: 700, lineHeight: 1 }}>
+    <span title={`${s.title} · ${fmtTime(entry.time)} · ${entry.status}${entry.outside_hours ? ' · Outside hours' : ''}`}
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, padding: entry.mark.length > 1 ? '0 3px' : 0, boxSizing: 'border-box', borderRadius: 9, background: s.bg, color: s.fg, fontSize: 10, fontWeight: 700, lineHeight: 1 }}>
       {entry.mark}
+      {/* Outside hours session (Oct 2026): counted the same, marked with a corner dot. */}
+      {entry.outside_hours && <span aria-label="Outside hours" style={{ position: 'absolute', top: -2, right: -2, width: 7, height: 7, borderRadius: 4, background: INK, border: '1.5px solid white' }} />}
     </span>
   );
 }
@@ -320,6 +322,7 @@ export default function BillingPage() {
                 <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: k, time: '00:00', status: '' }} /> {s.title}</span>
               ))}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: null, time: '00:00', status: '' }} /> Booked, day not over</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: 'X', time: '00:00', status: '', outside_hours: true }} /> Outside hours</span>
               <span>Setting: C center, S school, H home</span>
             </div>
 

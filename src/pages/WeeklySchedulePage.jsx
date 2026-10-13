@@ -10,7 +10,7 @@ import {
   statusColor, roomColor, programColor,
   computeConflicts, getAppointmentTimeRange, ConflictReviewModal,
   ChevronLeft, ChevronRight, CalendarIcon, PlusIcon,
-  AppointmentCard, AppointmentModal, OOOModal, OOOSlotBlock, CalendarPicker, ClosedDaySash, RoomPickerMenu, roomBadgeLabel,
+  AppointmentCard, AppointmentModal, OOOModal, OOOSlotBlock, CalendarPicker, ClosedDaySash, RoomPickerMenu, roomBadgeLabel, OutsideHoursStrip,
   Dot, iconBtnStyle, primaryBtnStyle, secondaryBtnStyle,
   thStyle, tdTimeStyle, tdCellStyle,
 } from './SchedulePage';
@@ -107,6 +107,9 @@ export default function WeeklySchedulePage() {
     if (isMobile) return [toDayInfo(mobileDay)];
     return [0, 1, 2, 3, 4].map(i => toDayInfo(addDays(weekAnchor, i)));
   }, [isMobile, mobileDay, weekAnchor]);
+  // Saturday and Sunday: loaded on desktop only for Outside hours visits,
+  // which can fall on a weekend (Oct 2026); shown under the grid if any.
+  const weekendDays = useMemo(() => (isMobile ? [] : [5, 6].map(i => toDayInfo(addDays(weekAnchor, i)))), [isMobile, weekAnchor]);
 
   const flatContractedGaps = useMemo(() => {
     const flat = [];
@@ -174,9 +177,11 @@ export default function WeeklySchedulePage() {
     setError(null);
     const start = daysToShow[0].dateStr;
     const end = daysToShow[daysToShow.length - 1].dateStr;
+    // Appointments through Sunday, for weekend Outside hours visits.
+    const apptEnd = weekendDays.length ? weekendDays[weekendDays.length - 1].dateStr : end;
     try {
       const [apts, ooo, gaps, closed] = await Promise.all([
-        api.getAppointmentsRange(activeProvider, start, end),
+        api.getAppointmentsRange(activeProvider, start, apptEnd),
         api.getOOORange(activeProvider, start, end),
         fetchContractedGapsWithRetry(activeProvider, start, end),
         api.getClosedDates(start, end).catch(() => []),
@@ -190,7 +195,7 @@ export default function WeeklySchedulePage() {
     }
     setLoading(false);
     setLoadedFor(activeProvider);
-  }, [activeProvider, daysToShow]);
+  }, [activeProvider, daysToShow, weekendDays]);
 
   // ---- Drag and drop (scheduleDrag.js) ----
   const [dropToast, setDropToast] = useState(null);
@@ -266,6 +271,8 @@ export default function WeeklySchedulePage() {
     const g = {};
     daysToShow.forEach(d => { g[d.dateStr] = {}; });
     appointments.forEach(apt => {
+      // Outside hours visits go under the grid (they'd land in the last row).
+      if (apt.outside_hours) return;
       const dayBucket = g[apt.appointment_date];
       if (!dayBucket) return;
       // The row it starts in: the latest half-hour row at or before its time.
@@ -733,6 +740,31 @@ export default function WeeklySchedulePage() {
               style={{ left: `calc(64px + (100% - 64px) * ${i} / ${daysToShow.length})`, width: `calc((100% - 64px) / ${daysToShow.length})` }}
             />
           ))}
+          {/* Outside hours visits (Oct 2026): under each day, then any on the weekend. */}
+          {appointments.some(a => a.outside_hours) && (
+            <div style={{ borderTop: '1px solid #eef0f3', background: '#fafbfc' }}>
+              {daysToShow.some(d => appointments.some(a => a.outside_hours && a.appointment_date === d.dateStr)) && (
+                <div style={{ display: 'grid', gridTemplateColumns: `64px repeat(${daysToShow.length}, minmax(0, 1fr))`, alignItems: 'start' }}>
+                  <div style={{ padding: '10px 6px', fontSize: 10.5, fontWeight: 700, color: '#6b7280', lineHeight: 1.25 }}>Outside hours</div>
+                  {daysToShow.map(d => (
+                    <div key={d.dateStr} style={{ padding: 4, minWidth: 0 }}>
+                      <OutsideHoursStrip compact title={null}
+                        appointments={appointments.filter(a => a.outside_hours && a.appointment_date === d.dateStr)}
+                        onOpen={(apt) => { setEditingAppointment(apt); setShowModal(true); }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {weekendDays.map(d => (
+                <div key={d.dateStr} style={{ padding: '0 8px 8px' }}>
+                  <OutsideHoursStrip
+                    title={`${d.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} · Outside hours`}
+                    appointments={appointments.filter(a => a.outside_hours && a.appointment_date === d.dateStr)}
+                    onOpen={(apt) => { setEditingAppointment(apt); setShowModal(true); }} />
+                </div>
+              ))}
+            </div>
+          )}
           </div>
         </div>
       )}
