@@ -52,11 +52,15 @@ const helpStyle = { fontSize: 12, color: MUTED, marginTop: 4 };
 // ---------- profile tab ----------
 function ProfileDetails({ profile, onUpdated, isMobile }) {
   const savedPhone = formatPhone(profile.phone);
-  const [form, setForm] = useState({ preferred_name: profile.preferred_name || '', phone: savedPhone, email: profile.email || '' });
+  // Date of birth (once the 2026-10-31 database update has run).
+  const hasDob = 'date_of_birth' in profile;
+  const savedDob = profile.date_of_birth ? String(profile.date_of_birth).slice(0, 10) : '';
+  const [form, setForm] = useState({ preferred_name: profile.preferred_name || '', phone: savedPhone, email: profile.email || '', ...(hasDob ? { date_of_birth: savedDob } : {}) });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
-  const dirty = form.preferred_name !== (profile.preferred_name || '') || form.phone !== savedPhone || form.email !== (profile.email || '');
+  const dirty = form.preferred_name !== (profile.preferred_name || '') || form.phone !== savedPhone || form.email !== (profile.email || '')
+    || (hasDob && form.date_of_birth !== savedDob);
   const set = (k) => (e) => { setSaved(false); setForm(f => ({ ...f, [k]: e.target.value })); };
   const setPhone = (e) => { setSaved(false); setForm(f => ({ ...f, phone: formatPhone(e.target.value) })); };
   const phoneCount = phoneDigits(form.phone).length;
@@ -110,6 +114,13 @@ function ProfileDetails({ profile, onUpdated, isMobile }) {
           <label style={labelStyle} htmlFor="kl-me-email">Email</label>
           <input id="kl-me-email" type="email" style={fieldStyle(isMobile)} value={form.email} onChange={set('email')} placeholder="you@example.com" />
         </div>
+        {hasDob && (
+          <div>
+            <label style={labelStyle} htmlFor="kl-me-dob">Date of birth</label>
+            <DateField id="kl-me-dob" style={fieldStyle(isMobile)} yearNav clearable value={form.date_of_birth} onChange={v => { setSaved(false); setForm(f => ({ ...f, date_of_birth: v || '' })); }} />
+            <div style={helpStyle}>Only the month and day show in the Provider directory.</div>
+          </div>
+        )}
       </div>
       {error && <p role="alert" style={{ color: '#B42318', fontSize: 12.5, margin: '0 0 10px' }}>{error}</p>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 16, borderTop: `1px solid ${HAIRLINE}` }}>

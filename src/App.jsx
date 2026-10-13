@@ -29,6 +29,7 @@ import WhatsNewNotifier from './WhatsNewNotifier';
 import BillingPage from './pages/BillingPage';
 import PowerFormPage from './pages/PowerFormPage';
 import PowerFormsPage from './pages/PowerFormsPage';
+import ProviderDirectoryPage from './pages/ProviderDirectoryPage';
 
 function AppShell() {
   return (
@@ -57,6 +58,8 @@ function AppShell() {
           <Route path="/admin/staff/:username" element={<RequireAdmin><StaffProfilePage /></RequireAdmin>} />
             {/* Power Forms builder (footer link, Admins and Developers) */}
             <Route path="/power-forms" element={<RequireAdmin><PowerFormsPage /></RequireAdmin>} />
+            {/* Provider directory (footer link, everyone signed in) */}
+            <Route path="/provider-directory" element={<RequireAuth><ProviderDirectoryPage /></RequireAuth>} />
             {/* Help & Support: open to everyone, signed in or not */}
             <Route path="/support" element={<SupportPage />} />
             <Route path="/manual" element={<ManualPage />} />

@@ -130,6 +130,9 @@ export const api = {
   updateWaitlistEntry: (id, record) => request(`/waitlist/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
   deleteWaitlistEntry: (id) => request(`/waitlist/${id}`, { method: 'DELETE' }),
 
+  // The provider directory (footer, everyone signed in; routes/providers.js).
+  getProviderDirectory: () => request('/providers/directory'),
+
   // ---- Power Forms (kidz-lounge-api routes/powerForms.js) ----
   getPowerFormSetup: () => request('/power-forms/setup'),
   getPowerFormTemplates: (all) => request(`/power-forms/templates${all ? '?all=1' : ''}`),

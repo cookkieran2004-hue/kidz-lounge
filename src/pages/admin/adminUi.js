@@ -108,6 +108,8 @@ export function staffSavePayload(staff, overrides, adminPassword) {
     // free-text phone doesn't block an unrelated save.
     ...(overrides && 'phone' in overrides && (overrides.phone || '') !== (staff.phone || '') ? { phone: overrides.phone } : {}),
     ...(overrides && 'email' in overrides && (overrides.email || '').trim() !== (staff.email || '') ? { email: (overrides.email || '').trim() } : {}),
+    // Date of birth likewise, only when changed ('' clears it).
+    ...(overrides && 'date_of_birth' in overrides && (overrides.date_of_birth || '') !== dateOnly(staff.date_of_birth) ? { date_of_birth: overrides.date_of_birth || '' } : {}),
     admin_password: adminPassword,
   };
 }

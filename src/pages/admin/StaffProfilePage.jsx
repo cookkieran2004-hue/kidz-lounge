@@ -94,11 +94,14 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
   const [notice, setNotice] = useState(null);
   const [error, setError] = useState(null);
 
+  // Date of birth (once the 2026-10-31 database update has run).
+  const hasDob = 'date_of_birth' in staff;
   const startEdit = () => {
     setForm({
       first_name: staff.first_name || '', middle_name: staff.middle_name || '', last_name: staff.last_name || '',
       preferred_name: staff.preferred_name || '', position: staff.position || '', hire_date: dateOnly(staff.hire_date), role: staff.role, employment_type: staff.employment_type || 'neither',
       phone: staff.phone ? (phoneDigits(staff.phone).length === 10 ? formatPhone(staff.phone) : staff.phone) : '', email: staff.email || '',
+      ...(hasDob ? { date_of_birth: dateOnly(staff.date_of_birth) } : {}),
     });
     setEditing(true); setNotice(null); setError(null);
   };
@@ -168,6 +171,7 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
           <Detail label="Preferred name" value={staff.preferred_name} />
           <Detail label="Position" value={staff.position} />
           <Detail label="Hire date" value={formatLongDate(staff.hire_date)} />
+          {hasDob && <Detail label="Date of birth" value={formatLongDate(staff.date_of_birth)} />}
           <Detail label="Role" value={roleLabel(staff.role)} />
           <Detail label="Employment type" value={employmentLabel(staff.employment_type)} />
           <Detail label="Phone" value={staff.phone ? (phoneDigits(staff.phone).length === 10 ? formatPhone(staff.phone) : staff.phone) : null} />
@@ -188,6 +192,7 @@ function AccountSection({ staff, providers, isSelf, isMobile, onSaved }) {
             <label style={{ display: 'block' }}><span style={labelStyle()}>Preferred name</span><input style={inputStyle()} value={form.preferred_name} onChange={set('preferred_name')} placeholder="Leave empty to use their first name" /></label>
             <label style={{ display: 'block' }}><span style={labelStyle()}>Position</span><input style={inputStyle()} value={form.position} onChange={set('position')} /></label>
             <div><label htmlFor="kl-profile-hire-date" style={labelStyle()}>Hire date</label><DateField id="kl-profile-hire-date" yearNav clearable style={inputStyle()} value={form.hire_date || ''} onChange={v => setForm(f => ({ ...f, hire_date: v }))} /></div>
+            {hasDob && <div><label htmlFor="kl-profile-dob" style={labelStyle()}>Date of birth</label><DateField id="kl-profile-dob" yearNav clearable style={inputStyle()} value={form.date_of_birth || ''} onChange={v => setForm(f => ({ ...f, date_of_birth: v || '' }))} /></div>}
             <div>
               <label style={{ display: 'block' }}>
                 <span style={labelStyle()}>Role</span>
