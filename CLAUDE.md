@@ -14,6 +14,7 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
   - **Frontend:** Vercel. Check `https://api.github.com/repos/cookkieran2004-hue/kidz-lounge/commits/<sha>/status` until it reports `success`.
   - **API:** GitHub Actions to Lambda.
   - When both change, push the **API first**.
+  - **Release after clinic hours** (Kieran, Oct 13 2026): pushes go out after 6 PM on weekdays or at weekends, so nobody's open tab changes mid-session. Urgent fixes are the exception. When handing over changes during the day, remind him to push after hours.
   - End commit messages with the `Co-Authored-By` trailer.
 - **Kieran pushes, not Claude** (since Sept 27 2026). Build and verify, report what changed, and list the changed files (flag new untracked files, say when the API must go first, and give any migration command). Don't commit or push, and don't offer to. Push only when he explicitly asks.
   - When he says something "isn't working" right after pushing, check the deploy status first and remind him to reload: an open tab keeps the old bundle.
@@ -126,6 +127,15 @@ The backend is the sibling repo `../kidz-lounge-api`, a single AWS Lambda with P
 - The support inbox is for **Developers only** (`canSeeSupportTickets` in `src/supportCount.js`, mirrored in the API).
 - **Comments explain *why*,** often including the bug a line prevents. Keep that style.
 - `.env` is tracked in git despite being a secrets file. It currently holds only `VITE_API_URL`. Never add real secrets to it, since `VITE_*` values ship to the browser anyway.
+
+## Generic-ready code (white-label groundwork, Oct 2026)
+
+Kieran plans to deploy this app for other pediatric therapy clinics, one deployment each (plan: "White-label plan" doc). Until that's built, new code mustn't add more Kidz Lounge-specific details:
+
+- **Never type the clinic's name or contact details.** Use `CLINIC` from `src/brand.js` (`name`, `shortName`, `logo`, `letterhead`). Don't confuse it with `BRAND`, the purple palette from `StaffPage.jsx`. Older hard-coded mentions stay until the generic version is built.
+- **No new hex values in components.** Use the existing palettes (see Styling: `uiTokens.js`, `adminUi.js`, `BRAND`) and add a named token if one is missing. Schedule colors still come from `timeTypes.js`.
+- **Lists a clinic would set** (rooms, session lengths, credentials, billing codes) live in ONE exported constant. Import it; never copy it into another file.
+- **Optional features stay self-contained** (their own page, components and API route) so they can be switched off per clinic. The planned add-on modules are EI-Hub, the Billing sheet, Time off and Power Forms.
 
 ## Billing (Oct 2026)
 

@@ -1,5 +1,6 @@
 import { INK } from './uiTokens';
 import { loadPdfMake } from './manualPdf';
+import { CLINIC } from './brand';
 
 // Helpers for Power Forms (PowerFormFields.jsx, PowerFormPage.jsx,
 // PowerFormsChartTab.jsx): the fields' input look, an answer as text, and
@@ -10,17 +11,8 @@ export const pfInputStyle = {
   fontSize: 15, fontFamily: 'inherit', color: INK, background: 'white',
 };
 
-// The letterhead on the parent's page and the PDF copies, as on the paper
-// forms (Kieran, Oct 2026: "full letterhead").
-export const LETTERHEAD = {
-  name: 'The Kidz Lounge Related Services, LLC',
-  lines: [
-    '82-12 151st Ave, Howard Beach, NY 11414 · (718) 848-0875',
-    'kidzlounge.net · thekidzloungeny@gmail.com',
-    'www.confidentkidzny.com · www.languageloungeny.com',
-  ],
-  tagline: 'Providing Occupational, Physical and Speech Therapy. We also offer classes for kidz.',
-};
+// The letterhead on the parent's page and the PDF copies (src/brand.js).
+export const LETTERHEAD = CLINIC.letterhead;
 
 // A date of birth as on a chart label: 02/11/2023.
 export const labelDate = (iso) => (iso ? `${iso.slice(5, 7)}/${iso.slice(8, 10)}/${iso.slice(0, 4)}` : '');
