@@ -58,7 +58,7 @@ function logoDataUrl() {
   return logoPromise;
 }
 
-// patient: { Name, Date_of_Birth, ID_Number } (the chart's patient).
+// patient: { Name, Date_of_Birth, mrn } (the chart's patient).
 export async function buildPowerFormPdf(form, patient) {
   const dob = patient.Date_of_Birth ? String(patient.Date_of_Birth).slice(0, 10) : '';
   const [pdfMake, logo] = await Promise.all([loadPdfMake(), logoDataUrl()]);
@@ -82,9 +82,8 @@ export async function buildPowerFormPdf(form, patient) {
           width: 190,
           table: { widths: ['*'], body: [[{
             stack: [
-              { text: 'Patient', fontSize: 8, color: '#71717A' },
               { text: patient.Name || '', fontSize: 13, bold: true, margin: [0, 1, 0, 2] },
-              { text: [dob && `DOB ${labelDate(dob)}`, patient.ID_Number && `ID # ${patient.ID_Number}`].filter(Boolean).join('   '), fontSize: 9.5 },
+              { text: [dob && `DOB ${labelDate(dob)}`, patient.mrn && `MRN ${patient.mrn}`].filter(Boolean).join('   '), fontSize: 9.5 },
             ],
             margin: [6, 5, 6, 5],
           }]] },

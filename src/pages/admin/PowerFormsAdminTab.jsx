@@ -322,7 +322,7 @@ function TemplateEditor({ template, setup, onDone, onCancel }) {
             <div style={{ ...card, padding: '22px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 6 }}>
                 <h3 style={{ fontSize: 26, fontWeight: 650, margin: '2px 0 0', color: INK, lineHeight: 1.25, flex: '1 1 260px' }}>{name || 'Untitled form'}</h3>
-                <PatientLabel label={{ name: 'Sample Child', dob: '2023-01-15', id_number: '1234567' }} />
+                <PatientLabel label={{ name: 'Sample Child', dob: '2023-01-15', mrn: '10000001' }} />
               </div>
               {intro && <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.5, whiteSpace: 'pre-wrap', color: INK }}>{intro}</p>}
               <PowerFormInputs fields={fields.filter(f => f.label.trim()).map(f => ({ ...f, options: (f.options || []).filter(o => o.trim()) }))}

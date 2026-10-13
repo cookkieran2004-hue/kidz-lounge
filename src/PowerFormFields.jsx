@@ -175,17 +175,16 @@ export function PowerFormLetterhead() {
 }
 
 // Who the form is for, shown like a label stuck on a chart: the child's
-// name, date of birth and ID #. label: { name, dob ('YYYY-MM-DD'), id_number }.
+// name, date of birth and MRN. label: { name, dob ('YYYY-MM-DD'), mrn }.
 export function PatientLabel({ label }) {
   if (!label?.name) return null;
   return (
     <div role="note" aria-label={`This form is for ${label.name}`}
       style={{ border: `1.5px solid ${INK}`, borderRadius: 4, padding: '7px 12px 8px', background: 'white', minWidth: 200, maxWidth: '100%', boxSizing: 'border-box' }}>
-      <div style={{ fontSize: 11.5, color: MUTED }}>Patient</div>
       <div style={{ fontSize: 17, fontWeight: 700, color: INK, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{label.name}</div>
       <div style={{ fontSize: 13, color: INK, marginTop: 2, display: 'flex', gap: '2px 14px', flexWrap: 'wrap', ...NUMERIC }}>
         {label.dob && <span>DOB {labelDate(label.dob)}</span>}
-        {label.id_number && <span>ID # {label.id_number}</span>}
+        {label.mrn && <span>MRN {label.mrn}</span>}
       </div>
     </div>
   );
