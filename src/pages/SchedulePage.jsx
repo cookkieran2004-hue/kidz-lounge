@@ -159,6 +159,19 @@ function offsiteSetting(area) {
   if (!isOffsite(area)) return '';
   return area.match(OFFSITE_RE)[1] || '';
 }
+// The room a save keeps: canceling frees an in-office room, but an offsite
+// session keeps its location, so billing's Setting column (C / S / H) still
+// knows where it was (Kieran, Oct 2026).
+function areaAfterStatus(status, area) {
+  return status === 'Canceled' && !isOffsite(area) ? null : (area || null);
+}
+// Why a canceled offsite session didn't happen (optional). Billing shows
+// Holiday as H and Emergency Closure as Z, like an office closure; Other = A.
+// Mirrors kidz-lounge-api lib/cancelReason.js.
+const CANCEL_REASONS = [['holiday', 'Holiday'], ['emergency', 'Emergency Closure'], ['other', 'Other - see comments']];
+// Short form for the small status badge on a card.
+const CANCEL_REASON_SHORT = { holiday: 'Holiday', emergency: 'Emergency', other: 'Other' };
+
 export function makeOffsiteArea(location, setting = '') {
   const loc = (location || '').trim();
   const head = OFFSITE_SETTINGS.includes(setting) ? `${OFFSITE} (${setting})` : OFFSITE;
@@ -611,7 +624,7 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
             fontSize: 10, fontWeight: 600, borderRadius: 10, padding: '1px 7px', cursor: onStatusClick ? 'pointer' : 'default',
             background: `color-mix(in srgb, ${color} 16%, white)`, color, whiteSpace: 'nowrap', display: 'inline-block',
           }}>
-          {apt.appointment_status}
+          {apt.appointment_status}{apt.appointment_status === 'Canceled' && CANCEL_REASON_SHORT[apt.cancel_reason] ? ` · ${CANCEL_REASON_SHORT[apt.cancel_reason]}` : ''}
         </span>
       </div>
       {alertCount > 0 && (
@@ -1606,7 +1619,7 @@ function ScheduleApp() {
 
   const handleStatusChange = async (apt, newStatus) => {
     setStatusDropdown(null);
-    await applyQuickEdit(apt, { appointment_status: newStatus, treatment_area: newStatus === 'Canceled' ? null : apt.treatment_area });
+    await applyQuickEdit(apt, { appointment_status: newStatus, treatment_area: areaAfterStatus(newStatus, apt.treatment_area) });
     loadDayRef.current?.();
   };
 
@@ -2589,6 +2602,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   };
   const treatmentArea = roomChoice === OFFSITE ? makeOffsiteArea(offsiteLocationText, offsiteSettingChoice) : roomChoice;
   const [status, setStatus] = useState(existing ? (existing.appointment_status || STATUS_OPTIONS[0]) : STATUS_OPTIONS[0]);
+  // Only for a canceled offsite session; anything else saves no reason.
+  const [cancelReason, setCancelReason] = useState(existing?.cancel_reason || '');
+  const reasonToSave = status === 'Canceled' && roomChoice === OFFSITE ? (cancelReason || null) : null;
   // prefill.makeupFor: booking a make-up for this canceled / no-show
   // appointment -- one time only (no repeat), linked to it on save.
   const makeupFor = !existing ? prefill?.makeupFor || null : null;
@@ -2623,8 +2639,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
       provider,
       appointment_time: appointmentTime,
       duration: Number(duration),
-      treatment_area: status === 'Canceled' ? null : (treatmentArea || null),
+      treatment_area: areaAfterStatus(status, treatmentArea),
       appointment_status: status,
+      cancel_reason: reasonToSave,
     });
     setMaterializedRecord(created);
     return created;
@@ -2679,7 +2696,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
 
   const handleStatusSelect = (newStatus) => {
     setStatus(newStatus);
-    if (newStatus === 'Canceled') setRoomChoice('');
+    if (newStatus === 'Canceled' && roomChoice !== OFFSITE) setRoomChoice('');
   };
 
   useEffect(() => {
@@ -2745,8 +2762,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         appointment_date: appointmentDate,
         appointment_time: appointmentTime,
         duration: Number(duration),
-        treatment_area: status === 'Canceled' ? null : (treatmentArea || null),
+        treatment_area: areaAfterStatus(status, treatmentArea),
         appointment_status: status,
+      cancel_reason: reasonToSave,
       };
 
       // An occurrence linked to the NEW rule-based series -- either still
@@ -2778,8 +2796,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 provider,
                 appointment_time: appointmentTime,
                 duration: Number(duration),
-                treatment_area: status === 'Canceled' ? null : (treatmentArea || null),
+                treatment_area: areaAfterStatus(status, treatmentArea),
                 appointment_status: status,
+      cancel_reason: reasonToSave,
               });
             } else {
               // Already a real exception row from a previous edit --
@@ -2847,7 +2866,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           weekday: baseDate.getDay(),
           appointment_time: appointmentTime,
           duration: Number(duration),
-          treatment_area: status === 'Canceled' ? null : (treatmentArea || null),
+          treatment_area: areaAfterStatus(status, treatmentArea),
           appointment_status: 'Scheduled',
           start_date: appointmentDate,
         });
@@ -2882,8 +2901,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         appointment_date: dateStr,
         appointment_time: appointmentTime,
         duration: Number(duration),
-        treatment_area: status === 'Canceled' ? null : (treatmentArea || null),
+        treatment_area: areaAfterStatus(status, treatmentArea),
         appointment_status: status,
+      cancel_reason: reasonToSave,
         fin: groupFin,
         ...(makeupFor ? { makeup_for: makeupFor.id } : {}),
         ...(bookingEval ? { is_eval: true } : {}),
@@ -3306,10 +3326,21 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             >
               {statusChoices.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            {status === 'Canceled' && (
+            {status === 'Canceled' && roomChoice !== OFFSITE && (
               <p style={{ fontSize: 11.5, color: BRAND.muted, marginTop: -8, marginBottom: 12 }}>
                 Room assignment will be cleared since this appointment is canceled.
               </p>
+            )}
+            {status === 'Canceled' && roomChoice === OFFSITE && (
+              <select
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                aria-label="Cancellation reason (optional)"
+                style={{ ...inputStyle(), width: 'auto', minWidth: 200, display: 'inline-block', cursor: 'pointer' }}
+              >
+                <option value="">Reason (optional)</option>
+                {CANCEL_REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
             )}
             {/* Make-ups: a canceled / no-show appointment (as saved) can get one.
                 Not the HOLD placeholder: there's no patient session to make up. */}

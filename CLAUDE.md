@@ -184,6 +184,7 @@ Kieran plans to deploy this app for other pediatric therapy clinics, one deploym
 
 - Picking Offsite (appointment window or the card's quick room menu) requires Center, School or Home (`OffsiteSettingButtons`). It's stored in `treatment_area` as "Offsite (School): location" / "Offsite (Home)" (`makeOffsiteArea(location, setting)`, parsed by `isOffsite` / `offsiteLocation` / `offsiteSetting`); older "Offsite" / "Offsite: location" values still read as offsite with no setting. Billing's Setting column shows C / S / H from it (in-office rooms are C). Typing or picking a location that's been saved before fills its setting in (`useOffsiteSettingLookup`, from `GET /appointments/offsite-settings`: the latest setting per lower-cased location across all appointments and weekly series); it can still be changed.
 
+- **Canceling an offsite session keeps its location** (`areaAfterStatus` in `SchedulePage.jsx`); canceling an in-office session still frees the room. A canceled offsite session can have an optional reason (`CANCEL_REASONS`: Holiday, Emergency Closure, Other - see comments) saved as `cancel_reason`; the card shows "Canceled · Holiday", and billing marks Holiday H and Emergency Closure Z (Oct 2026).
 ## Evals (Oct 2026)
 
 - Booked only from the patient chart's Appointments tab (**Book eval** opens `AppointmentModal` with `prefill.isEval`: title "Book Eval", no repeat, sent with `is_eval: true`). Cards and chart rows show a blue **Eval** tag (`apt.is_eval`); billing shows **E** (key "Eval").
