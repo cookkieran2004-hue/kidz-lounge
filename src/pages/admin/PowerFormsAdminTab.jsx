@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { useStaffNames } from '../../staffDirectory';
-import { PowerFormInputs, PowerFormField } from '../../PowerFormFields';
+import { PowerFormInputs, PowerFormField, PowerFormLetterhead } from '../../PowerFormFields';
+import { startingAnswers } from '../../powerForms';
 import { Tag } from '../../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, ACCENT, TONES, NUMERIC, buttonStyle, choiceStyle } from '../../uiTokens';
 
@@ -64,6 +65,52 @@ function OptionsEditor({ field, onChange }) {
   );
 }
 
+// What a question starts with (filled in by the office before it's sent;
+// the parent can change it). Not for dates, signatures or headings.
+function StartingAnswer({ field, onChange }) {
+  const t = field.type;
+  const options = (field.options || []).filter(o => o.trim());
+  const row = { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13, color: MUTED };
+  if (t === 'text' || t === 'textarea' || t === 'email' || t === 'phone') {
+    return (
+      <label style={row}>
+        Starts filled in with
+        <input value={field.default || ''} onChange={e => onChange(e.target.value || undefined)} placeholder="Nothing (optional)"
+          style={{ ...input, flex: '1 1 200px', width: 'auto', padding: '5px 8px', fontSize: 13 }} />
+      </label>
+    );
+  }
+  if (t === 'choice' || t === 'yesno') {
+    const list = t === 'yesno' ? [['yes', 'Yes'], ['no', 'No']] : options.map(o => [o, o]);
+    return (
+      <label style={row}>
+        Starts with
+        <select value={field.default || ''} onChange={e => onChange(e.target.value || undefined)} style={{ ...input, width: 'auto', padding: '5px 8px', fontSize: 13 }}>
+          <option value="">Nothing picked</option>
+          {list.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </label>
+    );
+  }
+  if (t === 'checkboxes' && options.length) {
+    const on = Array.isArray(field.default) ? field.default : [];
+    return (
+      <div style={row}>
+        Starts ticked:
+        {options.map(o => (
+          <label key={o} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: INK }}>
+            <input type="checkbox" checked={on.includes(o)} onChange={e => {
+              const next = e.target.checked ? options.filter(x => x === o || on.includes(x)) : on.filter(x => x !== o);
+              onChange(next.length ? next : undefined);
+            }} /> {o}
+          </label>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 // The question being edited.
 function QuestionEditor({ field, index, count, setup, onChange, onMove, onDuplicate, onRemove }) {
   const [confirm, setConfirm] = useState(false);
@@ -71,7 +118,7 @@ function QuestionEditor({ field, index, count, setup, onChange, onMove, onDuplic
   const heading = field.type === 'heading';
   const chartChoices = Object.entries(setup.chart_fields).filter(([, v]) => v.types.includes(field.type));
   const changeType = (type) => {
-    const patch = { type };
+    const patch = { type, default: undefined };
     if (!setup.chart_fields[field.chart_field]?.types.includes(type)) patch.chart_field = '';
     if (hasOptions(type) && !(field.options || []).length) patch.options = ['Option 1'];
     set(patch);
@@ -96,6 +143,7 @@ function QuestionEditor({ field, index, count, setup, onChange, onMove, onDuplic
       {!heading && !hasOptions(field.type) && (
         <div style={{ fontSize: 13.5, color: SUBTLE, borderBottom: `1px dashed ${HAIRLINE}`, padding: '4px 2px 6px', maxWidth: 360 }}>{ANSWER_HINT[field.type]}</div>
       )}
+      <StartingAnswer field={field} onChange={v => set({ default: v })} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${HAIRLINE}`, paddingTop: 12 }}>
         {chartChoices.length > 0 && (
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: INK }}>
@@ -140,7 +188,7 @@ function QuestionPreview({ field, setup }) {
   return (
     <div>
       <div aria-hidden="true" style={{ pointerEvents: 'none', opacity: empty ? 0.6 : 1 }}>
-        <PowerFormField field={shown} value={undefined} onChange={() => {}} disabled />
+        <PowerFormField field={shown} value={field.default} onChange={() => {}} disabled />
       </div>
       {field.chart_field && (
         <p style={{ margin: '10px 0 0', fontSize: 12, color: MUTED }}>Updates chart: {setup.chart_fields[field.chart_field]?.label}</p>
@@ -198,6 +246,9 @@ function TemplateEditor({ template, setup, onDone, onCancel }) {
         const g = { ...f, chart_field: f.chart_field || null };
         if (hasOptions(f.type)) g.options = (f.options || []).map(o => o.trim()).filter(Boolean);
         else delete g.options;
+        // A starting answer whose option was renamed or removed is dropped.
+        if (f.type === 'choice' && !g.options.includes(g.default)) delete g.default;
+        if (f.type === 'checkboxes') g.default = (g.default || []).filter(o => g.options.includes(o));
         return g;
       }),
     };
@@ -224,7 +275,7 @@ function TemplateEditor({ template, setup, onDone, onCancel }) {
         <span style={{ flex: 1 }} />
         <div role="tablist" aria-label="View" style={{ display: 'inline-flex', gap: 6 }}>
           <button type="button" role="tab" aria-selected={!preview} onClick={() => setPreview(false)} style={choiceStyle(!preview)}>Edit</button>
-          <button type="button" role="tab" aria-selected={preview} onClick={() => { setPreviewValues({}); setPreview(true); }} style={choiceStyle(preview)}>Preview</button>
+          <button type="button" role="tab" aria-selected={preview} onClick={() => { setPreviewValues(startingAnswers(fields)); setPreview(true); }} style={choiceStyle(preview)}>Preview</button>
         </div>
         <button type="button" onClick={save} disabled={busy} style={buttonStyle('primary')}>{busy ? 'Saving...' : 'Save form'}</button>
       </div>
@@ -240,7 +291,7 @@ function TemplateEditor({ template, setup, onDone, onCancel }) {
       {preview ? (
         <div style={{ background: PAGE_BG, borderRadius: 8, padding: '20px 16px' }}>
           <div style={{ maxWidth: 680, margin: '0 auto' }}>
-            <img src="/logo.png" alt="The Kidz Lounge" style={{ display: 'block', height: 44, width: 'auto', marginBottom: 16 }} />
+            <PowerFormLetterhead />
             <div style={{ ...card, padding: '22px 20px' }}>
               <h3 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 6px', color: INK }}>{name || 'Untitled form'}</h3>
               {intro && <p style={{ margin: '0 0 18px', fontSize: 15, lineHeight: 1.5, whiteSpace: 'pre-wrap', color: INK }}>{intro}</p>}
@@ -309,6 +360,106 @@ function TemplateEditor({ template, setup, onDone, onCancel }) {
   );
 }
 
+// A package: forms sent to a family as one link (e.g. Initial Clearance
+// Forms). When sending, staff can untick forms the family doesn't need.
+function PackageEditor({ pkg, templates, onDone, onCancel }) {
+  const [name, setName] = useState(pkg?.name || '');
+  const [ids, setIds] = useState(pkg?.template_ids || []);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const byId = new Map(templates.map(t => [t.id, t]));
+  const addable = templates.filter(t => !t.archived && !ids.includes(t.id));
+  const move = (i, d) => setIds(l => { const n = [...l]; [n[i], n[i + d]] = [n[i + d], n[i]]; return n; });
+  const save = async () => {
+    setBusy(true); setError(null);
+    try {
+      if (pkg) await api.updatePowerFormPackage(pkg.id, { name, template_ids: ids });
+      else await api.createPowerFormPackage({ name, template_ids: ids });
+      onDone();
+    } catch (err) { setError(err.message); setBusy(false); }
+  };
+  const small = { padding: '4px 9px', fontSize: 13 };
+  return (
+    <div style={{ ...card, display: 'grid', gap: 12 }}>
+      <input aria-label="Package name" value={name} placeholder="Package name" onChange={e => setName(e.target.value)}
+        style={{ ...input, border: 'none', borderBottom: `1px solid ${HAIRLINE}`, borderRadius: 0, padding: '6px 2px', fontSize: 18, fontWeight: 600 }} />
+      <div style={{ fontSize: 13, color: MUTED }}>Forms, in the order the family fills them in</div>
+      <ol style={{ margin: 0, paddingLeft: 22, display: 'grid', gap: 6 }}>
+        {ids.map((id, i) => (
+          <li key={id} style={{ fontSize: 13.5, color: INK }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 200px', minWidth: 0 }}>{byId.get(id)?.name || 'A deleted form'}{byId.get(id)?.archived ? ' (archived, left out when sending)' : ''}</span>
+              <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)} style={buttonStyle('secondary', small)}>↑</button>
+              <button type="button" aria-label="Move down" disabled={i === ids.length - 1} onClick={() => move(i, 1)} style={buttonStyle('secondary', small)}>↓</button>
+              <button type="button" onClick={() => setIds(l => l.filter(x => x !== id))} style={buttonStyle('text', { ...small, color: TONES.danger.fg })}>Remove</button>
+            </div>
+          </li>
+        ))}
+      </ol>
+      {addable.length > 0 && (
+        <select aria-label="Add a form" value="" onChange={e => e.target.value && setIds(l => [...l, Number(e.target.value)])} style={{ ...input, width: 'auto', maxWidth: '100%' }}>
+          <option value="">+ Add a form</option>
+          {addable.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      )}
+      {error && <p role="alert" style={{ margin: 0, fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" onClick={save} disabled={busy} style={buttonStyle('primary')}>{busy ? 'Saving...' : 'Save package'}</button>
+        <button type="button" onClick={onCancel} disabled={busy} style={buttonStyle('secondary')}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function PackagesSection({ templates, showArchived }) {
+  const nameOf = useStaffNames();
+  const [packages, setPackages] = useState(null);
+  const [editing, setEditing] = useState(null); // 'new' | package
+  const [error, setError] = useState(null);
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    api.getPowerFormPackages(true)
+      .then(k => { if (alive) setPackages(k || []); })
+      .catch(err => { if (alive) setError(err.message); });
+    return () => { alive = false; };
+  }, [reload]);
+  const archive = async (k, archived) => {
+    try { await api.archivePowerFormPackage(k.id, archived); setReload(n => n + 1); } catch (err) { setError(err.message); }
+  };
+  const byId = new Map(templates.map(t => [t.id, t]));
+  const shown = (packages || []).filter(k => showArchived || !k.archived);
+  return (
+    <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: INK, margin: 0 }}>Packages</h2>
+        {!editing && <button type="button" onClick={() => setEditing('new')} style={buttonStyle('secondary', { marginLeft: 'auto' })}>New package</button>}
+      </div>
+      {error && <p role="alert" style={{ margin: 0, fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
+      {editing && <PackageEditor pkg={editing === 'new' ? null : editing} templates={templates}
+        onCancel={() => setEditing(null)} onDone={() => { setEditing(null); setReload(n => n + 1); }} />}
+      {packages && shown.length === 0 && !editing && <p style={{ margin: 0, fontSize: 13, color: MUTED }}>No packages yet. A package sends several forms to a family as one link.</p>}
+      {shown.length > 0 && (
+        <div style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 8, overflow: 'hidden', background: 'white' }}>
+          {shown.map((k, i) => (
+            <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderTop: i ? `1px solid ${HAIRLINE}` : 'none', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: k.archived ? MUTED : INK }}>{k.name} {k.archived && <Tag>Archived</Tag>}</div>
+                <div style={{ fontSize: 12, color: MUTED }}>
+                  {k.template_ids.length} forms: {k.template_ids.map(id => byId.get(id)?.name).filter(Boolean).join(' · ')}
+                </div>
+                <div style={{ fontSize: 12, color: MUTED, ...NUMERIC }}>{k.updated_at ? `edited ${fmt(k.updated_at)} by ${nameOf(k.updated_by)}` : `made ${fmt(k.created_at)} by ${nameOf(k.created_by)}`}</div>
+              </div>
+              <button type="button" onClick={() => setEditing(k)} disabled={!!editing} style={buttonStyle('secondary')}>Edit</button>
+              <button type="button" onClick={() => archive(k, !k.archived)} style={buttonStyle('text')}>{k.archived ? 'Restore' : 'Archive'}</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PowerFormsAdminTab() {
   const nameOf = useStaffNames();
   const [setup, setSetup] = useState(null);
@@ -363,6 +514,7 @@ export default function PowerFormsAdminTab() {
           ))}
         </div>
       )}
+      {setup.packages_available && <PackagesSection templates={templates} showArchived={showArchived} />}
     </div>
   );
 }

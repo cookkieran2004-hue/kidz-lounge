@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { DateField } from './pages/SchedulePage';
 import { formatPhone } from './phone';
 import { INK, MUTED, HAIRLINE, TONES, NUMERIC, buttonStyle } from './uiTokens';
-import { pfInputStyle, answerText } from './powerForms';
+import { pfInputStyle, answerText, LETTERHEAD } from './powerForms';
 
 // Power Forms' fields (kidz-lounge-api lib/powerForms.js): filled in by a
 // parent on the public page (PowerFormPage.jsx) and shown to staff with the
@@ -100,7 +100,8 @@ function FieldInput({ field, value, onChange, error, disabled }) {
     return (
       <div style={{ paddingTop: 6 }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: INK, margin: '0 0 4px' }}>{field.label}</h3>
-        {help}
+        {/* Under a heading is usually policy text to read, so it's full size. */}
+        {field.help && <p style={{ ...helpStyle, fontSize: 14.5, color: INK, lineHeight: 1.55 }}>{field.help}</p>}
       </div>
     );
   }
@@ -154,6 +155,21 @@ function FieldInput({ field, value, onChange, error, disabled }) {
       {help}
       {input}
       {error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg, margin: '5px 0 0' }}>{error}</p>}
+    </div>
+  );
+}
+
+// The letterhead at the top of a form: the logo top left, the practice's
+// details beside it (under it on a phone).
+export function PowerFormLetterhead() {
+  return (
+    <div style={{ display: 'flex', gap: '8px 16px', alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+      <img src="/logo.png" alt="The Kidz Lounge" style={{ display: 'block', height: 56, width: 'auto' }} />
+      <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.45, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, color: INK }}>{LETTERHEAD.name}</div>
+        {LETTERHEAD.lines.map(l => <div key={l}>{l}</div>)}
+        <div style={{ fontStyle: 'italic' }}>{LETTERHEAD.tagline}</div>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,25 @@ export const pfInputStyle = {
   fontSize: 15, fontFamily: 'inherit', color: INK, background: 'white',
 };
 
+// The letterhead on the parent's page and the PDF copies, as on the paper
+// forms (Kieran, Oct 2026: "full letterhead").
+export const LETTERHEAD = {
+  name: 'The Kidz Lounge Related Services, LLC',
+  lines: [
+    '82-12 151st Ave, Howard Beach, NY 11414 · (718) 848-0875',
+    'kidzlounge.net · thekidzloungeny@gmail.com',
+    'www.confidentkidzny.com · www.languageloungeny.com',
+  ],
+  tagline: 'Providing Occupational, Physical and Speech Therapy. We also offer classes for kidz.',
+};
+
+// The answers a form starts with: what the office filled in before sending.
+export function startingAnswers(fields) {
+  const out = {};
+  for (const f of fields || []) if (f.default !== undefined && f.default !== null) out[f.id] = Array.isArray(f.default) ? [...f.default] : f.default;
+  return out;
+}
+
 // An answer as text, for staff and the PDF.
 export function answerText(field, value) {
   if (value === undefined || value === null || value === '') return null;
@@ -39,14 +58,28 @@ function logoDataUrl() {
 export async function buildPowerFormPdf(form, patientName) {
   const [pdfMake, logo] = await Promise.all([loadPdfMake(), logoDataUrl()]);
   const content = [
-    ...(logo ? [{ image: logo, fit: [96, 48], margin: [0, 0, 0, 14] }] : []),
+    {
+      columns: [
+        ...(logo ? [{ image: logo, fit: [110, 55], width: 120 }] : []),
+        {
+          width: '*', fontSize: 8.5, color: '#52525B', margin: [0, 2, 0, 0],
+          stack: [{ text: LETTERHEAD.name, bold: true, color: '#18181B', fontSize: 9.5 }, ...LETTERHEAD.lines, { text: LETTERHEAD.tagline, italics: true, margin: [0, 2, 0, 0] }],
+        },
+      ],
+      columnGap: 12, margin: [0, 0, 0, 8],
+    },
+    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 499, y2: 0, lineWidth: 0.75, lineColor: '#D4D4D8' }], margin: [0, 0, 0, 14] },
     { text: form.form_name, fontSize: 16, bold: true, margin: [0, 0, 0, 4] },
     { text: `Patient: ${patientName}`, fontSize: 10, color: '#52525B' },
     { text: `Sent ${when(form.created_at)}${form.recipient ? ` to ${form.recipient}` : ''} · Completed ${when(form.completed_at)}`, fontSize: 10, color: '#52525B', margin: [0, 0, 0, 14] },
   ];
   if (form.intro) content.push({ text: form.intro, fontSize: 10, margin: [0, 0, 0, 12] });
   for (const f of form.fields) {
-    if (f.type === 'heading') { content.push({ text: f.label, bold: true, fontSize: 12, margin: [0, 10, 0, 4] }); continue; }
+    if (f.type === 'heading') {
+      content.push({ text: f.label, bold: true, fontSize: 12, margin: [0, 10, 0, 4] });
+      if (f.help) content.push({ text: f.help, fontSize: 9.5, margin: [0, 0, 0, 4] });
+      continue;
+    }
     const v = form.answers[f.id];
     content.push({ text: f.label, fontSize: 9, color: '#71717A', margin: [0, 6, 0, 1] });
     if (f.type === 'signature' && v && v.image) {

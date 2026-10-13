@@ -27,12 +27,26 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString('en-US', { month: 'sho
 const day = (iso) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
 const input = { boxSizing: 'border-box', padding: '7px 9px', borderRadius: 6, border: '1px solid #D4D4D8', fontSize: 13, fontFamily: 'inherit', color: INK, background: 'white' };
 const label = { display: 'block', fontSize: 12, fontWeight: 500, color: '#52525B', marginBottom: 4 };
+// Forms sent together (one packet) stay together, in the order sent; anything
+// needing review comes first, then newest first.
+function groupForms(forms) {
+  const groups = [];
+  const byPacket = new Map();
+  for (const r of forms) {
+    if (!r.packet_id) { groups.push({ packet: null, forms: [r] }); continue; }
+    if (!byPacket.has(r.packet_id)) { const g = { packet: r.packet_id, forms: [] }; byPacket.set(r.packet_id, g); groups.push(g); }
+    byPacket.get(r.packet_id).forms.push(r);
+  }
+  for (const g of groups) g.forms.sort((a, b) => a.id - b.id);
+  const review = (g) => (g.forms.some(f => f.needs_review) ? 1 : 0);
+  return groups.map((g, i) => [g, i]).sort((a, b) => review(b[0]) - review(a[0]) || a[1] - b[1]).map(([g]) => g);
+}
 const show = (v) => (v === true ? 'Yes' : v === false ? 'No' : v === null || v === undefined || v === '' ? '—' : String(v));
 
 // The link to send, shown once (only a scrambled copy is kept).
-function LinkBox({ token, days, onClose }) {
+function LinkBox({ token, days, many, onClose }) {
   const link = `${window.location.origin}/f/${token}`;
-  const message = `Hi, Kidz Lounge has a form for you to fill in: ${link}\nYou'll need your child's date of birth to open it. The link works for ${days} days.`;
+  const message = `Hi, Kidz Lounge has ${many ? 'some forms' : 'a form'} for you to fill in: ${link}\nYou'll need your child's date of birth to open it. The link works for ${days} days.`;
   const [copied, setCopied] = useState(null);
   const copy = async (what, text) => {
     try { await navigator.clipboard.writeText(text); setCopied(what); } catch { setCopied('failed'); }
@@ -52,9 +66,12 @@ function LinkBox({ token, days, onClose }) {
   );
 }
 
-function SendForm({ patient, templates, onSent }) {
+// Send one form, or a package (one link for all its forms; untick any the
+// family doesn't need).
+function SendForm({ patient, templates, packages, onSent }) {
   const defaultTo = [patient.Parent_Name, patient.Relationship_To_Patient && `(${String(patient.Relationship_To_Patient).toLowerCase()})`].filter(Boolean).join(' ');
-  const [templateId, setTemplateId] = useState('');
+  const [choice, setChoice] = useState(''); // 't:<template id>' | 'p:<package id>'
+  const [picked, setPicked] = useState([]);  // a package's forms to send
   const [recipient, setRecipient] = useState(defaultTo);
   const [days, setDays] = useState(7);
   const [error, setError] = useState(null);
@@ -62,22 +79,40 @@ function SendForm({ patient, templates, onSent }) {
   const send = async () => {
     setBusy(true); setError(null);
     try {
-      const r = await api.sendPowerForm({ patient_id: patient.id, template_id: Number(templateId), recipient, days });
-      onSent(r.token, days);
+      const r = await api.sendPowerForm(pkg
+        ? { patient_id: patient.id, template_ids: picked, package_id: pkg.id, recipient, days }
+        : { patient_id: patient.id, template_ids: [Number(choice.slice(2))], recipient, days });
+      onSent(r.token, days, !!r.packet);
     } catch (err) {
       setError(err.message);
     }
     setBusy(false);
   };
-  if (!templates.length) return <p style={{ margin: 0, fontSize: 13, color: MUTED }}>No forms to send yet. An admin builds them in Admin, Power Forms.</p>;
+  const byId = new Map(templates.map(t => [t.id, t]));
+  const pkg = choice.startsWith('p:') ? packages.find(k => k.id === Number(choice.slice(2))) : null;
+  const pkgForms = pkg ? pkg.template_ids.map(id => byId.get(id)).filter(Boolean) : [];
+  const pick = (v) => {
+    setChoice(v);
+    const k = v.startsWith('p:') ? packages.find(x => x.id === Number(v.slice(2))) : null;
+    setPicked(k ? k.template_ids.filter(id => byId.has(id)) : []);
+  };
+  const ready = pkg ? picked.length > 0 : !!choice;
+  if (!templates.length) return <p style={{ margin: 0, fontSize: 13, color: MUTED }}>No forms to send yet. An admin builds them on the Power Forms page (footer link).</p>;
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
         <div>
-          <label style={label} htmlFor="pf-send-form">Form</label>
-          <select id="pf-send-form" style={{ ...input, width: '100%' }} value={templateId} onChange={e => setTemplateId(e.target.value)}>
-            <option value="">Choose a form</option>
-            {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          <label style={label} htmlFor="pf-send-form">Form or package</label>
+          <select id="pf-send-form" style={{ ...input, width: '100%' }} value={choice} onChange={e => pick(e.target.value)}>
+            <option value="">Choose</option>
+            {packages.length > 0 && (
+              <optgroup label="Packages (one link)">
+                {packages.map(k => <option key={k.id} value={`p:${k.id}`}>{k.name}</option>)}
+              </optgroup>
+            )}
+            <optgroup label="Forms">
+              {templates.map(t => <option key={t.id} value={`t:${t.id}`}>{t.name}</option>)}
+            </optgroup>
           </select>
         </div>
         <div>
@@ -91,8 +126,22 @@ function SendForm({ patient, templates, onSent }) {
           </select>
         </div>
       </div>
+      {pkg && (
+        <fieldset style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 8, padding: '10px 12px', margin: 0 }}>
+          <legend style={{ fontSize: 12.5, color: MUTED, padding: '0 4px' }}>Forms in this link (untick any the family doesn't need)</legend>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {pkgForms.map(t => (
+              <label key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13.5, color: INK, cursor: 'pointer' }}>
+                <input type="checkbox" style={{ marginTop: 2 }} checked={picked.includes(t.id)}
+                  onChange={e => setPicked(list => (e.target.checked ? pkgForms.map(x => x.id).filter(id => id === t.id || list.includes(id)) : list.filter(id => id !== t.id)))} />
+                {t.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       {error && <p role="alert" style={{ margin: 0, fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
-      <div><button type="button" onClick={send} disabled={busy || !templateId} style={buttonStyle('primary', { opacity: busy || !templateId ? 0.6 : 1 })}>{busy ? 'Making the link...' : 'Get the link'}</button></div>
+      <div><button type="button" onClick={send} disabled={busy || !ready} style={buttonStyle('primary', { opacity: busy || !ready ? 0.6 : 1 })}>{busy ? 'Making the link...' : 'Get the link'}</button></div>
     </div>
   );
 }
@@ -261,7 +310,7 @@ function FormDetail({ id, patient, onChanged, onClose }) {
   );
 }
 
-function FormRow({ r, first, onOpen, onLink, onChanged }) {
+function FormRow({ r, first, inPacket, onOpen, onLink, onChanged }) {
   const nameOf = useStaffNames();
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState(null);
@@ -279,19 +328,19 @@ function FormRow({ r, first, onOpen, onLink, onChanged }) {
     : r.status === 'expired' ? `Expired ${day(r.expires_at)}`
     : `${r.opened_at ? `Opened ${when(r.opened_at)} · ` : ''}Link works until ${day(r.expires_at)}`;
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 0', borderTop: first ? 'none' : `1px solid ${HAIRLINE}`, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 0', paddingLeft: inPacket ? 14 : 0, borderTop: first ? 'none' : `1px solid ${HAIRLINE}`, flexWrap: 'wrap' }}>
       <div style={{ flex: '1 1 280px', minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13.5, fontWeight: 600, color: INK }}>{r.form_name}</span>
           <Tag tone={st.tone}>{st.text}</Tag>
         </div>
         <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
-          Sent {day(r.created_at)} by {nameOf(r.created_by)}{r.recipient ? ` to ${r.recipient}` : ''} · {detail}
+          {inPacket ? detail : <>Sent {day(r.created_at)} by {nameOf(r.created_by)}{r.recipient ? ` to ${r.recipient}` : ''} · {detail}</>}
         </div>
         {error && <div role="alert" style={{ fontSize: 12, color: TONES.danger.fg }}>{error}</div>}
       </div>
       {r.status === 'completed' && <button type="button" onClick={onOpen} style={buttonStyle(r.needs_review ? 'primary' : 'secondary')}>{r.needs_review ? 'Review' : 'View answers'}</button>}
-      {r.status !== 'completed' && <button type="button" onClick={newLink} style={buttonStyle('text')}>New link</button>}
+      {r.status !== 'completed' && (!inPacket || r.status === 'cancelled') && <button type="button" onClick={newLink} style={buttonStyle('text')}>{inPacket ? 'Add back' : 'New link'}</button>}
       {open && (confirm ? (
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
           <span style={{ fontSize: 12.5 }}>Cancel this form?</span>
@@ -305,8 +354,44 @@ function FormRow({ r, first, onOpen, onLink, onChanged }) {
   );
 }
 
+// The forms sent together in one link (a package): one header with the
+// link's state and New link, then each form with its own status.
+function PacketGroup({ forms, first, onOpen, onLink, onChanged }) {
+  const nameOf = useStaffNames();
+  const [error, setError] = useState(null);
+  const head = forms[0];
+  const done = forms.filter(f => f.status === 'completed').length;
+  const live = forms.filter(f => f.status !== 'completed' && f.status !== 'cancelled');
+  const review = forms.some(f => f.needs_review);
+  const newLink = async () => {
+    try { const res = await api.newPowerFormLink(live[0].id, 7); onLink(res.token, 7); onChanged(); } catch (err) { setError(err.message); }
+  };
+  const expired = live.length > 0 && live.every(f => f.status === 'expired');
+  return (
+    <div style={{ borderTop: first ? 'none' : `1px solid ${HAIRLINE}`, padding: '10px 0 2px' }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: INK }}>{head.packet_name || 'Forms'}</span>
+            <Tag tone={done === forms.length ? 'success' : 'neutral'}>{done} of {forms.length} done</Tag>
+            {review && <Tag tone="warning">Needs review</Tag>}
+          </div>
+          <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+            One link · sent {day(head.created_at)} by {nameOf(head.created_by)}{head.recipient ? ` to ${head.recipient}` : ''}
+            {live.length > 0 && (expired ? ` · expired ${day(live[0].expires_at)}` : ` · link works until ${day(live[0].expires_at)}`)}
+          </div>
+          {error && <div role="alert" style={{ fontSize: 12, color: TONES.danger.fg }}>{error}</div>}
+        </div>
+        {live.length > 0 && <button type="button" onClick={newLink} style={buttonStyle('text')}>New link</button>}
+      </div>
+      {forms.map(r => <FormRow key={r.id} r={r} first={false} inPacket onOpen={() => onOpen(r.id)} onLink={onLink} onChanged={onChanged} />)}
+    </div>
+  );
+}
+
 export function PowerFormsChartTab({ patient, headerStyle, boxStyle, onReviewChange }) {
   const [templates, setTemplates] = useState(null);
+  const [packages, setPackages] = useState([]);
   const [forms, setForms] = useState(null);
   const [error, setError] = useState(null);
   const [link, setLink] = useState(null); // { token, days }
@@ -315,8 +400,8 @@ export function PowerFormsChartTab({ patient, headerStyle, boxStyle, onReviewCha
   const [reload, setReload] = useState(0);
   useEffect(() => {
     let alive = true;
-    Promise.all([api.getPowerFormTemplates(), api.getPatientPowerForms(patient.id)])
-      .then(([t, f]) => { if (alive) { setTemplates(t); setForms(f); } })
+    Promise.all([api.getPowerFormTemplates(), api.getPatientPowerForms(patient.id), api.getPowerFormPackages().catch(() => [])])
+      .then(([t, f, k]) => { if (alive) { setTemplates(t); setForms(f); setPackages(k || []); } })
       .catch(err => { if (alive) setError(err.message); });
     return () => { alive = false; };
   }, [patient.id, reload]);
@@ -341,15 +426,17 @@ export function PowerFormsChartTab({ patient, headerStyle, boxStyle, onReviewCha
       {(sending || link) && (
         <div style={{ ...boxStyle }}>
           {link
-            ? <LinkBox token={link.token} days={link.days} onClose={() => setLink(null)} />
-            : <SendForm patient={patient} templates={templates} onSent={(token, days) => { setSending(false); setLink({ token, days }); refresh(); }} />}
+            ? <LinkBox token={link.token} days={link.days} many={link.many} onClose={() => setLink(null)} />
+            : <SendForm patient={patient} templates={templates} packages={packages} onSent={(token, days, many) => { setSending(false); setLink({ token, days, many }); refresh(); }} />}
           {sending && !link && <button type="button" onClick={() => setSending(false)} style={buttonStyle('text', { marginTop: 8, padding: 0 })}>Cancel</button>}
         </div>
       )}
       <div style={{ ...boxStyle }}>
         {forms.length === 0
           ? <p style={{ margin: 0, fontSize: 13, color: MUTED, fontStyle: 'italic' }}>No forms sent yet.</p>
-          : [...forms].sort((a, b) => (b.needs_review ? 1 : 0) - (a.needs_review ? 1 : 0)).map((r, i) => <FormRow key={r.id} r={r} first={i === 0} onOpen={() => setOpenId(r.id)} onLink={(token, days) => setLink({ token, days })} onChanged={refresh} />)}
+          : groupForms(forms).map((g, i) => (g.packet
+            ? <PacketGroup key={`p${g.packet}`} forms={g.forms} first={i === 0} onOpen={setOpenId} onLink={(token, days) => setLink({ token, days })} onChanged={refresh} />
+            : <FormRow key={g.forms[0].id} r={g.forms[0]} first={i === 0} onOpen={() => setOpenId(g.forms[0].id)} onLink={(token, days) => setLink({ token, days })} onChanged={refresh} />))}
       </div>
     </>
   );

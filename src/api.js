@@ -136,6 +136,10 @@ export const api = {
   createPowerFormTemplate: (data) => request('/power-forms/templates', { method: 'POST', body: JSON.stringify(data) }),
   updatePowerFormTemplate: (id, data) => request(`/power-forms/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   archivePowerFormTemplate: (id, archived) => request(`/power-forms/templates/${id}/archive`, { method: 'POST', body: JSON.stringify({ archived }) }),
+  getPowerFormPackages: (all) => request(`/power-forms/packages${all ? '?all=1' : ''}`),
+  createPowerFormPackage: (data) => request('/power-forms/packages', { method: 'POST', body: JSON.stringify(data) }),
+  updatePowerFormPackage: (id, data) => request(`/power-forms/packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  archivePowerFormPackage: (id, archived) => request(`/power-forms/packages/${id}/archive`, { method: 'POST', body: JSON.stringify({ archived }) }),
   getPatientPowerForms: (patientId) => request(`/power-forms/patient/${patientId}`),
   sendPowerForm: (data) => request('/power-forms/requests', { method: 'POST', body: JSON.stringify(data) }),
   newPowerFormLink: (id, days) => request(`/power-forms/requests/${id}/new-link`, { method: 'POST', body: JSON.stringify({ days }) }),
@@ -148,7 +152,7 @@ export const api = {
   // The parent's side (no sign-in): the link's token, the child's date of birth, the answers.
   getPublicPowerForm: (token) => request(`/forms/${encodeURIComponent(token)}`),
   unlockPowerForm: (token, dob) => request(`/forms/${encodeURIComponent(token)}/unlock`, { method: 'POST', body: JSON.stringify({ dob }) }),
-  submitPowerForm: (token, access, answers) => request(`/forms/${encodeURIComponent(token)}/submit`, { method: 'POST', body: JSON.stringify({ access, answers }) }),
+  submitPowerForm: (token, access, answers, requestId) => request(`/forms/${encodeURIComponent(token)}/submit`, { method: 'POST', body: JSON.stringify({ access, answers, request_id: requestId ?? undefined }) }),
 
   // ---- Patient Documents ----
   getPatientDocuments: (patientId) => request(`/patients/${patientId}/documents`),
