@@ -53,6 +53,19 @@ const PRINT_CSS = `
   .kl-billing-print th, .kl-billing-print .kl-billing-head { position: static !important; }
   .kl-print-only { display: block !important; }
 }`;
+// A session's setting from its room, as the API's settingOf
+// (routes/billing.js): an office room = C; offsite = its Center / School /
+// Home (C / S / H); an older offsite session with none, or no room = ''.
+const settingOf = (room) => {
+  const a = String(room || '').trim();
+  if (!a) return '';
+  const m = a.match(/^Offsite(?: \((Center|School|Home)\))?(?::|$)/i);
+  if (!m) return 'C';
+  return m[1] ? m[1][0].toUpperCase() : '';
+};
+// Marks that count as a session provided (the sheet's Total).
+const COUNTED = ['X', 'M', 'E'];
+
 const pad = (n) => String(n).padStart(2, '0');
 const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 const monthLabel = (key) => new Date(`${key}-01T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -126,6 +139,25 @@ export default function BillingPage() {
       const rows = sheet.rows.filter(r => r.group === g.key);
       return { ...g, rows, scheduled: rows.reduce((t, r) => t + r.scheduled, 0), total: rows.reduce((t, r) => t + r.total_sessions, 0) };
     }).filter(g => g.rows.length);
+  }, [sheet]);
+
+  // EI sessions provided, split by where they happened (Kieran, Oct 2026):
+  // center or school together, home on its own, and any with no setting.
+  const eiBySetting = useMemo(() => {
+    const out = { centerSchool: 0, home: 0, unknown: 0 };
+    for (const r of sheet?.rows || []) {
+      if (r.group !== 'EI') continue;
+      for (const entries of Object.values(r.days || {})) {
+        for (const e of entries) {
+          if (!COUNTED.includes(e.mark)) continue;
+          const setting = settingOf(e.room);
+          if (setting === 'H') out.home += 1;
+          else if (setting) out.centerSchool += 1;
+          else out.unknown += 1;
+        }
+      }
+    }
+    return out;
   }, [sheet]);
 
   // Print exactly what's on screen: the sheet alone, landscape, at its
@@ -292,7 +324,19 @@ export default function BillingPage() {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '12px 16px', borderTop: `1px solid ${HAIRLINE}`, background: '#FAFAFA', fontSize: 13, ...NUMERIC }}>
-              {GROUPS.map(g => {
+              <span style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
+                EI Center &amp; School <strong style={{ color: INK, marginLeft: 6 }}>{eiBySetting.centerSchool}</strong>
+              </span>
+              <span style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
+                EI Home <strong style={{ color: INK, marginLeft: 6 }}>{eiBySetting.home}</strong>
+              </span>
+              {eiBySetting.unknown > 0 && (
+                <span title="EI sessions with no room, or offsite with no Center / School / Home. Set it on the appointment to count it above."
+                  style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
+                  EI, setting not set <strong style={{ color: INK, marginLeft: 6 }}>{eiBySetting.unknown}</strong>
+                </span>
+              )}
+              {GROUPS.filter(g => g.key !== 'EI').map(g => {
                 const found = grouped.find(x => x.key === g.key);
                 return (
                   <span key={g.key} style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>

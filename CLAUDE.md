@@ -151,6 +151,7 @@ Kieran plans to deploy this app for other pediatric therapy clinics, one deploym
   - The EI child ID is the patient's **ID #** (`ID_Number`, Kieran's call; mirrored from the current EI details). EI mandates carry an **Auth #** per service (`PatientPrograms.authorization_number`). A how-to for Admins is the Claude Doc "EI-Hub Billing How-To".
 - Office closures have a type (Holiday / Emergency closure) in Admin → Office hours, which sets H vs Z on the sheet.
 
+- **Totals under the key:** EI is split by where each session happened: **EI Center & School** (an office room, or offsite Center/School) and **EI Home** (offsite Home), from each day entry's `room` (`settingOf` in `BillingPage.jsx`, mirroring the API's). EI sessions with no room, or offsite with no setting, show in an "EI, setting not set" bubble, only when there are any. Then DOE, Other, Sessions, PTO, UPTO. Counted = marks X, M, E, the same as the Sessions total.
 ## Power Forms (Oct 2026)
 
 - Forms sent to parents as a secure link (API `routes/powerForms.js`, `lib/powerForms.js`, migration `2026-10-27_power_forms.sql`). Phase 1: staff copy the link and send it themselves (no email or texts from the app for now: Kieran, Oct 2026).
