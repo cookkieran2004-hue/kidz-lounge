@@ -10,6 +10,7 @@ import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyl
 import { roleLabel } from '../roles';
 import Linkify from '../Linkify';
 import { phoneDigits, formatPhone } from '../phone';
+import { CREDENTIAL_TYPES, credentialType, missingCredentials } from '../credentialTypes';
 
 // My profile: who you are at the practice (a summary up top), the details
 // you can change yourself, and your licences/certifications. Position,
@@ -145,19 +146,27 @@ function AdminManagedCard({ profile }) {
 }
 
 // ---------- credentials tab ----------
-function CredentialForm({ initial, isMobile, onSave, onCancel }) {
-  const [name, setName] = useState(initial?.credential_name || '');
+// The credential is picked from the owner's list (src/credentialTypes.js) so
+// everyone's look the same; Other is for anything else (NPI number...).
+// The expiration date is always typed in; the list's rule shows under it.
+function CredentialForm({ initial, preset, isMobile, onSave, onCancel }) {
+  const known = initial ? credentialType(initial.credential_name) : null;
+  // A known credential saved with another spelling is shown with the list's name (saved that way too).
+  const [kind, setKind] = useState(preset || known?.name || (initial ? 'other' : ''));
+  const [name, setName] = useState(initial && !known ? initial.credential_name : '');
   const [expiration, setExpiration] = useState(initial?.expiration_date || '');
   const [notes, setNotes] = useState(initial?.notes || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  const type = CREDENTIAL_TYPES.find(t => t.name === kind) || null;
   const submit = async () => {
     // The expiration date is optional: some credentials never expire.
-    if (!name.trim()) { setError('Enter the credential name.'); return; }
+    const finalName = kind === 'other' ? name.trim() : kind;
+    if (!finalName) { setError(kind === 'other' ? 'Enter the credential name.' : 'Choose the credential.'); return; }
     setSaving(true); setError(null);
     try {
-      await onSave({ credential_name: name.trim(), expiration_date: expiration || null, notes: notes.trim() });
+      await onSave({ credential_name: finalName, expiration_date: expiration || null, notes: notes.trim() });
     } catch (err) {
       setError(err.message); setSaving(false);
     }
@@ -167,17 +176,25 @@ function CredentialForm({ initial, isMobile, onSave, onCancel }) {
     <div style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: 16, background: '#FAFAFA', margin: '12px 0' }}>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 14, marginBottom: 14 }}>
         <div>
-          <label style={labelStyle} htmlFor="kl-cred-name">Credential name</label>
-          <input id="kl-cred-name" style={fieldStyle(isMobile)} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. CCC-SLP License, CPR Certification" />
+          <label style={labelStyle} htmlFor="kl-cred-kind">Credential</label>
+          <select id="kl-cred-kind" style={fieldStyle(isMobile)} value={kind} onChange={e => setKind(e.target.value)}>
+            <option value="">Choose</option>
+            {CREDENTIAL_TYPES.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+            <option value="other">Other</option>
+          </select>
+          {kind === 'other' && (
+            <input id="kl-cred-name" aria-label="Credential name" style={{ ...fieldStyle(isMobile), marginTop: 8 }} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. NPI number, CPR Certification" />
+          )}
         </div>
         <div>
           <label style={labelStyle} htmlFor="kl-cred-exp">Expiration date (optional)</label>
           <DateField id="kl-cred-exp" style={fieldStyle(isMobile)} yearNav clearable value={expiration} onChange={v => setExpiration(v || '')} />
+          {type?.hint && <p style={{ margin: '6px 0 0', fontSize: 12.5, color: MUTED, lineHeight: 1.45 }}>{type.hint}</p>}
         </div>
       </div>
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle} htmlFor="kl-cred-notes">Notes (optional)</label>
-        <input id="kl-cred-notes" style={fieldStyle(isMobile)} value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Renew via ASHA" />
+        <label style={labelStyle} htmlFor="kl-cred-notes">{type?.notes ? `${type.notes} (optional)` : 'Notes (optional)'}</label>
+        <input id="kl-cred-notes" style={fieldStyle(isMobile)} value={notes} onChange={e => setNotes(e.target.value)} placeholder={type?.notes ? '' : 'e.g. License number, renew via ASHA'} />
       </div>
       {error && <p role="alert" style={{ color: '#B42318', fontSize: 12.5, margin: '0 0 10px' }}>{error}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
@@ -233,8 +250,12 @@ function CredentialRow({ c, isMobile, onEdit, onRemove }) {
 }
 
 // Also used on a staff profile in Admin (`username`: whose credentials).
-export function CredentialsPanel({ credentials, isMobile, onChanged, username }) {
+// `required`: a provider, who must have the owner's list on file (a checklist
+// shows what's missing; missing ones open the form with it picked).
+export function CredentialsPanel({ credentials, isMobile, onChanged, username, required }) {
   const [mode, setMode] = useState(null); // null | 'new' | credential being edited
+  const [preset, setPreset] = useState(null);
+  const missing = required ? missingCredentials(credentials) : [];
   const sorted = [...credentials].sort((a, b) => (a.expiration_date || '9999').localeCompare(b.expiration_date || '9999'));
   const add = async (record) => { await api.addCredential({ ...record, notes: record.notes || null, ...(username ? { username } : {}) }); setMode(null); onChanged(); };
   const save = async (record) => { await api.updateCredential(mode.id, record); setMode(null); onChanged(); };
@@ -243,10 +264,22 @@ export function CredentialsPanel({ credentials, isMobile, onChanged, username })
   return (
     <Card
       title="Licences and certifications"
-      action={!mode && <button type="button" onClick={() => setMode('new')} style={buttonStyle('secondary')}>Add credential</button>}
+      action={!mode && <button type="button" onClick={() => { setPreset(null); setMode('new'); }} style={buttonStyle('secondary')}>Add credential</button>}
     >
       <div>
-        {mode === 'new' && <CredentialForm isMobile={isMobile} onSave={add} onCancel={() => setMode(null)} />}
+        {required && (
+          <div style={{ padding: '0 0 12px', marginBottom: 4, borderBottom: `1px solid ${HAIRLINE}` }}>
+            <div style={{ fontSize: 13, color: missing.length ? TONES.warning.fg : TONES.success.fg, fontWeight: 500, marginBottom: 8 }}>
+              {missing.length ? `Required for providers: ${CREDENTIAL_TYPES.length - missing.length} of ${CREDENTIAL_TYPES.length} on file` : 'All required credentials are on file'}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {CREDENTIAL_TYPES.map(t => (missing.includes(t)
+                ? <button key={t.name} type="button" disabled={!!mode} onClick={() => { setPreset(t.name); setMode('new'); }} style={buttonStyle('secondary', { padding: '4px 9px', fontSize: 12.5 })}>+ {t.name}</button>
+                : <Tag key={t.name} tone="success">{t.name}</Tag>))}
+            </div>
+          </div>
+        )}
+        {mode === 'new' && <CredentialForm key={preset || 'new'} preset={preset} isMobile={isMobile} onSave={add} onCancel={() => { setMode(null); setPreset(null); }} />}
         {sorted.length > 0 && !isMobile && (
           <div style={{ display: 'grid', gridTemplateColumns: CRED_COLUMNS, gap: 16, padding: '0 0 8px', fontSize: 12, color: MUTED, borderBottom: `1px solid ${HAIRLINE}` }}>
             <span>Credential</span><span>Expires</span><span>Status</span><span />
@@ -343,7 +376,7 @@ export default function MyProfilePage() {
             <AdminManagedCard profile={profile} />
           </div>
         )}
-        {tab === 'credentials' && <CredentialsPanel credentials={credentials} isMobile={isMobile} onChanged={reloadCredentials} />}
+        {tab === 'credentials' && <CredentialsPanel credentials={credentials} isMobile={isMobile} onChanged={reloadCredentials} required={!!profile.provider_name} />}
       </div>
     </div>
   );

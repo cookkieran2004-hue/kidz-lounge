@@ -308,7 +308,7 @@ function StaffCredentials({ staff, isMobile }) {
   if (!credentials) return null;
   return (
     <div style={{ marginTop: 16 }}>
-      <CredentialsPanel credentials={credentials} isMobile={isMobile} username={staff.username} onChanged={() => setVersion(v => v + 1)} />
+      <CredentialsPanel credentials={credentials} isMobile={isMobile} username={staff.username} required={!!staff.provider_name} onChanged={() => setVersion(v => v + 1)} />
     </div>
   );
 }
