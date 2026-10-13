@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { canAdminister } from './roles';
+import { canAdminister, canManage } from './roles';
 
 function LoadingScreen() {
   return (
@@ -42,6 +42,17 @@ export function RequireAdmin({ children }) {
   if (!user) return <Navigate to="/login" replace />;
   if (user.mustResetPassword) return <Navigate to="/set-password" replace />;
   if (!canAdminister(user)) return <Navigate to="/" replace />;
+  return children;
+}
+
+// Reception, Admin and Developer (canManage) -- e.g. the Credentials page.
+// Like RequireAdmin, a convenience only; the API enforces it.
+export function RequireManage({ children }) {
+  const { user, checkedInitialAuth } = useAuth();
+  if (!checkedInitialAuth) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.mustResetPassword) return <Navigate to="/set-password" replace />;
+  if (!canManage(user)) return <Navigate to="/" replace />;
   return children;
 }
 

@@ -35,3 +35,24 @@ export function missingCredentials(credentials) {
   const have = new Set(credentials.map(c => credentialType(c.credential_name)?.name).filter(Boolean));
   return CREDENTIAL_TYPES.filter(t => !have.has(t.name));
 }
+
+// How soon a credential counts as expiring (the reminder task starts at 30
+// days; the warning shows from 60).
+export const EXPIRING_SOON_DAYS = 60;
+
+// Whole days from today (local date) to a 'YYYY-MM-DD' date.
+function daysFromToday(dateStr) {
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number);
+  return Math.round((Date.UTC(y, m - 1, d) - today) / 86400000);
+}
+
+// A credential's status, for tags: expired, expiring soon, current, or no expiry.
+export function credentialTone(c) {
+  if (!c.expiration_date) return { tone: 'neutral', text: 'No expiry', key: 'none' };
+  const left = daysFromToday(c.expiration_date);
+  if (left < 0) return { tone: 'danger', text: 'Expired', key: 'expired', left };
+  if (left <= EXPIRING_SOON_DAYS) return { tone: 'warning', text: left === 0 ? 'Expires today' : `Expires in ${left} day${left === 1 ? '' : 's'}`, key: 'soon', left };
+  return { tone: 'success', text: 'Current', key: 'valid', left };
+}

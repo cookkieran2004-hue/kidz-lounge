@@ -10,7 +10,7 @@ import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyl
 import { roleLabel } from '../roles';
 import Linkify from '../Linkify';
 import { phoneDigits, formatPhone } from '../phone';
-import { CREDENTIAL_TYPES, credentialType, missingCredentials } from '../credentialTypes';
+import { CREDENTIAL_TYPES, credentialType, missingCredentials, credentialTone } from '../credentialTypes';
 
 // My profile: who you are at the practice (a summary up top), the details
 // you can change yourself, and your licences/certifications. Position,
@@ -20,12 +20,10 @@ const TABS = [
   { key: 'profile', label: 'Profile' },
   { key: 'credentials', label: 'Credentials' },
 ];
-const EXPIRING_SOON_DAYS = 60;
 
 const toDate = (s) => new Date(s + 'T00:00:00');
 const longDate = (s) => toDate(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 const shortDate = (s) => toDate(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-const daysFromToday = (s) => Math.round((toDate(s) - toDate(dateToInputValue(new Date()))) / 86400000);
 
 // Days until the next anniversary of the hire date (0 on the day).
 function daysToAnniversary(hireDate) {
@@ -37,13 +35,6 @@ function daysToAnniversary(hireDate) {
   return Math.round((next - today) / 86400000);
 }
 
-function credentialTone(c) {
-  if (!c.expiration_date) return { tone: 'neutral', text: 'No expiry', key: 'none' };
-  const left = daysFromToday(c.expiration_date);
-  if (left < 0) return { tone: 'danger', text: 'Expired', key: 'expired' };
-  if (left <= EXPIRING_SOON_DAYS) return { tone: 'warning', text: left === 0 ? 'Expires today' : `Expires in ${left} day${left === 1 ? '' : 's'}`, key: 'soon' };
-  return { tone: 'success', text: 'Current', key: 'valid' };
-}
 
 const fieldStyle = (isMobile) => ({ width: '100%', padding: isMobile ? '10px 12px' : '8px 10px', borderRadius: 6, border: `1px solid ${HAIRLINE}`, fontSize: isMobile ? 15 : 13.5, boxSizing: 'border-box', fontFamily: 'inherit', color: INK, background: 'white' });
 const labelStyle = { display: 'block', fontSize: 12.5, fontWeight: 500, color: '#3F3F46', marginBottom: 5 };

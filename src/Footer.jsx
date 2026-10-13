@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { canAdminister } from './roles';
+import { canAdminister, canManage } from './roles';
 import { CLINIC, POWERED_BY } from './brand';
 
 // Plain footer on every page: the user manuals, and a link to Help & Support (remembering which
@@ -19,6 +19,7 @@ export default function Footer() {
       <span>{CLINIC.name}{POWERED_BY && <span style={{ color: '#9CA3AF' }}> · {POWERED_BY}</span>}</span>
       <Link to="/manual" style={linkStyle}>User manual</Link>
       {user && <Link to="/provider-directory" style={linkStyle}>Provider directory</Link>}
+      {canManage(user) && <Link to="/credentials" style={linkStyle}>Credentials</Link>}
       {canAdminister(user) && <Link to="/power-forms" style={linkStyle}>Power Forms</Link>}
       <Link to={`/support?from=${encodeURIComponent(location.pathname + location.search)}`} style={linkStyle}>Help &amp; Support</Link>
     </footer>

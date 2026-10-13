@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import { TasksProvider } from './TasksContext';
 import { ChatProvider } from './ChatContext';
-import { RequireAuth, RequireLoggedIn, RequireAdmin, RedirectIfAuthed } from './ProtectedRoute';
+import { RequireAuth, RequireLoggedIn, RequireAdmin, RequireManage, RedirectIfAuthed } from './ProtectedRoute';
 import { PendingTimeOffProvider } from './PendingTimeOffContext';
 import NavBar from './NavBar';
 import TaskDrawer from './TaskDrawer';
@@ -30,6 +30,7 @@ import BillingPage from './pages/BillingPage';
 import PowerFormPage from './pages/PowerFormPage';
 import PowerFormsPage from './pages/PowerFormsPage';
 import ProviderDirectoryPage from './pages/ProviderDirectoryPage';
+import CredentialsPage from './pages/CredentialsPage';
 
 function AppShell() {
   return (
@@ -60,6 +61,7 @@ function AppShell() {
             <Route path="/power-forms" element={<RequireAdmin><PowerFormsPage /></RequireAdmin>} />
             {/* Provider directory (footer link, everyone signed in) */}
             <Route path="/provider-directory" element={<RequireAuth><ProviderDirectoryPage /></RequireAuth>} />
+            <Route path="/credentials" element={<RequireManage><CredentialsPage /></RequireManage>} />
             {/* Help & Support: open to everyone, signed in or not */}
             <Route path="/support" element={<SupportPage />} />
             <Route path="/manual" element={<ManualPage />} />
