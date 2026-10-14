@@ -63,8 +63,11 @@ jobs:
         if: steps.when.outputs.go == 'true'
         run: |
           sha="${{ github.sha }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Signed as the author of the commit being released (Kieran), not
+          # the Actions bot: Vercel's Hobby plan only deploys commits by the
+          # account's owner, and silently skipped bot-authored ones (Oct 2026).
+          git config user.name "$(git log -1 --format=%an "$sha")"
+          git config user.email "$(git log -1 --format=%ae "$sha")"
           msg="Release $(git rev-parse --short "$sha") to Kidz Lounge"
           if ! git rev-parse -q --verify origin/production > /dev/null; then
             git checkout -B production "$sha"
