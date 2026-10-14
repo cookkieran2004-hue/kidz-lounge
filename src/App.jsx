@@ -32,6 +32,8 @@ import PowerFormsPage from './pages/PowerFormsPage';
 import ProviderDirectoryPage from './pages/ProviderDirectoryPage';
 import CredentialsPage from './pages/CredentialsPage';
 import CentralPage from './pages/CentralPage';
+import { SessionNotesPage, SessionNotePage } from './SessionNotes';
+import { featureOn } from './brand';
 
 function AppShell() {
   return (
@@ -49,6 +51,8 @@ function AppShell() {
             <Route path="/" element={<RequireAuth><SchedulePage /></RequireAuth>} />
             <Route path="/weekly" element={<RequireAuth><WeeklySchedulePage /></RequireAuth>} />
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+            {featureOn('ei') && <Route path="/session-notes" element={<RequireAuth><SessionNotesPage /></RequireAuth>} />}
+            {featureOn('ei') && <Route path="/session-notes/note" element={<RequireAuth><SessionNotePage /></RequireAuth>} />}
             <Route path="/patients" element={<RequireAuth><PatientsPage /></RequireAuth>} />
             <Route path="/waitlist" element={<RequireAuth><WaitlistPage /></RequireAuth>} />
             <Route path="/patients/:name" element={<RequireAuth><PatientChartPage /></RequireAuth>} />

@@ -341,6 +341,14 @@ export const api = {
   updateIfsp: (patientId, id, record) => request(`/patients/${patientId}/ifsps/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
   deleteIfsp: (patientId, id) => request(`/patients/${patientId}/ifsps/${id}`, { method: 'DELETE' }),
   saveTransition: (patientId, record) => request(`/patients/${patientId}/transition`, { method: 'PUT', body: JSON.stringify(record) }),
+  // EI session notes (the "ei" feature, PedsDesk; API routes/sessionNotes.js).
+  getSessionNotes: (month, { provider, patientId } = {}) => request(`/session-notes?month=${month}${provider ? `&provider=${encodeURIComponent(provider)}` : ''}${patientId ? `&patient_id=${patientId}` : ''}`),
+  getSessionNote: (key) => request(`/session-notes/note?key=${encodeURIComponent(key)}`),
+  saveSessionNote: (record) => request('/session-notes/note', { method: 'PUT', body: JSON.stringify(record) }),
+  parentSignSessionNote: (record) => request('/session-notes/note/parent-sign', { method: 'POST', body: JSON.stringify(record) }),
+  providerSignSessionNote: (record) => request('/session-notes/note/provider-sign', { method: 'POST', body: JSON.stringify(record) }),
+  addSessionNoteAddendum: (key, body) => request('/session-notes/note/addenda', { method: 'POST', body: JSON.stringify({ key, body }) }),
+  getServiceLog: (patientId, provider, month) => request(`/session-notes/service-log?patient_id=${patientId}&provider=${encodeURIComponent(provider)}&month=${month}`),
   // EI-Hub's Child Info and Authorizations report (Reception too): what it would change, then apply the ticked changes.
   previewEiImport: (file) => request('/ei-hub/import/preview', { method: 'POST', body: JSON.stringify(file) }),
   applyEiImport: (file, ids) => request('/ei-hub/import/apply', { method: 'POST', body: JSON.stringify({ ...file, ids }) }),

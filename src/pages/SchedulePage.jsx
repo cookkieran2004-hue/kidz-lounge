@@ -3490,6 +3490,17 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             {existing?.is_eval && (
               <p style={{ fontSize: 12.5, color: EVAL_BLUE, fontWeight: 600, margin: '9px 0 12px' }}>Eval · This is an evaluation.</p>
             )}
+            {/* PedsDesk ("ei" feature): the EI session note for this session,
+                from its day on (src/SessionNotes.jsx; keyed like EI-Hub billing). */}
+            {featureOn('ei') && existing && !isHoldPatient(existing.patient_name) && String(existing.appointment_date).slice(0, 10) <= dateToInputValue(new Date()) && (
+              <button type="button" onClick={() => navigate(`/session-notes/note?key=${encodeURIComponent(
+                existing.is_virtual ? `series:${existing.series_id}:${String(existing.appointment_date).slice(0, 10)}`
+                  : existing.exception_of_series_id ? `series:${existing.exception_of_series_id}:${String(existing.exception_occurrence_date).slice(0, 10)}`
+                    : `appt:${existing.id}`)}`)}
+                style={{ display: 'block', margin: '0 0 12px', padding: '8px 14px', borderRadius: 6, border: '1.5px solid var(--brand-primary)', background: 'white', color: 'var(--brand-primary)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                Session note (EI)
+              </button>
+            )}
             {existing?.is_makeup && (
               <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '9px 0 12px', flex: '1 1 220px' }}>
                 {existing.makeup_of

@@ -9,7 +9,7 @@ import { usePendingTimeOff } from './PendingTimeOffContext';
 import { useSupportOpenCount, canSeeSupportTickets } from './supportCount';
 import { canUseCentral } from './centralPractices';
 import { canAdminister } from './roles';
-import { CLINIC } from './brand';
+import { CLINIC, featureOn } from './brand';
 
 const BRAND_COLOR = 'var(--brand-primary)';
 
@@ -19,6 +19,8 @@ const TABS = [
   { to: '/patients', label: 'Patients' },
   { to: '/waitlist', label: 'Waitlist' },
   { to: '/billing', label: 'Billing' },
+  // EI session notes (PedsDesk only, src/SessionNotes.jsx).
+  ...(featureOn('ei') ? [{ to: '/session-notes', label: 'Notes' }] : []),
 ];
 
 const barStyle = {
