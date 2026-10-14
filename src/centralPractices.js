@@ -69,7 +69,39 @@ export async function signInToPractice(practice, username, password) {
   if (data.mustResetPassword) throw new Error(`Set a new password on ${practice.name}'s site first, then sign in here.`);
   if (data.role !== 'developer') throw new Error(`That account isn't a Developer at ${practice.name}.`);
   setPracticeToken(practice, data.token);
+  try { sessionStorage.removeItem(AUTO_ERROR_PREFIX + practice.id); } catch { /* nothing to clear */ }
   return data;
+}
+
+// Signing in to PedsDesk signs you in to every other practice too (Kieran,
+// Oct 2026), with the same username and password -- so a Developer keeps the
+// same login at every clinic. One try per practice per sign-in, so a
+// practice where the password differs never builds up toward its lockout;
+// its card then shows why and asks as before. Each practice still checks
+// the password itself and logs the sign-in in its own audit log.
+const AUTO_ERROR_PREFIX = 'central_auto_error_';
+let autoSignInRunning = false;
+export const autoSignInPending = () => autoSignInRunning;
+export function autoSignInError(practice) {
+  try { return sessionStorage.getItem(AUTO_ERROR_PREFIX + practice.id); } catch { return null; }
+}
+export const CENTRAL_SIGNINS_CHANGED = 'kl-central-signins-changed';
+
+export async function signInEverywhere(username, password) {
+  autoSignInRunning = true;
+  try {
+    await Promise.all(PRACTICES.filter(p => !isHere(p)).map(async (p) => {
+      try {
+        await signInToPractice(p, username, password);
+        sessionStorage.removeItem(AUTO_ERROR_PREFIX + p.id);
+      } catch (err) {
+        try { sessionStorage.setItem(AUTO_ERROR_PREFIX + p.id, err.message); } catch { /* shown as a plain sign-in */ }
+      }
+    }));
+  } finally {
+    autoSignInRunning = false;
+    window.dispatchEvent(new Event(CENTRAL_SIGNINS_CHANGED));
+  }
 }
 
 export function signOutOfPractice(practice) {
@@ -85,5 +117,9 @@ export function signOutOfPractice(practice) {
 // Signing out of the app (or the idle timeout): sign out of every other
 // practice too, so each one's audit log shows the session ending.
 export function forgetPracticeTokens() {
-  for (const p of PRACTICES) if (!isHere(p)) signOutOfPractice(p);
+  for (const p of PRACTICES) {
+    if (isHere(p)) continue;
+    signOutOfPractice(p);
+    try { sessionStorage.removeItem(AUTO_ERROR_PREFIX + p.id); } catch { /* nothing to clear */ }
+  }
 }

@@ -6,7 +6,7 @@ import { PageHeader, Card, Tag, UnderlineTabs } from '../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 import Linkify from '../Linkify';
 import { Avatar } from '../Avatar';
-import { PRACTICES, canUseCentral, isHere, practiceToken, practiceRequest, signInToPractice, signOutOfPractice } from '../centralPractices';
+import { PRACTICES, canUseCentral, isHere, practiceToken, practiceRequest, signInToPractice, signOutOfPractice, autoSignInPending, autoSignInError, CENTRAL_SIGNINS_CHANGED } from '../centralPractices';
 
 // Central view (Developers on the PedsDesk Demo site; see centralPractices.js):
 // every practice's health, open support tickets, your chats and your open
@@ -54,7 +54,8 @@ function dueLabel(ymd) {
 const EMPTY = { signedIn: false, loading: false, error: null, health: null, healthError: null, tickets: [], chats: [], tasks: [], names: {} };
 
 async function loadPractice(practice) {
-  if (!practiceToken(practice)) return { ...EMPTY };
+  // Still being signed in in the background: keep showing Loading.
+  if (!practiceToken(practice)) return { ...EMPTY, loading: !isHere(practice) && autoSignInPending() };
   const get = (path) => practiceRequest(practice, path);
   const [health, tickets, chats, tasks, directory] = await Promise.allSettled([
     get('/developer/health'), get('/support/tickets?status=open'), get('/chat/conversations'), get('/tasks'), get('/chat/directory'),
@@ -80,8 +81,8 @@ async function loadPractice(practice) {
 
 // ---- Practice card: sign-in and health ----
 
-function SignInForm({ practice, onSignedIn }) {
-  const [username, setUsername] = useState('');
+function SignInForm({ practice, onSignedIn, defaultUsername }) {
+  const [username, setUsername] = useState(defaultUsername || '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -100,6 +101,9 @@ function SignInForm({ practice, onSignedIn }) {
   };
   return (
     <form onSubmit={submit} style={{ display: 'grid', gap: 8 }}>
+      {autoSignInError(practice) && (
+        <div style={{ fontSize: 12.5, color: TONES.warning.fg }}>Automatic sign-in didn't work: {autoSignInError(practice)}</div>
+      )}
       <div style={{ fontSize: 12.5, color: MUTED }}>Sign in with your Developer account at {practice.name}.</div>
       <input aria-label={`${practice.name} username`} placeholder="Username" autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} style={inputStyle} />
       <input aria-label={`${practice.name} password`} placeholder="Password" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
@@ -118,7 +122,7 @@ function HealthLine({ label, children }) {
   );
 }
 
-function PracticeCard({ practice, state, onReload }) {
+function PracticeCard({ practice, state, onReload, username }) {
   const h = state.health;
   const pending = h?.migrations?.pending;
   const failed = h?.failed_sign_ins_24h;
@@ -136,7 +140,7 @@ function PracticeCard({ practice, state, onReload }) {
       }
     >
       {!state.signedIn ? (
-        state.loading ? <div style={{ fontSize: 13, color: MUTED }}>Loading...</div> : <SignInForm practice={practice} onSignedIn={onReload} />
+        state.loading ? <div style={{ fontSize: 13, color: MUTED }}>Loading...</div> : <SignInForm practice={practice} onSignedIn={onReload} defaultUsername={username} />
       ) : state.error ? (
         <div style={{ fontSize: 13, color: TONES.danger.fg }}>{state.error}</div>
       ) : !h ? (
@@ -439,7 +443,7 @@ function EmptyLine({ children }) {
 export default function CentralPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile(768);
-  const [states, setStates] = useState(() => Object.fromEntries(PRACTICES.map(p => [p.id, { ...EMPTY, loading: !!practiceToken(p) }])));
+  const [states, setStates] = useState(() => Object.fromEntries(PRACTICES.map(p => [p.id, { ...EMPTY, loading: !!practiceToken(p) || (!isHere(p) && autoSignInPending()) }])));
   const [tab, setTab] = useState('tickets');
   const [openKey, setOpenKey] = useState(null);
 
@@ -453,7 +457,9 @@ export default function CentralPage() {
   useEffect(() => {
     reloadAll();
     const timer = setInterval(() => { if (!document.hidden) reloadAll(); }, REFRESH_MS);
-    return () => clearInterval(timer);
+    // The background sign-in to the other practices (right after signing in) finished.
+    window.addEventListener(CENTRAL_SIGNINS_CHANGED, reloadAll);
+    return () => { clearInterval(timer); window.removeEventListener(CENTRAL_SIGNINS_CHANGED, reloadAll); };
   }, [reloadAll]);
 
   const { tickets, chats, tasks } = useMemo(() => {
@@ -483,7 +489,7 @@ export default function CentralPage() {
         />
 
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : `repeat(${Math.min(PRACTICES.length, 3)}, minmax(0, 1fr))`, gap: 16, marginBottom: 20 }}>
-          {PRACTICES.map(p => <PracticeCard key={p.id} practice={p} state={states[p.id]} onReload={() => reload(p)} />)}
+          {PRACTICES.map(p => <PracticeCard key={p.id} practice={p} state={states[p.id]} onReload={() => reload(p)} username={user?.username} />)}
         </div>
 
         <Card pad={isMobile ? 14 : 20}>

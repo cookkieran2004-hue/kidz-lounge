@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { api, getToken, setToken } from './api';
-import { forgetPracticeTokens } from './centralPractices';
+import { forgetPracticeTokens, signInEverywhere, canUseCentral } from './centralPractices';
 
 const AuthContext = createContext(null);
 
@@ -35,6 +35,8 @@ export function AuthProvider({ children }) {
     const data = await api.login(username, password);
     setToken(data.token);
     setUser(buildUser(data));
+    // PedsDesk Developers: the other practices too, in the background.
+    if (canUseCentral(data) && !data.mustResetPassword) signInEverywhere(username, password);
     return data;
   }, []);
 
@@ -42,6 +44,7 @@ export function AuthProvider({ children }) {
     const data = await api.setPassword(newPassword);
     setToken(data.token);
     setUser(buildUser(data));
+    if (canUseCentral(data)) signInEverywhere(data.username, newPassword);
     return data;
   }, []);
 
