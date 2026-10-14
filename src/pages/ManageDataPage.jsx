@@ -18,20 +18,13 @@ import { planFromRows, planKey, programHistoryAvailable, isFirstChange, planPayl
 import LinkTextarea from '../LinkTextarea';
 import { PatientLinksEditor } from '../PatientLinksView';
 import { parseLinks, linkLabel } from '../patientLinks';
+import { IFSP_TYPE_OPTIONS } from '../ifspTypes';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
 const PROGRAM_OPTIONS = ['EI', 'BCBS/Anthem', 'CIGNA', 'CPSE', 'CSE', 'GHI', 'P', 'PP', 'NONE'];
 const RELATIONSHIP_OPTIONS = ['Father', 'Mother', 'Grandmother', 'Grandfather', 'Legal Guardian', 'Caregiver'];
 const PATIENT_STATUS_OPTIONS = ['On Program', 'Awaiting Approval', 'Awaiting Family Paperwork', 'Awaiting Supervision Form', 'Off Program', 'Awaiting EI HUB'];
-const IFSP_TYPE_OPTIONS = [
-  'Initial (6mo PR)',
-  'First Review (12mo PR)',
-  'First Annual (6/18mo PR)',
-  'Second Review (24/12 mo PR)',
-  'Second Annual (30/6 mo PR)',
-  'Third Review (36/12mo PR)',
-];
 
 // Program is stored as a comma-separated string in the existing text column
 // (no schema change) so multiple selections like "EI, CIGNA" fit right in

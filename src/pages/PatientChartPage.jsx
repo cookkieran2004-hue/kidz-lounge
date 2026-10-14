@@ -15,6 +15,8 @@ import LinkTextarea from '../LinkTextarea';
 import { PatientLinksEditor, PatientLinksList } from '../PatientLinksView';
 import { EiChartCard } from '../EiChartCard';
 import { PowerFormsChartTab } from '../PowerFormsChartTab';
+import IfspTab from '../IfspTab';
+import { featureOn } from '../brand';
 
 // The Eval tag, same on the schedule (SchedulePage.jsx).
 const EVAL_BLUE = '#1D4ED8';
@@ -246,6 +248,8 @@ const TABS = [
 // EI billing details (EiChartCard.jsx): EI children only, and only for
 // Reception, Admins and Developers -- providers don't see it (Kieran, Oct 2026).
 const EI_TAB = { key: 'ei-billing', label: 'EI Billing' };
+// IFSP records and turning 3 (the "ei" feature, PedsDesk only; src/IfspTab.jsx).
+const IFSP_TAB = { key: 'ifsp', label: 'IFSP' };
 // Power Forms (PowerFormsChartTab.jsx): Reception, Admins and Developers.
 const FORMS_TAB = { key: 'power-forms', label: 'Power Forms' };
 const isEiPatient = (patient) => /(^|,)\s*EI\s*(,|$)/.test(patient?.Program || '');
@@ -1131,7 +1135,8 @@ export default function PatientChartPage() {
   }
 
   const showEiTab = canManage(user) && isEiPatient(patient);
-  const tabs = [...TABS, ...(showEiTab ? [EI_TAB] : []), ...(canManage(user) ? [{ ...FORMS_TAB, badge: formsToReview }] : [])];
+  const showIfspTab = featureOn('ei') && isEiPatient(patient);
+  const tabs = [...TABS, ...(showIfspTab ? [IFSP_TAB] : []), ...(showEiTab ? [EI_TAB] : []), ...(canManage(user) ? [{ ...FORMS_TAB, badge: formsToReview }] : [])];
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
@@ -1148,6 +1153,7 @@ export default function PatientChartPage() {
           {activeTab === 'appointments' && <AppointmentsTab patient={patient} appointments={appointments} onChanged={reloadAppointments} />}
           {activeTab === 'documents' && <DocumentsTab patient={patient} isMobile={isMobile} />}
           {activeTab === 'care-team' && <CareTeamTab patient={patient} appointments={appointments} />}
+          {activeTab === IFSP_TAB.key && showIfspTab && <IfspTab patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} onPatientChanged={() => api.getPatient(name).then(p => p && setPatient(p)).catch(() => {})} />}
           {activeTab === EI_TAB.key && showEiTab && <EiChartCard patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} />}
           {activeTab === FORMS_TAB.key && canManage(user) && <PowerFormsChartTab patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} onReviewChange={() => setFormsReload(n => n + 1)} />}
         </div>

@@ -335,6 +335,12 @@ export const api = {
   takeBackEiReferral: (authorization, periodId) => request(`/ei-hub/referrals/${encodeURIComponent(authorization)}/periods/${periodId}`, { method: 'DELETE' }),
   // Reception, Admins and Developers: one child's EI billing details (the chart's EI Billing tab).
   getEiPatient: (id) => request(`/ei-hub/patient/${id}`),
+  // IFSP records and turning 3 (the "ei" feature, PedsDesk; API routes/ifsp.js).
+  getIfsp: (patientId) => request(`/patients/${patientId}/ifsp`),
+  addIfsp: (patientId, record) => request(`/patients/${patientId}/ifsps`, { method: 'POST', body: JSON.stringify(record) }),
+  updateIfsp: (patientId, id, record) => request(`/patients/${patientId}/ifsps/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
+  deleteIfsp: (patientId, id) => request(`/patients/${patientId}/ifsps/${id}`, { method: 'DELETE' }),
+  saveTransition: (patientId, record) => request(`/patients/${patientId}/transition`, { method: 'PUT', body: JSON.stringify(record) }),
   // EI-Hub's Child Info and Authorizations report (Reception too): what it would change, then apply the ticked changes.
   previewEiImport: (file) => request('/ei-hub/import/preview', { method: 'POST', body: JSON.stringify(file) }),
   applyEiImport: (file, ids) => request('/ei-hub/import/apply', { method: 'POST', body: JSON.stringify({ ...file, ids }) }),
