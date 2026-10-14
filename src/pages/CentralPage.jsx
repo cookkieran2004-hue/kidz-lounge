@@ -5,6 +5,7 @@ import { useIsMobile } from '../useIsMobile';
 import { PageHeader, Card, Tag, UnderlineTabs } from '../dashboardUi';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 import Linkify from '../Linkify';
+import { Avatar } from '../Avatar';
 import { PRACTICES, canUseCentral, isHere, practiceToken, practiceRequest, signInToPractice, signOutOfPractice } from '../centralPractices';
 
 // Central view (Developers on the PedsDesk Demo site; see centralPractices.js):
@@ -214,14 +215,59 @@ function TicketRow({ t, open, onToggle, onDone }) {
 }
 
 // ---- Chats ----
+// Two panes like a messenger: conversations on the left, the open one on the
+// right (on phones, one at a time with a Back button). The thread grows with
+// the page rather than scrolling inside a box (one page scroll).
 
 function chatTitle(c, names) {
   if (c.name) return c.name;
   // The directory lists everyone but you, so the names it has are the others.
   return (c.participants || []).filter(u => names[u] !== undefined).map(u => names[u]).join(', ') || 'Conversation';
 }
+const senderName = (username, names) => (names[username] === undefined ? 'You' : names[username]);
 
-function ChatThread({ c, names, onChanged }) {
+// "Today", "Yesterday", or "Mon, Oct 12" above each day's messages.
+function dayLabel(iso) {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+const clock = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+function ConversationItem({ c, names, selected, onPick }) {
+  const last = c.last_message;
+  const unread = c.unread_count > 0;
+  return (
+    <button type="button" onClick={onPick} aria-current={selected || undefined}
+      style={{
+        display: 'flex', gap: 10, alignItems: 'flex-start', width: '100%', textAlign: 'left', padding: '10px 12px',
+        border: 'none', borderBottom: `1px solid ${HAIRLINE}`, cursor: 'pointer', fontFamily: 'inherit',
+        background: selected ? 'var(--brand-tint)' : 'white',
+      }}>
+      <Avatar name={chatTitle(c, names)} size={34} />
+      <span style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}>
+        <span style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: unread ? 600 : 500, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chatTitle(c, names)}</span>
+          <span style={{ fontSize: 11.5, color: unread ? 'var(--brand-primary)' : SUBTLE, whiteSpace: 'nowrap', ...NUMERIC }}>{when(last?.created_at || c.created_at)}</span>
+        </span>
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: unread ? INK : MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {last ? `${senderName(last.sender_username, names) === 'You' ? 'You: ' : c.type === 'group' ? `${senderName(last.sender_username, names).split(' ')[0]}: ` : ''}${last.text}` : 'No messages yet'}
+          </span>
+          {unread && (
+            <span style={{ minWidth: 18, height: 18, padding: '0 5px', boxSizing: 'border-box', borderRadius: 9, background: 'var(--brand-primary)', color: 'white', fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ...NUMERIC }}>{c.unread_count}</span>
+          )}
+        </span>
+        <span style={{ fontSize: 11.5, color: SUBTLE }}>{c.practice.name}</span>
+      </span>
+    </button>
+  );
+}
+
+function ChatThread({ c, names, onChanged, onBack }) {
   const [messages, setMessages] = useState(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -237,9 +283,8 @@ function ChatThread({ c, names, onChanged }) {
     const timer = setInterval(load, THREAD_REFRESH_MS);
     return () => clearInterval(timer);
   }, [load, c.practice, c.id]);
-  const send = async (e) => {
-    e.preventDefault();
-    if (!text.trim()) return;
+  const send = async () => {
+    if (!text.trim() || busy) return;
     setBusy(true); setError('');
     try {
       await practiceRequest(c.practice, `/chat/conversations/${c.id}/messages`, { method: 'POST', body: JSON.stringify({ text: text.trim() }) });
@@ -253,46 +298,96 @@ function ChatThread({ c, names, onChanged }) {
       setBusy(false);
     }
   };
+  const title = chatTitle(c, names);
+  const isGroup = c.type === 'group';
   return (
-    <div style={{ padding: '0 0 14px' }}>
-      <div style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '8px 12px', maxWidth: 640, display: 'grid', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 420 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${HAIRLINE}` }}>
+        {onBack && <button type="button" onClick={onBack} style={buttonStyle('text', { fontSize: 12.5, padding: '4px 4px 4px 0' })}>Back</button>}
+        <Avatar name={title} size={32} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+          <div style={{ fontSize: 12, color: MUTED }}>{c.practice.name}{isGroup ? ` · ${(c.participants || []).length} people` : ''}</div>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6, background: '#FAFAFA' }}>
         {messages == null ? <span style={{ fontSize: 13, color: MUTED }}>Loading...</span>
-          : !messages.length ? <span style={{ fontSize: 13, color: MUTED }}>No messages in the last 72 hours.</span>
-          : messages.map(m => {
+          : !messages.length ? <span style={{ fontSize: 13, color: MUTED, margin: 'auto' }}>No messages in the last 72 hours.</span>
+          : messages.map((m, i) => {
             const mine = names[m.sender_username] === undefined;
+            const prev = messages[i - 1];
+            const newDay = !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString();
+            // Consecutive messages from one person sit together under one name.
+            const sameSender = prev && !newDay && prev.sender_username === m.sender_username;
             return (
-              <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.45 }}>
-                <span style={{ fontWeight: 600, color: mine ? MUTED : INK }}>{mine ? 'You' : names[m.sender_username]}</span>
-                <span style={{ color: SUBTLE, fontSize: 12, marginLeft: 6 }}>{when(m.created_at)}</span>
-                <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: INK }}><Linkify text={m.text} /></div>
+              <div key={m.id} style={{ display: 'contents' }}>
+                {newDay && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '6px 0', fontSize: 11.5, color: SUBTLE }}>
+                    <span style={{ flex: 1, height: 1, background: HAIRLINE }} />{dayLabel(m.created_at)}<span style={{ flex: 1, height: 1, background: HAIRLINE }} />
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', marginTop: sameSender ? -2 : 4 }}>
+                  {!mine && isGroup && !sameSender && <span style={{ fontSize: 11.5, color: MUTED, margin: '0 0 2px 2px' }}>{names[m.sender_username]}</span>}
+                  <div title={fullWhen(m.created_at)} style={{
+                    maxWidth: 'min(75%, 520px)', padding: '7px 11px', borderRadius: 10, fontSize: 13.5, lineHeight: 1.45,
+                    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
+                    background: mine ? 'var(--brand-primary)' : 'white', color: mine ? 'white' : INK,
+                    border: mine ? '1px solid var(--brand-primary)' : `1px solid ${HAIRLINE}`,
+                  }}>
+                    <Linkify text={m.text} color={mine ? 'white' : undefined} />
+                  </div>
+                  <span style={{ fontSize: 10.5, color: SUBTLE, margin: '2px 2px 0', ...NUMERIC }}>{clock(m.created_at)}</span>
+                </div>
               </div>
             );
           })}
       </div>
-      <form onSubmit={send} style={{ display: 'flex', gap: 8, marginTop: 8, maxWidth: 640 }}>
-        <input aria-label="Message" placeholder="Reply" value={text} onChange={e => setText(e.target.value)} style={inputStyle} />
-        <button type="submit" disabled={busy || !text.trim()} style={buttonStyle('primary', { fontSize: 12.5, padding: '6px 12px' })}>Send</button>
-      </form>
-      {error && <div style={{ fontSize: 12.5, color: TONES.danger.fg, marginTop: 6 }}>{error}</div>}
+
+      <div style={{ padding: '10px 16px', borderTop: `1px solid ${HAIRLINE}` }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <textarea
+            aria-label="Message" rows={1} placeholder={`Message ${title}`} value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+            style={{ ...inputStyle, resize: 'none', minHeight: 36, maxHeight: 140, fieldSizing: 'content', lineHeight: 1.4 }}
+          />
+          <button type="button" onClick={send} disabled={busy || !text.trim()} style={buttonStyle('primary', { padding: '8px 14px', opacity: busy || !text.trim() ? 0.6 : 1 })}>Send</button>
+        </div>
+        <div style={{ fontSize: 11.5, color: SUBTLE, marginTop: 4 }}>Enter to send, Shift + Enter for a new line</div>
+        {error && <div style={{ fontSize: 12.5, color: TONES.danger.fg, marginTop: 6 }}>{error}</div>}
+      </div>
     </div>
   );
 }
 
-function ChatRow({ c, names, open, onToggle, onChanged }) {
-  const last = c.last_message;
+function ChatsPane({ chats, states, isMobile, onChanged }) {
+  const keyOf = (c) => `${c.practice.id}:${c.id}`;
+  const [picked, setPicked] = useState(null);
+  // Desktop opens the first conversation (unread ones sort first); phones
+  // start on the list.
+  const selected = chats.find(c => keyOf(c) === picked) || (isMobile ? null : chats[0]) || null;
+  if (!chats.length) return <EmptyLine>No chats.</EmptyLine>;
+  const thread = selected && (
+    <ChatThread key={keyOf(selected)} c={selected} names={states[selected.practice.id].names}
+      onChanged={() => onChanged(selected.practice)} onBack={isMobile ? () => setPicked(null) : null} />
+  );
+  if (isMobile) {
+    return (
+      <div style={{ marginTop: 10, border: `1px solid ${HAIRLINE}`, borderRadius: 8, overflow: 'hidden' }}>
+        {thread || chats.map(c => <ConversationItem key={keyOf(c)} c={c} names={states[c.practice.id].names} selected={false} onPick={() => setPicked(keyOf(c))} />)}
+      </div>
+    );
+  }
   return (
-    <li style={{ borderTop: `1px solid ${HAIRLINE}` }}>
-      <button type="button" onClick={onToggle} aria-expanded={open} style={rowButton}>
-        <PracticeTag practice={c.practice} />
-        <span style={{ fontWeight: c.unread_count ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '35%' }}>{chatTitle(c, names)}</span>
-        <span style={{ flex: 1, minWidth: 0, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {last ? `${names[last.sender_username] === undefined ? 'You' : names[last.sender_username]}: ${last.text}` : 'No messages yet'}
-        </span>
-        {c.unread_count > 0 && <Tag tone="warning">{c.unread_count} new</Tag>}
-        <span style={{ color: MUTED, fontSize: 12.5, whiteSpace: 'nowrap' }}>{when(last?.created_at || c.created_at)}</span>
-      </button>
-      {open && <ChatThread c={c} names={names} onChanged={onChanged} />}
-    </li>
+    <div style={{ display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', marginTop: 12, border: `1px solid ${HAIRLINE}`, borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ borderRight: `1px solid ${HAIRLINE}`, background: 'white' }}>
+        {chats.map(c => (
+          <ConversationItem key={keyOf(c)} c={c} names={states[c.practice.id].names} selected={selected && keyOf(c) === keyOf(selected)} onPick={() => setPicked(keyOf(c))} />
+        ))}
+      </div>
+      {thread}
+    </div>
   );
 }
 
@@ -411,16 +506,11 @@ export default function CentralPage() {
             {tab === 'tickets' && (tickets.length
               ? tickets.map(t => <TicketRow key={key(t, 't')} t={t} open={openKey === key(t, 't')} onToggle={() => toggle(key(t, 't'))} onDone={() => { setOpenKey(null); reload(t.practice); }} />)
               : <EmptyLine>No open support tickets.</EmptyLine>)}
-            {tab === 'chats' && (chats.length
-              ? chats.map(c => (
-                <ChatRow key={key(c, 'c')} c={c} names={states[c.practice.id].names} open={openKey === key(c, 'c')}
-                  onToggle={() => toggle(key(c, 'c'))} onChanged={() => reload(c.practice)} />
-              ))
-              : <EmptyLine>No chats.</EmptyLine>)}
             {tab === 'tasks' && (tasks.length
               ? tasks.map(t => <TaskRow key={key(t, 'k')} t={t} open={openKey === key(t, 'k')} onToggle={() => toggle(key(t, 'k'))} onDone={() => { setOpenKey(null); reload(t.practice); }} />)
               : <EmptyLine>No open tasks.</EmptyLine>)}
           </ul>
+          {tab === 'chats' && <ChatsPane chats={chats} states={states} isMobile={isMobile} onChanged={reload} />}
         </Card>
       </div>
     </div>
