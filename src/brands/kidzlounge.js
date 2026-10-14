@@ -17,6 +17,10 @@ export default {
     ],
     tagline: 'Providing Occupational, Physical and Speech Therapy. We also offer classes for kidz.',
   },
+  // Optional features (Oct 2026), matched by FEATURES on the clinic's API
+  // (kidz-lounge-api lib/features.js). ei: the EMR for NYC Early
+  // Intervention agencies (PedsDesk only).
+  features: { ei: false },
   theme: {
     primary: '#6D28D9', // primary buttons, links, the selected tab
     primaryBright: '#7C3AED',

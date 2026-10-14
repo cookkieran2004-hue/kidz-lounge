@@ -139,6 +139,16 @@ Kieran plans to deploy this app for other pediatric therapy clinics, one deploym
 - **Lists a clinic would set** (rooms, session lengths, credentials, billing codes) live in ONE exported constant. Import it; never copy it into another file.
 - **Optional features stay self-contained** (their own page, components and API route) so they can be switched off per clinic. The planned add-on modules are EI-Hub, the Billing sheet, Time off and Power Forms.
 
+## Per-clinic features (Oct 2026)
+
+Kieran is building PedsDesk into the EMR for NYC Early Intervention agencies (session notes, EI-Hub billing, authorizations / IFSPs, reports). **Kidz Lounge must not be affected at all**, and `main` reaches Kidz Lounge every night, so all of it sits behind a per-clinic switch:
+
+- `featureOn(name)` from `src/brand.js` reads `features` in `src/brands/<clinic>.js` (missing = off). Its partner is `FEATURES` on the clinic's API (kidz-lounge-api `lib/features.js`); set both.
+- **`ei`**: on for PedsDesk (the Demo build), off for Kidz Lounge.
+- **With a switch off, everything behaves exactly as before.** Shared screens and routes (schedule, appointment form, patient chart, billing) only branch on the switch; never change their existing behavior to suit the feature.
+- **Schema changes are additive only** (new tables, new nullable columns). Never rename, drop or tighten anything Kidz Lounge uses.
+- Kieran flips switches by code change; there's no setting in the app.
+
 ## Billing (Oct 2026)
 
 - `/billing` (`src/pages/BillingPage.jsx`, nav "Billing"): one provider's month laid out like the paper billing invoice, from `api.getBillingSheet` (kidz-lounge-api `routes/billing.js`). Same access as the Weekly view. Key: X provided, A child absent, PA provider absent, H holiday, Z emergency closure, M make-up; a dot = booked, day not over. Admin/Developer tick Reviewed.
