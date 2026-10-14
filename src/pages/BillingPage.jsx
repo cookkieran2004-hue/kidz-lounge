@@ -146,15 +146,15 @@ export default function BillingPage() {
   // The totals under the key (Kieran, Oct 2026), in 30-minute units: a
   // 30-minute session is 1, 45 minutes 1.5, 60 minutes 2 (minutes / 30).
   // Only sessions provided (X, M, E) count:
-  //   EI Home    EI sessions at home (EI at a center or school is in the
-  //              Center & School row above Daily total instead)
+  //   EI Center & School  EI sessions at a center or school
+  //   EI Home    EI sessions at home
   //   DOE 30     every DOE session as 30-minute units (45 = 1.5, 60 = 2)
   //   Insurance  every row with a billing code (C-1 ... C-#), or still
   //              missing one (the red #)
   // Not counted lists sessions that need fixing to be counted: EI with no
   // setting, and DOE that isn't 30, 45 or 60 minutes.
   const totals = useMemo(() => {
-    const out = { eiHome: 0, doe: 0, insurance: 0, missed: [] };
+    const out = { eiCenterSchool: 0, eiHome: 0, doe: 0, insurance: 0, missed: [] };
     const miss = (r, day, e, reason) => out.missed.push({ name: r.patient_name, day: Number(day), time: e.time, reason });
     for (const r of sheet?.rows || []) {
       const pay = r.pay_group || r.group;
@@ -167,7 +167,8 @@ export default function BillingPage() {
           if (pay === 'EI') {
             const setting = settingOf(e.room);
             if (setting === 'H') out.eiHome += units;
-            else if (!setting) miss(r, day, e, 'EI, no setting (Center / School / Home)');
+            else if (setting) out.eiCenterSchool += units;
+            else miss(r, day, e, 'EI, no setting (Center / School / Home)');
           } else if (pay === 'DOE') {
             if (minutes === 30 || minutes === 45 || minutes === 60) out.doe += units;
             else miss(r, day, e, `DOE, ${minutes} min (only 30, 45 and 60 count)`);
@@ -368,6 +369,7 @@ export default function BillingPage() {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '12px 16px', borderTop: `1px solid ${HAIRLINE}`, background: '#FAFAFA', fontSize: 13, ...NUMERIC }}>
               {[
+                ['EI Center & School', totals.eiCenterSchool, 'EI sessions provided at a center or school, in 30-minute units (45 min = 1.5, 60 min = 2)'],
                 ['EI Home', totals.eiHome, 'EI sessions provided at home, in 30-minute units (45 min = 1.5, 60 min = 2)'],
                 ['DOE 30', totals.doe, 'Every DOE session provided, in 30-minute units: 30 min = 1, 45 min = 1.5, 60 min = 2'],
                 ['Insurance', totals.insurance, 'Sessions provided for every billing code (C-1 ... C-#), in 30-minute units'],
