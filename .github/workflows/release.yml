@@ -2,7 +2,8 @@ name: Nightly release to Kidz Lounge
 
 # Kidz Lounge's Vercel project deploys the `production` branch; the Demo
 # project deploys main. At 11:30 PM New York time, after the API's 11 PM
-# release, this moves `production` up to main, and Vercel deploys it.
+# release, this merges main into `production` with a new release commit, and
+# Vercel deploys it.
 # If the API's release failed, it stops, so the site never runs ahead of the
 # API it needs.
 #
@@ -55,11 +56,29 @@ jobs:
         with:
           fetch-depth: 0
 
+      # A release is a merge commit on `production`, never main's own commit:
+      # Vercel skips a commit it already built (as main's preview), so
+      # pushing the same commit to `production` deployed nothing (Oct 2026).
       - name: Release
         if: steps.when.outputs.go == 'true'
         run: |
-          if git rev-parse -q --verify origin/production > /dev/null && [ "$(git rev-parse origin/production)" = "$(git rev-parse HEAD)" ]; then
+          sha="${{ github.sha }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          msg="Release $(git rev-parse --short "$sha") to Kidz Lounge"
+          if ! git rev-parse -q --verify origin/production > /dev/null; then
+            git checkout -B production "$sha"
+            git commit --allow-empty -m "$msg"
+          elif [ "$(git rev-parse origin/production)" = "$sha" ]; then
+            # production is main's own commit (the old way): a new, empty
+            # release commit on top so Vercel builds it.
+            git checkout -B production origin/production
+            git commit --allow-empty -m "$msg"
+          elif git merge-base --is-ancestor "$sha" origin/production; then
             echo "Nothing new since the last release."; exit 0
+          else
+            git checkout -B production origin/production
+            git merge --no-ff --no-edit -m "$msg" "$sha"
           fi
-          git push origin "${{ github.sha }}:refs/heads/production"
-          echo "Released $(git rev-parse --short HEAD); Vercel deploys it to Kidz Lounge now."
+          git push origin production
+          echo "Released $(git rev-parse --short "$sha") as $(git rev-parse --short HEAD); Vercel deploys it to Kidz Lounge now."
