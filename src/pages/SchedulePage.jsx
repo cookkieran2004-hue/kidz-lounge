@@ -343,6 +343,9 @@ export function computeConflicts(appointments, oooRecords, contractedGaps = [], 
       list.push({ kind: 'closed', a: apt, closed, types: ['closed'] });
       return;
     }
+    // Outside hours sessions are meant to fall outside contracted hours, so
+    // they're never flagged for it (Kieran, Oct 2026).
+    if (apt.outside_hours) return;
     contractedGaps.forEach(gap => {
       if (gap.provider !== apt.provider) return;
       if (gap.date !== apt.appointment_date) return;
