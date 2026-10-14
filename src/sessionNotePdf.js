@@ -40,7 +40,8 @@ export async function buildSessionNotePdf(data) {
   const pdfMake = await loadPdfMake();
   const { session, note, addenda } = data;
   const h = note.header || session.header;
-  const outcomes = session.outcomes.filter(o => (note.outcome_ids || []).includes(o.id));
+  // A signed note keeps its own copy of the outcomes it worked on.
+  const outcomes = h.outcomes || session.outcomes.filter(o => (note.outcome_ids || []).includes(o.id));
   const codes = [...(h.cpt_codes || []).map((c, i) => `CPT ${i + 1}: ${c}`), ...(h.hcpcs_codes || []).map(c => `HCPCS: ${c}`)].join('   ');
   const content = [
     { columns: [

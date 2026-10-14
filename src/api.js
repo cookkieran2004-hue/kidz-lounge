@@ -348,6 +348,12 @@ export const api = {
   parentSignSessionNote: (record) => request('/session-notes/note/parent-sign', { method: 'POST', body: JSON.stringify(record) }),
   providerSignSessionNote: (record) => request('/session-notes/note/provider-sign', { method: 'POST', body: JSON.stringify(record) }),
   addSessionNoteAddendum: (key, body) => request('/session-notes/note/addenda', { method: 'POST', body: JSON.stringify({ key, body }) }),
+  // EI progress reports (the "ei" feature, PedsDesk; API routes/progressReports.js).
+  getProgressReports: ({ patientId, provider } = {}) => request(`/progress-reports?${patientId ? `patient_id=${patientId}` : ''}${provider ? `&provider=${encodeURIComponent(provider)}` : ''}`),
+  startProgressReport: (record) => request('/progress-reports', { method: 'POST', body: JSON.stringify(record) }),
+  getProgressReport: (id) => request(`/progress-reports/${id}`),
+  saveProgressReport: (id, record) => request(`/progress-reports/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
+  progressReportStep: (id, step, record) => request(`/progress-reports/${id}/${step}`, { method: 'POST', body: JSON.stringify(record || {}) }),
   getServiceLog: (patientId, provider, month) => request(`/session-notes/service-log?patient_id=${patientId}&provider=${encodeURIComponent(provider)}&month=${month}`),
   // EI-Hub's Child Info and Authorizations report (Reception too): what it would change, then apply the ticked changes.
   previewEiImport: (file) => request('/ei-hub/import/preview', { method: 'POST', body: JSON.stringify(file) }),

@@ -20,7 +20,7 @@ const TABS = [
   { to: '/waitlist', label: 'Waitlist' },
   { to: '/billing', label: 'Billing' },
   // EI session notes (PedsDesk only, src/SessionNotes.jsx).
-  ...(featureOn('ei') ? [{ to: '/session-notes', label: 'Notes' }] : []),
+  ...(featureOn('ei') ? [{ to: '/session-notes', label: 'Notes' }, { to: '/progress-reports', label: 'Reports' }] : []),
 ];
 
 const barStyle = {

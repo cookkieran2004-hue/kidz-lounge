@@ -280,6 +280,8 @@ export function SessionNotePage() {
   const set = (patch) => { setForm(f => ({ ...f, ...patch })); setDirty(true); };
   const h = note?.header || session.header;
   const cancelled = note ? note.cancelled : session.cancelled;
+  // A signed note shows the outcomes as they were when it was signed.
+  const outcomeList = note?.header?.outcomes || session.outcomes;
 
   const save = async () => {
     setSaving(true);
@@ -395,8 +397,8 @@ export function SessionNotePage() {
           )}
 
           <Question n={1} title={cancelled ? 'Why was the session canceled?' : 'IFSP outcome(s) and developmental step(s) addressed during this session'}>
-            {!cancelled && (session.outcomes.length
-              ? session.outcomes.map(o => (
+            {!cancelled && (outcomeList.length
+              ? outcomeList.map(o => (
                 <Check key={o.id} checked={form.outcome_ids.includes(o.id)} disabled={!editable} onChange={on => set({ outcome_ids: toggle(form.outcome_ids, o.id, on) })}>
                   <strong>Outcome {o.number}:</strong> {o.outcome}{o.services?.length ? <span style={{ color: MUTED }}> · {o.services.join(', ')}</span> : null}
                 </Check>

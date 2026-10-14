@@ -5,6 +5,9 @@ import { IFSP_TYPE_OPTIONS } from './ifspTypes';
 import { eiInput, eiLabel, eiGrid } from './eiHubUi';
 import { TONES, buttonStyle, choiceStyle } from './uiTokens';
 import { formatPhone } from './phone';
+import { useAuth } from './AuthContext';
+import { useIsMobile } from './useIsMobile';
+import { ProgressReportRows } from './ProgressReports';
 
 // The patient chart's IFSP tab (the "ei" feature, PedsDesk only, Oct 2026;
 // API routes/ifsp.js, lib/ifsp.js). Every IFSP period the child has had,
@@ -63,6 +66,11 @@ function Outcomes({ outcomes }) {
         <li key={o.id} style={{ padding: '4px 0', lineHeight: 1.45 }}>
           {o.outcome}
           {o.services.length > 0 && <span style={{ color: MUTED, fontSize: 12 }}> · {o.services.join(', ')}</span>}
+          {(o.steps || []).length > 0 && (
+            <div style={{ marginTop: 2 }}>
+              {o.steps.map((st, j) => <div key={j} style={{ fontSize: 12.5, color: INK, paddingLeft: 4 }}><span style={{ color: MUTED }}>{outcomes.indexOf(o) + 1}{String.fromCharCode(97 + j)}.</span> {st}</div>)}
+            </div>
+          )}
         </li>
       ))}
     </ol>
@@ -78,7 +86,7 @@ function IfspForm({ patient, existing, seed, onSaved, onCancel }) {
     sc_name: start.sc_name || '', sc_company: start.sc_company || '', sc_phone: formatPhone(start.sc_phone), sc_email: start.sc_email || '',
     notes: existing?.notes || '',
   });
-  const [outcomes, setOutcomes] = useState(existing?.outcomes?.length ? existing.outcomes.map(o => ({ outcome: o.outcome, services: o.services })) : [{ outcome: '', services: [] }]);
+  const [outcomes, setOutcomes] = useState(existing?.outcomes?.length ? existing.outcomes.map(o => ({ id: o.id, outcome: o.outcome, services: o.services, steps: o.steps || [] })) : [{ outcome: '', services: [], steps: [] }]);
   const [doc, setDoc] = useState(existing?.document_id ? { id: existing.document_id, filename: existing.document_name } : null);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -102,7 +110,7 @@ function IfspForm({ patient, existing, seed, onSaved, onCancel }) {
         setDoc({ id: saved.id, filename: saved.filename });
         setFile(null);
       }
-      const record = { ...form, document_id: documentId, outcomes: outcomes.filter(o => o.outcome.trim()) };
+      const record = { ...form, document_id: documentId, outcomes: outcomes.filter(o => o.outcome.trim()).map(o => ({ ...o, steps: (o.steps || []).filter(s => s.trim()) })) };
       if (existing) await api.updateIfsp(patient.id, existing.id, record);
       else await api.addIfsp(patient.id, record);
       onSaved();
@@ -169,9 +177,22 @@ function IfspForm({ patient, existing, seed, onSaved, onCancel }) {
             <button type="button" aria-label={`Remove outcome ${i + 1}`} onClick={() => setOutcomes(list => list.filter((_, j) => j !== i))}
               style={{ ...buttonStyle('text'), color: MUTED }}>Remove</button>
           </div>
+          {/* Developmental steps (1a, 1b, ...): progress reports rate each one. */}
+          <div style={{ flexBasis: '100%', paddingLeft: 26 }}>
+            {(o.steps || []).map((st, j) => (
+              <div key={j} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 12.5, color: MUTED, width: 26 }}>{i + 1}{String.fromCharCode(97 + j)}.</span>
+                <input aria-label={`Developmental step ${i + 1}${String.fromCharCode(97 + j)}`} value={st} style={{ ...eiInput, flex: 1 }}
+                  onChange={e => setOutcome(i, { steps: o.steps.map((x, k) => (k === j ? e.target.value : x)) })} />
+                <button type="button" aria-label={`Remove step ${i + 1}${String.fromCharCode(97 + j)}`} onClick={() => setOutcome(i, { steps: o.steps.filter((_, k) => k !== j) })}
+                  style={{ ...buttonStyle('text'), color: MUTED }}>Remove</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setOutcome(i, { steps: [...(o.steps || []), ''] })} style={{ ...linkButton, fontSize: 12.5, fontWeight: 500 }}>+ Add developmental step</button>
+          </div>
         </div>
       ))}
-      <button type="button" onClick={() => setOutcomes(list => [...list, { outcome: '', services: [] }])} style={linkButton}>+ Add outcome</button>
+      <button type="button" onClick={() => setOutcomes(list => [...list, { outcome: '', services: [], steps: [] }])} style={linkButton}>+ Add outcome</button>
 
       <p style={{ fontSize: 12.5, fontWeight: 600, color: INK, margin: '16px 0 6px' }}>IFSP document</p>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 13 }}>
@@ -245,6 +266,32 @@ function TransitionForm({ patient, record, onSaved, onCancel }) {
         <button type="button" disabled={busy} onClick={onCancel} style={buttonStyle('secondary')}>Cancel</button>
       </div>
     </div>
+  );
+}
+
+// This child's progress reports (src/ProgressReports.jsx): due ones from the
+// current IFSP and every report written, newest IFSP first.
+function ProgressReportsBox({ patient, headerStyle, boxStyle, reload }) {
+  const { user } = useAuth();
+  const isMobile = useIsMobile(900);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    api.getProgressReports({ patientId: patient.id })
+      .then(d => { if (alive) { setData(d); setError(null); } })
+      .catch(err => { if (alive) setError(err.message); });
+    return () => { alive = false; };
+  }, [patient.id, reload]);
+  return (
+    <>
+      <p style={headerStyle}>Progress reports</p>
+      <div style={boxStyle}>
+        {error && <p role="alert" style={{ margin: 0, fontSize: 13, color: RED }}>{error}</p>}
+        {!data && !error && <p style={{ margin: 0, fontSize: 13, color: MUTED }}>Loading...</p>}
+        {data && <ProgressReportRows rows={[...data.rows].reverse()} today={data.today} showChild={false} showProvider canStart={!!user?.providerName} isMobile={isMobile} onError={setError} />}
+      </div>
+    </>
   );
 }
 
@@ -339,6 +386,8 @@ export default function IfspTab({ patient, headerStyle, boxStyle, onPatientChang
           </>
         )}
       </div>
+
+      <ProgressReportsBox patient={patient} headerStyle={headerStyle} boxStyle={boxStyle} reload={reload} />
 
       {ifsps.length > 1 && (
         <>
