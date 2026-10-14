@@ -143,19 +143,32 @@ export default function BillingPage() {
     }).filter(g => g.rows.length);
   }, [sheet]);
 
-  // EI sessions provided, split by where they happened (Kieran, Oct 2026):
-  // center or school together, home on its own, and any with no setting.
-  const eiBySetting = useMemo(() => {
-    const out = { centerSchool: 0, home: 0, unknown: 0 };
+  // The totals under the key (Kieran, Oct 2026), in 30-minute units: a
+  // 30-minute session is 1, 45 minutes 1.5, 60 minutes 2 (minutes / 30).
+  // Only sessions provided (X, M, E) count. EI splits by where it happened
+  // (an EI session with no setting is in neither EI total); DOE by length;
+  // Insurance (BCBS/Anthem, CIGNA, GHI, P, PP) and Other by the row's
+  // pay_group from the API; Outside hours across every program.
+  const totals = useMemo(() => {
+    const out = { eiCenterSchool: 0, eiHome: 0, doe30: 0, doe45: 0, doe60: 0, insurance: 0, other: 0, outside: 0 };
     for (const r of sheet?.rows || []) {
-      if (r.group !== 'EI') continue;
+      const pay = r.pay_group || r.group;
       for (const entries of Object.values(r.days || {})) {
         for (const e of entries) {
           if (!COUNTED.includes(e.mark)) continue;
-          const setting = settingOf(e.room);
-          if (setting === 'H') out.home += 1;
-          else if (setting) out.centerSchool += 1;
-          else out.unknown += 1;
+          const minutes = Number(e.duration) || 30;
+          const units = minutes / 30;
+          if (e.outside_hours) out.outside += units;
+          if (pay === 'EI') {
+            const setting = settingOf(e.room);
+            if (setting === 'H') out.eiHome += units;
+            else if (setting) out.eiCenterSchool += units;
+          } else if (pay === 'DOE') {
+            if (minutes === 45) out.doe45 += units;
+            else if (minutes === 60) out.doe60 += units;
+            else if (minutes === 30) out.doe30 += units;
+          } else if (pay === 'Insurance') out.insurance += units;
+          else out.other += units;
         }
       }
     }
@@ -327,29 +340,21 @@ export default function BillingPage() {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '12px 16px', borderTop: `1px solid ${HAIRLINE}`, background: '#FAFAFA', fontSize: 13, ...NUMERIC }}>
-              <span style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
-                EI Center &amp; School <strong style={{ color: INK, marginLeft: 6 }}>{eiBySetting.centerSchool}</strong>
-              </span>
-              <span style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
-                EI Home <strong style={{ color: INK, marginLeft: 6 }}>{eiBySetting.home}</strong>
-              </span>
-              {eiBySetting.unknown > 0 && (
-                <span title="EI sessions with no room, or offsite with no Center / School / Home. Set it on the appointment to count it above."
+              {[
+                ['EI Center & School', totals.eiCenterSchool],
+                ['EI Home', totals.eiHome],
+                ['DOE 30 min', totals.doe30],
+                ['DOE 45 min', totals.doe45],
+                ['DOE 60 min', totals.doe60],
+                ['Insurance', totals.insurance],
+                ['Other', totals.other],
+                ['Outside hours', totals.outside],
+              ].map(([label, value]) => (
+                <span key={label} title="Sessions provided, in 30-minute units (45 min = 1.5, 60 min = 2)"
                   style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
-                  EI, setting not set <strong style={{ color: INK, marginLeft: 6 }}>{eiBySetting.unknown}</strong>
+                  {label} <strong style={{ color: INK, marginLeft: 6 }}>{Math.round(value * 10) / 10}</strong>
                 </span>
-              )}
-              {GROUPS.filter(g => g.key !== 'EI').map(g => {
-                const found = grouped.find(x => x.key === g.key);
-                return (
-                  <span key={g.key} style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
-                    {g.footer} <strong style={{ color: INK, marginLeft: 6 }}>{found ? found.total : 0}</strong>
-                  </span>
-                );
-              })}
-              <span style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
-                Sessions <strong style={{ color: INK, marginLeft: 6 }}>{grand.total} of {grand.scheduled}</strong>
-              </span>
+              ))}
               {/* The provider's approved PTO / UPTO for days in this month. */}
               {['PTO', 'UPTO'].map(t => {
                 const reqs = (sheet.time_off?.requests || []).filter(x => x.type === t);
