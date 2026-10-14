@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { WHATS_NEW } from './whatsNew';
+import { WHATS_NEW, whatsNewItemsFor } from './whatsNew';
 
 const seenKey = (username) => `kl.whatsNew.seen.${username}`;
 
@@ -9,7 +9,8 @@ function hasSeen(username) {
   try { return localStorage.getItem(seenKey(username)) === WHATS_NEW.id; } catch { return false; }
 }
 
-// Shows WHATS_NEW (src/whatsNew.js) once to each person after they sign in.
+// Shows WHATS_NEW (src/whatsNew.js) once to each person after they sign in,
+// with only the items for their role (whatsNewItemsFor).
 // Sits under the support-ticket popup (SupportNotifier), which goes first
 // if both are waiting.
 export default function WhatsNewNotifier() {
@@ -19,7 +20,8 @@ export default function WhatsNewNotifier() {
   // the browser won't store it (private mode).
   const [dismissedBy, setDismissedBy] = useState(null);
   const okRef = useRef(null);
-  const show = !!user && !user.mustResetPassword && dismissedBy !== user.username && !hasSeen(user.username);
+  const items = whatsNewItemsFor(user);
+  const show = !!user && !user.mustResetPassword && items.length > 0 && dismissedBy !== user.username && !hasSeen(user.username);
   useEffect(() => { if (show) okRef.current?.focus(); }, [show]);
   if (!show) return null;
 
@@ -39,8 +41,8 @@ export default function WhatsNewNotifier() {
       >
         <h2 id="kl-whats-new-title" style={{ margin: '0 0 12px', fontSize: 17, color: '#111827' }}>{WHATS_NEW.title}</h2>
         <ul style={{ margin: '0 0 14px', paddingLeft: 18, fontSize: 14, lineHeight: 1.45, color: '#111827' }}>
-          {WHATS_NEW.items.map(([name, text]) => (
-            <li key={name} style={{ marginBottom: 6 }}><strong>{name}:</strong> {text}</li>
+          {items.map(({ name, text }) => (
+            <li key={name} style={{ marginBottom: 6 }}><strong>{name}</strong>{text.startsWith('(') ? ' ' : ': '}{text}</li>
           ))}
         </ul>
         <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280' }}>Details are in the User manual.</p>
