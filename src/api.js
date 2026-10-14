@@ -1,7 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL;
 const TOKEN_KEY = 'kidz_lounge_token';
 
-// sessionStorage (not localStorage) is deliberate: it persists across page
+// sessionStorages (not localStorage) is deliberate: it persists across page
 // reloads within the same tab, but is cleared as soon as the tab or browser
 // is closed -- so a reload keeps you logged in, closing the tab logs you out.
 export function getToken() {
