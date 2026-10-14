@@ -16,8 +16,9 @@ export default {
   },
   // Optional features (Oct 2026), matched by FEATURES on the clinic's API
   // (kidz-lounge-api lib/features.js). ei: the EMR for NYC Early
-  // Intervention agencies (PedsDesk only).
-  features: { ei: true },
+  // Intervention agencies. mandates: Billing's month overview, mandates and
+  // needs attention, and the EI child-absence reason. Both PedsDesk only.
+  features: { ei: true, mandates: true },
   theme: {
     primary: '#1D4ED8',
     primaryBright: '#2563EB',

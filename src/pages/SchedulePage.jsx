@@ -17,6 +17,7 @@ import { canceledLane, isCanceledAppt, NO_ROOM_NEEDED } from '../scheduleLanes';
 import { useAppointmentDrag } from '../useAppointmentDrag';
 import { AppointmentDragLayer, DropToast } from '../AppointmentDragLayer';
 import { saveDrop, movedFields, isMissedAppt } from '../scheduleDrag';
+import { featureOn } from '../brand';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -169,6 +170,9 @@ function areaAfterStatus(status, area) {
 // Holiday as H and Emergency Closure as Z, like an office closure; Other = A.
 // Mirrors kidz-lounge-api lib/cancelReason.js.
 const CANCEL_REASONS = [['holiday', 'Holiday'], ['emergency', 'Emergency Closure'], ['other', 'Other - see comments']];
+// Why a child missed an EI session (the "mandates" feature); mirrors
+// kidz-lounge-api lib/absenceReason.js.
+const ABSENCE_REASONS = [['illness', 'Illness'], ['vacation', 'Family vacation (no make-up)'], ['other', 'Other']];
 // Short form for the small status badge on a card.
 const CANCEL_REASON_SHORT = { holiday: 'Holiday', emergency: 'Emergency', other: 'Other' };
 
@@ -2653,6 +2657,26 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   // Only for a canceled offsite session; anything else saves no reason.
   const [cancelReason, setCancelReason] = useState(existing?.cancel_reason || '');
   const reasonToSave = status === 'Canceled' && roomChoice === OFFSITE ? (cancelReason || null) : null;
+  // The "mandates" feature (src/brand.js, Oct 2026): why a child missed an
+  // EI session. NYS's EI make-up policy allows a make-up for illness and
+  // other reasons, not for a family vacation (kidz-lounge-api
+  // lib/absenceReason.js, lib/mandates.js). Asked only when the session bills
+  // as EI, and not when it was a holiday / emergency closure.
+  const mandatesOn = featureOn('mandates');
+  const [absenceReason, setAbsenceReason] = useState(existing?.absence_reason || '');
+  const [billsAsEI, setBillsAsEI] = useState(!!existing?.absence_reason);
+  const missedStatus = MISSED_STATUSES.includes(status);
+  useEffect(() => {
+    if (!mandatesOn || !missedStatus || !patientConfirmed || !patientSearch || !provider || !appointmentDate) return undefined;
+    let alive = true;
+    api.getBillingProgramOn(patientSearch, provider, appointmentDate)
+      .then(r => { if (alive) setBillsAsEI(r?.group === 'EI'); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [mandatesOn, missedStatus, patientConfirmed, patientSearch, provider, appointmentDate]);
+  const askAbsence = mandatesOn && missedStatus && billsAsEI && reasonToSave !== 'holiday' && reasonToSave !== 'emergency';
+  // Sent only where the feature is on, so other clinics never clear one.
+  const absenceField = mandatesOn ? { absence_reason: askAbsence ? (absenceReason || null) : null } : {};
   // Outside hours (Oct 2026): an extra offsite visit outside contracted and
   // office hours -- any time, any day, shown under the grid. Offsite only.
   const [outsideHoursFlag, setOutsideHoursFlag] = useState(!!existing?.outside_hours || !!prefill?.outsideHours);
@@ -2709,6 +2733,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
       treatment_area: areaAfterStatus(status, treatmentArea),
       appointment_status: status,
       cancel_reason: reasonToSave,
+      ...absenceField,
       outside_hours: outsideHours,
     });
     setMaterializedRecord(created);
@@ -2839,6 +2864,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         treatment_area: areaAfterStatus(status, treatmentArea),
         appointment_status: status,
       cancel_reason: reasonToSave,
+      ...absenceField,
       outside_hours: outsideHours,
       };
 
@@ -2874,6 +2900,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 treatment_area: areaAfterStatus(status, treatmentArea),
                 appointment_status: status,
       cancel_reason: reasonToSave,
+      ...absenceField,
       outside_hours: outsideHours,
               });
             } else {
@@ -2981,6 +3008,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         treatment_area: areaAfterStatus(status, treatmentArea),
         appointment_status: status,
       cancel_reason: reasonToSave,
+      ...absenceField,
       outside_hours: outsideHours,
         fin: groupFin,
         ...(makeupFor ? { makeup_for: makeupFor.id } : {}),
@@ -3431,6 +3459,18 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
               >
                 <option value="">Reason (optional)</option>
                 {CANCEL_REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            )}
+            {askAbsence && (
+              <select
+                value={absenceReason}
+                onChange={e => setAbsenceReason(e.target.value)}
+                aria-label="Why was the child absent?"
+                title="EI: a family vacation can't be made up"
+                style={{ ...inputStyle(), width: 'auto', minWidth: 200, display: 'inline-block', cursor: 'pointer' }}
+              >
+                <option value="">Why absent? (EI)</option>
+                {ABSENCE_REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             )}
             {/* Make-ups: a canceled / no-show appointment (as saved) can get one.
