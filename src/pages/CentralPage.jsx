@@ -220,8 +220,13 @@ function TicketRow({ t, open, onToggle, onDone }) {
 
 // ---- Chats ----
 // Two panes like a messenger: conversations on the left, the open one on the
-// right (on phones, one at a time with a Back button). The thread grows with
-// the page rather than scrolling inside a box (one page scroll).
+// right (on phones, one at a time with a Back button). The pane is sized to
+// fit the screen under the nav bar, so the reply box is always in view
+// (Kieran, Oct 2026: an exception to "one page scroll", like the chat
+// widget): the conversation list and the messages scroll inside it.
+// Leaves room under it for the floating chat button, which would cover Send.
+const PANE_HEIGHT = 'clamp(360px, calc(100vh - var(--kl-nav-h, 56px) - 104px), 760px)';
+const PANE_SCROLL_MARGIN = 'calc(var(--kl-nav-h, 56px) + 16px)';
 
 function chatTitle(c, names) {
   if (c.name) return c.name;
@@ -273,6 +278,12 @@ function ConversationItem({ c, names, selected, onPick }) {
 
 function ChatThread({ c, names, onChanged, onBack }) {
   const [messages, setMessages] = useState(null);
+  // Opens at the newest message, and follows new ones.
+  const scrollRef = useRef(null);
+  const count = messages?.length || 0;
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [count]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -305,7 +316,7 @@ function ChatThread({ c, names, onChanged, onBack }) {
   const title = chatTitle(c, names);
   const isGroup = c.type === 'group';
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 420 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${HAIRLINE}` }}>
         {onBack && <button type="button" onClick={onBack} style={buttonStyle('text', { fontSize: 12.5, padding: '4px 4px 4px 0' })}>Back</button>}
         <Avatar name={title} size={32} />
@@ -315,7 +326,7 @@ function ChatThread({ c, names, onChanged, onBack }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6, background: '#FAFAFA' }}>
+      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6, background: '#FAFAFA' }}>
         {messages == null ? <span style={{ fontSize: 13, color: MUTED }}>Loading...</span>
           : !messages.length ? <span style={{ fontSize: 13, color: MUTED, margin: 'auto' }}>No messages in the last 72 hours.</span>
           : messages.map((m, i) => {
@@ -368,6 +379,13 @@ function ChatThread({ c, names, onChanged, onBack }) {
 function ChatsPane({ chats, states, isMobile, onChanged }) {
   const keyOf = (c) => `${c.practice.id}:${c.id}`;
   const [picked, setPicked] = useState(null);
+  // Opening the tab brings the whole pane into view if part of it is below
+  // the screen.
+  const paneRef = useRef(null);
+  useEffect(() => {
+    const el = paneRef.current;
+    if (el && el.getBoundingClientRect().bottom > window.innerHeight - 88) el.scrollIntoView({ block: 'start' });
+  }, []);
   // Desktop opens the first conversation (unread ones sort first); phones
   // start on the list.
   const selected = chats.find(c => keyOf(c) === picked) || (isMobile ? null : chats[0]) || null;
@@ -378,14 +396,14 @@ function ChatsPane({ chats, states, isMobile, onChanged }) {
   );
   if (isMobile) {
     return (
-      <div style={{ marginTop: 10, border: `1px solid ${HAIRLINE}`, borderRadius: 8, overflow: 'hidden' }}>
+      <div ref={paneRef} style={{ marginTop: 10, border: `1px solid ${HAIRLINE}`, borderRadius: 8, overflow: 'hidden', height: PANE_HEIGHT, scrollMarginTop: PANE_SCROLL_MARGIN, overflowY: thread ? 'hidden' : 'auto' }}>
         {thread || chats.map(c => <ConversationItem key={keyOf(c)} c={c} names={states[c.practice.id].names} selected={false} onPick={() => setPicked(keyOf(c))} />)}
       </div>
     );
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', marginTop: 12, border: `1px solid ${HAIRLINE}`, borderRadius: 8, overflow: 'hidden' }}>
-      <div style={{ borderRight: `1px solid ${HAIRLINE}`, background: 'white' }}>
+    <div ref={paneRef} style={{ display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gridTemplateRows: 'minmax(0, 1fr)', height: PANE_HEIGHT, scrollMarginTop: PANE_SCROLL_MARGIN, marginTop: 12, border: `1px solid ${HAIRLINE}`, borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ borderRight: `1px solid ${HAIRLINE}`, background: 'white', overflowY: 'auto', minHeight: 0 }}>
         {chats.map(c => (
           <ConversationItem key={keyOf(c)} c={c} names={states[c.practice.id].names} selected={selected && keyOf(c) === keyOf(selected)} onPick={() => setPicked(keyOf(c))} />
         ))}
