@@ -145,35 +145,33 @@ export default function BillingPage() {
 
   // The totals under the key (Kieran, Oct 2026), in 30-minute units: a
   // 30-minute session is 1, 45 minutes 1.5, 60 minutes 2 (minutes / 30).
-  // Only sessions provided (X, M, E) count. EI splits by where it happened
-  // (an EI session with no setting is in neither EI total); DOE by length;
-  // Insurance (BCBS/Anthem, CIGNA, GHI, P, PP) and Other by the row's
-  // pay_group from the API; Outside hours across every program.
+  // Only sessions provided (X, M, E) count:
+  //   EI Home    EI sessions at home (EI at a center or school is in the
+  //              Center & School row above Daily total instead)
+  //   DOE 30     every DOE session as 30-minute units (45 = 1.5, 60 = 2)
+  //   Insurance  every row with a billing code (C-1 ... C-#), or still
+  //              missing one (the red #)
+  // Not counted lists sessions that need fixing to be counted: EI with no
+  // setting, and DOE that isn't 30, 45 or 60 minutes.
   const totals = useMemo(() => {
-    const out = { eiCenterSchool: 0, eiHome: 0, doe30: 0, doe45: 0, doe60: 0, insurance: 0, other: 0, outside: 0, missed: [] };
-    // A provided session no total picks up (Kieran, Oct 2026): listed in the
-    // "Not counted" bubble so it can be fixed on the appointment.
+    const out = { eiHome: 0, doe: 0, insurance: 0, missed: [] };
     const miss = (r, day, e, reason) => out.missed.push({ name: r.patient_name, day: Number(day), time: e.time, reason });
     for (const r of sheet?.rows || []) {
       const pay = r.pay_group || r.group;
+      const coded = r.needs_code || /^C-/.test(String(r.program || ''));
       for (const [day, entries] of Object.entries(r.days || {})) {
         for (const e of entries) {
           if (!COUNTED.includes(e.mark)) continue;
           const minutes = Number(e.duration) || 30;
           const units = minutes / 30;
-          if (e.outside_hours) out.outside += units;
           if (pay === 'EI') {
             const setting = settingOf(e.room);
             if (setting === 'H') out.eiHome += units;
-            else if (setting) out.eiCenterSchool += units;
-            else miss(r, day, e, 'EI, no setting (Center / School / Home)');
+            else if (!setting) miss(r, day, e, 'EI, no setting (Center / School / Home)');
           } else if (pay === 'DOE') {
-            if (minutes === 45) out.doe45 += units;
-            else if (minutes === 60) out.doe60 += units;
-            else if (minutes === 30) out.doe30 += units;
-            else miss(r, day, e, `DOE, ${minutes} min (no total for that length)`);
-          } else if (pay === 'Insurance') out.insurance += units;
-          else out.other += units;
+            if (minutes === 30 || minutes === 45 || minutes === 60) out.doe += units;
+            else miss(r, day, e, `DOE, ${minutes} min (only 30, 45 and 60 count)`);
+          } else if (coded) out.insurance += units;
         }
       }
     }
@@ -231,6 +229,11 @@ export default function BillingPage() {
   const stickyName = { position: 'sticky', left: 0, zIndex: 1, background: 'white', minWidth: NAME_W, maxWidth: NAME_W, overflow: 'hidden', textOverflow: 'ellipsis' };
   const dayBg = (d) => (sheet?.closures?.[dateOf(d)] ? 'var(--brand-tint)' : (weekday(d) === 0 || weekday(d) === 6) ? '#F4F4F5' : dateOf(d) === sheet?.today ? '#FFFBEB' : undefined);
   // Sessions provided (X, M or E) on each day, across every patient.
+  // Sessions provided each day by setting, every program (Kieran, Oct 2026):
+  // the Home and Center & School rows above Daily total. A session with no
+  // setting is in neither.
+  const perSetting = (letters) => Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => COUNTED.includes(e.mark) && letters.includes(settingOf(e.room))).length, 0)]));
+  const settingRows = [['Home', perSetting(['H']), 'Home sessions provided each day'], ['Center & School', perSetting(['C', 'S']), 'Center and school sessions provided each day']];
   const perDay = Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => e.mark === 'X' || e.mark === 'M' || e.mark === 'E').length, 0)]));
   const grand = grouped.reduce((t, g) => ({ scheduled: t.scheduled + g.scheduled, total: t.total + g.total }), { scheduled: 0, total: 0 });
   const colCount = 4 + days.length + 2;
@@ -318,17 +321,33 @@ export default function BillingPage() {
                   {grouped.map(g => (
                     <GroupRows key={g.key} group={g} days={days} cell={cell} stickyName={stickyName} dayBg={dayBg} />
                   ))}
+                  {grouped.length > 0 && settingRows.map(([label, counts, title], i) => {
+                    const top = i === 0 ? { borderTop: `2px solid ${INK}` } : {};
+                    const sum = days.reduce((t, d) => t + counts[d], 0);
+                    return (
+                      <tr key={label}>
+                        <td colSpan={4} style={{ ...cell, ...stickyName, ...top, maxWidth: 'none', fontWeight: 600, padding: '0 10px', background: '#FAFAFA' }} title={title}>{label}</td>
+                        {days.map(d => (
+                          <td key={d} style={{ ...cell, ...top, textAlign: 'center', padding: '0 2px', fontWeight: 600, background: '#FAFAFA', color: counts[d] ? INK : SUBTLE }}>
+                            {counts[d] || ''}
+                          </td>
+                        ))}
+                        <td style={{ ...cell, ...top, background: '#FAFAFA' }} />
+                        <td style={{ ...cell, ...top, textAlign: 'right', fontWeight: 600, background: '#FAFAFA', borderRight: 'none' }}>{sum}</td>
+                      </tr>
+                    );
+                  })}
                   {grouped.length > 0 && (
                     <tr>
-                      <td colSpan={4} style={{ ...cell, ...stickyName, maxWidth: 'none', fontWeight: 700, padding: '0 10px', background: '#F4F4F5', borderTop: `2px solid ${INK}` }}
+                      <td colSpan={4} style={{ ...cell, ...stickyName, maxWidth: 'none', fontWeight: 700, padding: '0 10px', background: '#F4F4F5' }}
                         title="Sessions provided (X, M or E) each day">Daily total</td>
                       {days.map(d => (
-                        <td key={d} style={{ ...cell, textAlign: 'center', padding: '0 2px', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}`, color: perDay[d] ? INK : SUBTLE }}>
+                        <td key={d} style={{ ...cell, textAlign: 'center', padding: '0 2px', fontWeight: 700, background: '#F4F4F5', color: perDay[d] ? INK : SUBTLE }}>
                           {perDay[d] || ''}
                         </td>
                       ))}
-                      <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}` }}>{grand.scheduled}</td>
-                      <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5', borderTop: `2px solid ${INK}`, borderRight: 'none' }}>{grand.total}</td>
+                      <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5' }}>{grand.scheduled}</td>
+                      <td style={{ ...cell, textAlign: 'right', fontWeight: 700, background: '#F4F4F5', borderRight: 'none' }}>{grand.total}</td>
                     </tr>
                   )}
                 </tbody>
@@ -347,27 +366,22 @@ export default function BillingPage() {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '12px 16px', borderTop: `1px solid ${HAIRLINE}`, background: '#FAFAFA', fontSize: 13, ...NUMERIC }}>
               {[
-                ['EI Center & School', totals.eiCenterSchool],
-                ['EI Home', totals.eiHome],
-                ['DOE 30 min', totals.doe30],
-                ['DOE 45 min', totals.doe45],
-                ['DOE 60 min', totals.doe60],
-                ['Insurance', totals.insurance],
-                ['Other', totals.other],
-                ['Outside hours', totals.outside],
-              ].map(([label, value]) => (
-                <span key={label} title="Sessions provided, in 30-minute units (45 min = 1.5, 60 min = 2)"
+                ['EI Home', totals.eiHome, 'EI sessions provided at home, in 30-minute units (45 min = 1.5, 60 min = 2)'],
+                ['DOE 30', totals.doe, 'Every DOE session provided, in 30-minute units: 30 min = 1, 45 min = 1.5, 60 min = 2'],
+                ['Insurance', totals.insurance, 'Sessions provided for every billing code (C-1 ... C-#), in 30-minute units'],
+              ].map(([label, value, title]) => (
+                <span key={label} title={title}
                   style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
                   {label} <strong style={{ color: INK, marginLeft: 6 }}>{Math.round(value * 10) / 10}</strong>
                 </span>
               ))}
-              {/* Provided sessions that no total above picks up; hover for the list. */}
+              {/* Provided sessions that need fixing before they count; hover for the list. */}
               {(() => {
                 const n = totals.missed.length;
                 const monthName = new Date(`${month}-01T00:00:00`).toLocaleDateString('en-US', { month: 'short' });
                 const list = totals.missed.map(m => `${m.name} \u00b7 ${monthName} ${m.day}${m.time ? `, ${fmtTime(m.time)}` : ''} \u00b7 ${m.reason}`).join('\n');
                 return (
-                  <span title={n ? `Not in any total above. Fix the appointment to count it:\n${list}` : 'Every session provided is in a total above.'}
+                  <span title={n ? `Needs fixing on the appointment before it counts:\n${list}` : 'Nothing needs fixing.'}
                     style={{ border: `1px solid ${n ? TONES.warning.fg : HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: n ? TONES.warning.bg : 'white', color: n ? TONES.warning.fg : MUTED, cursor: n ? 'help' : 'default' }}>
                     Not counted <strong style={{ color: n ? TONES.warning.fg : INK, marginLeft: 6 }}>{n}</strong>
                   </span>
