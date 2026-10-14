@@ -229,11 +229,13 @@ export default function BillingPage() {
   const stickyName = { position: 'sticky', left: 0, zIndex: 1, background: 'white', minWidth: NAME_W, maxWidth: NAME_W, overflow: 'hidden', textOverflow: 'ellipsis' };
   const dayBg = (d) => (sheet?.closures?.[dateOf(d)] ? 'var(--brand-tint)' : (weekday(d) === 0 || weekday(d) === 6) ? '#F4F4F5' : dateOf(d) === sheet?.today ? '#FFFBEB' : undefined);
   // Sessions provided (X, M or E) on each day, across every patient.
-  // Sessions provided each day by setting, every program (Kieran, Oct 2026):
-  // the Home and Center & School rows above Daily total. A session with no
-  // setting is in neither.
-  const perSetting = (letters) => Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => COUNTED.includes(e.mark) && letters.includes(settingOf(e.room))).length, 0)]));
-  const settingRows = [['Home', perSetting(['H']), 'Home sessions provided each day'], ['Center & School', perSetting(['C', 'S']), 'Center and school sessions provided each day']];
+  // Sessions provided each day by setting, every program and every child
+  // (Kieran, Oct 2026): the Home and Center & School rows above Daily total.
+  // Every session is in one of them, so together they make Daily total: Home
+  // is a session set to Home; Center & School is everything else, including
+  // a session with no room or an older offsite one with no setting.
+  const perSetting = (atHome) => Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => COUNTED.includes(e.mark) && (settingOf(e.room) === 'H') === atHome).length, 0)]));
+  const settingRows = [['Home', perSetting(true), 'Home sessions provided each day'], ['Center & School', perSetting(false), 'Every other session provided each day: center, school, or no setting']];
   const perDay = Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => e.mark === 'X' || e.mark === 'M' || e.mark === 'E').length, 0)]));
   const grand = grouped.reduce((t, g) => ({ scheduled: t.scheduled + g.scheduled, total: t.total + g.total }), { scheduled: 0, total: 0 });
   const colCount = 4 + days.length + 2;
