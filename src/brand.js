@@ -11,6 +11,8 @@ const BRANDS = { kidzlounge, pedsdesk };
 
 export const CLINIC = BRANDS[import.meta.env.VITE_CLINIC] || kidzlounge;
 export const THEME = CLINIC.theme;
+// A per-clinic feature (src/brands/<clinic>.js `features`); off unless named.
+export const featureOn = (name) => !!CLINIC.features?.[name];
 export const PRODUCT = 'PedsDesk';
 // Shown small in the footer and on the sign-in page of every clinic but the
 // product's own.

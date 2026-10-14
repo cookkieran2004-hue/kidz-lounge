@@ -14,6 +14,10 @@ export default {
     lines: ['A demonstration clinic. All names and details are made up.'],
     tagline: 'Occupational, physical and speech therapy for children.',
   },
+  // Optional features (Oct 2026), matched by FEATURES on the clinic's API
+  // (kidz-lounge-api lib/features.js). mandates: Billing's month overview,
+  // mandates and needs attention, and the EI child-absence reason.
+  features: { mandates: true },
   theme: {
     primary: '#1D4ED8',
     primaryBright: '#2563EB',

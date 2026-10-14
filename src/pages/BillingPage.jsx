@@ -5,6 +5,10 @@ import { useIsMobile } from '../useIsMobile';
 import { canManage, canAdminister, canUseEiHub } from '../roles';
 import { PageHeader, UnderlineTabs } from '../dashboardUi';
 import EiHubPanel from '../EiHubPanel';
+import BillingOverview from '../BillingOverview';
+import BillingMandates from '../BillingMandates';
+import BillingAttention from '../BillingAttention';
+import { featureOn } from '../brand';
 import { INK, MUTED, SUBTLE, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 import { statusColor } from './SchedulePage';
@@ -75,12 +79,16 @@ const fmtTime = (t) => { const [h, m] = t.split(':').map(Number); return `${((h 
 
 function Mark({ entry }) {
   if (!entry.mark) {
-    return <span title={`Booked ${fmtTime(entry.time)} · ${entry.status}${entry.outside_hours ? ' · Outside hours' : ''}`} style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: SUBTLE }} />;
+    const f = entry.flags || [];
+    return <span title={`Booked ${fmtTime(entry.time)} · ${entry.status}${entry.outside_hours ? ' · Outside hours' : ''}${f.length ? `\n${f.join('\n')}` : ''}`} style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: f.length ? TONES.danger.fg : SUBTLE, ...(f.length ? { outline: `2px solid ${TONES.danger.fg}`, outlineOffset: 1 } : {}) }} />;
   }
   const s = MARK_STYLE[entry.mark] || MARK_STYLE.X;
+  // A problem the mandates check found (make-up past its 14 days or on a
+  // regular session's day, more than the mandate): a red ring, explained on hover.
+  const flags = entry.flags || [];
   return (
-    <span title={`${s.title} · ${fmtTime(entry.time)} · ${entry.status}${entry.outside_hours ? ' · Outside hours' : ''}`}
-      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, padding: entry.mark.length > 1 ? '0 3px' : 0, boxSizing: 'border-box', borderRadius: 9, background: s.bg, color: s.fg, fontSize: 10, fontWeight: 700, lineHeight: 1 }}>
+    <span title={`${s.title} · ${fmtTime(entry.time)} · ${entry.status}${entry.outside_hours ? ' · Outside hours' : ''}${flags.length ? `\n${flags.join('\n')}` : ''}`}
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, padding: entry.mark.length > 1 ? '0 3px' : 0, boxSizing: 'border-box', borderRadius: 9, background: s.bg, color: s.fg, fontSize: 10, fontWeight: 700, lineHeight: 1, ...(flags.length ? { outline: `2px solid ${TONES.danger.fg}`, outlineOffset: 1 } : {}) }}>
       {entry.mark}
       {/* Outside hours session (Oct 2026): counted the same, marked with a corner dot. */}
       {entry.outside_hours && <span aria-label="Outside hours" style={{ position: 'absolute', top: -2, right: -2, width: 7, height: 7, borderRadius: 4, background: INK, border: '1.5px solid white' }} />}
@@ -105,8 +113,13 @@ export default function BillingPage() {
   // Child Info and Authorizations report; Kieran, Oct 2026).
   const eiHubFull = canUseEiHub(user);
   const eiHubAllowed = eiHubFull || canManage(user);
-  const [view, setView] = useState('sheet');
+  // The "mandates" feature (src/brand.js; PedsDesk first, Oct 2026): opens
+  // on the month overview, with Mandates and Needs attention tabs, the
+  // payroll totals above the sheet and problem sessions flagged on it.
+  const mandatesOn = featureOn('mandates');
+  const [view, setView] = useState(mandatesOn ? 'overview' : 'sheet');
   const eiHub = eiHubAllowed && view === 'eihub';
+  const onSheet = view === 'sheet';
   const headerRef = useRef(null);
   const sheetRef = useRef(null);
   // The column header (Name, Mandate, ... day numbers) is its own strip
@@ -127,13 +140,13 @@ export default function BillingPage() {
   }, [manager]);
 
   useEffect(() => {
-    if (!active) return undefined;
+    if (!active || !onSheet) return undefined;
     let alive = true;
     api.getBillingSheet(active, month)
       .then(s => { if (alive) { setSheet(s); setError(null); } })
       .catch(err => { if (alive) { setSheet(null); setError(err.message); } });
     return () => { alive = false; };
-  }, [active, month, version]);
+  }, [active, month, version, onSheet]);
 
   const grouped = useMemo(() => {
     if (!sheet) return [];
@@ -150,6 +163,16 @@ export default function BillingPage() {
   // Insurance (BCBS/Anthem, CIGNA, GHI, P, PP) and Other by the row's
   // pay_group from the API; Outside hours across every program.
   const totals = useMemo(() => {
+    // With mandates on, the API works the totals out (kidz-lounge-api
+    // lib/billingTotals.js, the same figures as the overview and export).
+    const t = sheet?.totals;
+    if (mandatesOn && t) {
+      return {
+        eiCenterSchool: t.ei_center_school, eiHome: t.ei_home, doe30: t.doe_30, doe45: t.doe_45, doe60: t.doe_60,
+        insurance: t.insurance, other: t.other, outside: t.outside_hours,
+        missed: t.missed.map(m => ({ name: m.patient_name, day: m.day, time: m.time, reason: m.reason })),
+      };
+    }
     const out = { eiCenterSchool: 0, eiHome: 0, doe30: 0, doe45: 0, doe60: 0, insurance: 0, other: 0, outside: 0, missed: [] };
     // A provided session no total picks up (Kieran, Oct 2026): listed in the
     // "Not counted" bubble so it can be fixed on the appointment.
@@ -179,7 +202,7 @@ export default function BillingPage() {
     }
     out.missed.sort((a, b) => (a.day - b.day) || String(a.time).localeCompare(String(b.time)));
     return out;
-  }, [sheet]);
+  }, [sheet, mandatesOn]);
 
   // Print exactly what's on screen: the sheet alone, landscape, at its
   // on-screen width scaled down to fit the page (PRINT_CSS). Also applies
@@ -234,6 +257,55 @@ export default function BillingPage() {
   const perDay = Object.fromEntries(days.map(d => [d, (sheet?.rows || []).reduce((t, r) => t + (r.days[d] || []).filter(e => e.mark === 'X' || e.mark === 'M' || e.mark === 'E').length, 0)]));
   const grand = grouped.reduce((t, g) => ({ scheduled: t.scheduled + g.scheduled, total: t.total + g.total }), { scheduled: 0, total: 0 });
   const colCount = 4 + days.length + 2;
+  // The payroll totals, PTO / UPTO and Reviewed: under the key, or (with
+  // mandates on) at the top of the sheet, where payroll looks first.
+  const renderTotals = (atTop) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '12px 16px', [atTop ? 'borderBottom' : 'borderTop']: `1px solid ${HAIRLINE}`, background: '#FAFAFA', fontSize: 13, ...NUMERIC }}>
+      {[
+        ['EI Center & School', totals.eiCenterSchool],
+        ['EI Home', totals.eiHome],
+        ['DOE 30 min', totals.doe30],
+        ['DOE 45 min', totals.doe45],
+        ['DOE 60 min', totals.doe60],
+        ['Insurance', totals.insurance],
+        ['Other', totals.other],
+        ['Outside hours', totals.outside],
+      ].map(([label, value]) => (
+        <span key={label} title="Sessions provided, in 30-minute units (45 min = 1.5, 60 min = 2)"
+          style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
+          {label} <strong style={{ color: INK, marginLeft: 6 }}>{Math.round(value * 10) / 10}</strong>
+        </span>
+      ))}
+      {/* Provided sessions that no total above picks up; hover for the list. */}
+      {(() => {
+        const n = totals.missed.length;
+        const monthName = new Date(`${month}-01T00:00:00`).toLocaleDateString('en-US', { month: 'short' });
+        const list = totals.missed.map(m => `${m.name} \u00b7 ${monthName} ${m.day}${m.time ? `, ${fmtTime(m.time)}` : ''} \u00b7 ${m.reason}`).join('\n');
+        return (
+          <span title={n ? `Not in any total above. Fix the appointment to count it:\n${list}` : 'Every session provided is in a total above.'}
+            style={{ border: `1px solid ${n ? TONES.warning.fg : HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: n ? TONES.warning.bg : 'white', color: n ? TONES.warning.fg : MUTED, cursor: n ? 'help' : 'default' }}>
+            Not counted <strong style={{ color: n ? TONES.warning.fg : INK, marginLeft: 6 }}>{n}</strong>
+          </span>
+        );
+      })()}
+      {/* The provider's approved PTO / UPTO for days in this month. */}
+      {['PTO', 'UPTO'].map(t => {
+        const reqs = (sheet.time_off?.requests || []).filter(x => x.type === t);
+        return (
+          <span key={t} style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}
+            title={reqs.length ? reqs.map(x => `${shortDate(x.start_date)}${x.end_date !== x.start_date ? ` – ${shortDate(x.end_date)}` : ''}: ${x.hours} h`).join('\n') : `No ${t} this month`}>
+            {t} taken <strong style={{ color: INK, marginLeft: 6 }}>{sheet.time_off?.[t] ?? 0} h</strong>
+          </span>
+        );
+      })}
+      <label style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, color: INK, fontWeight: 600, cursor: canAdminister(user) ? 'pointer' : 'default' }}
+        title={canAdminister(user) ? undefined : 'Only an Admin or Developer can mark a sheet reviewed.'}>
+        <input type="checkbox" checked={!!sheet.reviewed} disabled={!canAdminister(user) || savingReview} onChange={toggleReviewed} />
+        Reviewed
+        {sheet.reviewed && <span style={{ fontWeight: 400, color: MUTED }}>by {sheet.reviewed.reviewed_by} on {new Date(sheet.reviewed.reviewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+      </label>
+    </div>
+  );
 
   return (
     <div style={{ background: PAGE_BG, minHeight: '100%', fontFamily: FONT }}>
@@ -249,7 +321,7 @@ export default function BillingPage() {
             isMobile={isMobile}
             actions={
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {manager && !eiHub && (
+                {manager && onSheet && (
                   <select value={provider} onChange={e => setProvider(e.target.value)} aria-label="Provider"
                     style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${HAIRLINE}`, fontSize: 13, fontFamily: 'inherit', background: 'white' }}>
                     {providers.map(p => <option key={p.Name} value={p.Name}>{p.Name}</option>)}
@@ -259,15 +331,20 @@ export default function BillingPage() {
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: INK, minWidth: 130, textAlign: 'center' }}>{monthLabel(month)}</span>
                 <button type="button" aria-label="Next month" onClick={() => setMonth(m => shiftMonth(m, 1))} style={buttonStyle('secondary', { padding: '6px 10px' })}>›</button>
                 {month !== monthKey(new Date()) && <button type="button" onClick={() => setMonth(monthKey(new Date()))} style={buttonStyle('secondary')}>This month</button>}
-                {!eiHub && <button type="button" onClick={() => window.print()} style={buttonStyle('secondary')}>Print</button>}
+                {onSheet && <button type="button" onClick={() => window.print()} style={buttonStyle('secondary')}>Print</button>}
               </div>
             }
           />
-          {eiHubAllowed && (
+          {(eiHubAllowed || mandatesOn) && (
             <UnderlineTabs label="Billing views" active={view} onPick={setView} style={{ marginBottom: 12 }}
-              tabs={[{ key: 'sheet', label: 'Billing sheets' }, { key: 'eihub', label: 'EI-Hub Entry' }]} />
+              tabs={[
+                ...(mandatesOn ? [{ key: 'overview', label: 'Overview' }] : []),
+                { key: 'sheet', label: 'Billing sheets' },
+                ...(mandatesOn ? [{ key: 'mandates', label: 'Mandates' }, { key: 'attention', label: 'Needs attention' }] : []),
+                ...(eiHubAllowed ? [{ key: 'eihub', label: 'EI-Hub Entry' }] : []),
+              ]} />
           )}
-          {sheet && !eiHub && (
+          {sheet && onSheet && (
             <div style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12 }}>
               <SheetInfo sheet={sheet} isMobile={isMobile} />
             </div>
@@ -275,17 +352,24 @@ export default function BillingPage() {
         </div>
 
         {eiHub && <EiHubPanel month={month} full={eiHubFull} />}
-        {!eiHub && error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
-        {!eiHub && !sheet && !error && <p style={{ fontSize: 13, color: MUTED }}>Loading billing...</p>}
+        {view === 'overview' && mandatesOn && (
+          <BillingOverview month={month} manager={manager} isMobile={isMobile}
+            onOpenProvider={(name) => { if (manager) setProvider(name); setView('sheet'); }} />
+        )}
+        {view === 'mandates' && mandatesOn && <BillingMandates month={month} manager={manager} />}
+        {view === 'attention' && mandatesOn && <BillingAttention month={month} />}
+        {onSheet && error && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{error}</p>}
+        {onSheet && !sheet && !error && <p style={{ fontSize: 13, color: MUTED }}>Loading billing...</p>}
 
         <style>{PRINT_CSS}</style>
-        {sheet && !eiHub && (
+        {sheet && onSheet && (
           <div ref={sheetRef} className="kl-billing-print" style={{ background: 'white', border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: 'clip' }}>
             <div className="kl-print-only" style={{ display: 'none', padding: '12px 16px 0', fontSize: 16, fontWeight: 600, color: INK }}>Billing Invoice · {monthLabel(month)}</div>
             {/* On screen this line is in the sticky header above; printed here. */}
             <div className="kl-print-only" style={{ display: 'none' }}>
               <SheetInfo sheet={sheet} isMobile={isMobile} />
             </div>
+            {mandatesOn && renderTotals(true)}
 
             <div ref={headScrollRef} className="kl-billing-head" style={{ position: 'sticky', top: STACK_TOP, zIndex: 5, overflow: 'hidden', background: '#FAFAFA' }}>
               <table style={tableStyle}>
@@ -343,53 +427,10 @@ export default function BillingPage() {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: null, time: '00:00', status: '' }} /> Booked, day not over</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: 'X', time: '00:00', status: '', outside_hours: true }} /> Outside hours</span>
               <span>Setting: C center, S school, H home</span>
+              {mandatesOn && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: 'M', time: '00:00', status: '', flags: ['Example'] }} /> Needs checking (hover it)</span>}
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '12px 16px', borderTop: `1px solid ${HAIRLINE}`, background: '#FAFAFA', fontSize: 13, ...NUMERIC }}>
-              {[
-                ['EI Center & School', totals.eiCenterSchool],
-                ['EI Home', totals.eiHome],
-                ['DOE 30 min', totals.doe30],
-                ['DOE 45 min', totals.doe45],
-                ['DOE 60 min', totals.doe60],
-                ['Insurance', totals.insurance],
-                ['Other', totals.other],
-                ['Outside hours', totals.outside],
-              ].map(([label, value]) => (
-                <span key={label} title="Sessions provided, in 30-minute units (45 min = 1.5, 60 min = 2)"
-                  style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}>
-                  {label} <strong style={{ color: INK, marginLeft: 6 }}>{Math.round(value * 10) / 10}</strong>
-                </span>
-              ))}
-              {/* Provided sessions that no total above picks up; hover for the list. */}
-              {(() => {
-                const n = totals.missed.length;
-                const monthName = new Date(`${month}-01T00:00:00`).toLocaleDateString('en-US', { month: 'short' });
-                const list = totals.missed.map(m => `${m.name} \u00b7 ${monthName} ${m.day}${m.time ? `, ${fmtTime(m.time)}` : ''} \u00b7 ${m.reason}`).join('\n');
-                return (
-                  <span title={n ? `Not in any total above. Fix the appointment to count it:\n${list}` : 'Every session provided is in a total above.'}
-                    style={{ border: `1px solid ${n ? TONES.warning.fg : HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: n ? TONES.warning.bg : 'white', color: n ? TONES.warning.fg : MUTED, cursor: n ? 'help' : 'default' }}>
-                    Not counted <strong style={{ color: n ? TONES.warning.fg : INK, marginLeft: 6 }}>{n}</strong>
-                  </span>
-                );
-              })()}
-              {/* The provider's approved PTO / UPTO for days in this month. */}
-              {['PTO', 'UPTO'].map(t => {
-                const reqs = (sheet.time_off?.requests || []).filter(x => x.type === t);
-                return (
-                  <span key={t} style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 6, padding: '5px 10px', background: 'white', color: MUTED }}
-                    title={reqs.length ? reqs.map(x => `${shortDate(x.start_date)}${x.end_date !== x.start_date ? ` – ${shortDate(x.end_date)}` : ''}: ${x.hours} h`).join('\n') : `No ${t} this month`}>
-                    {t} taken <strong style={{ color: INK, marginLeft: 6 }}>{sheet.time_off?.[t] ?? 0} h</strong>
-                  </span>
-                );
-              })}
-              <label style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, color: INK, fontWeight: 600, cursor: canAdminister(user) ? 'pointer' : 'default' }}
-                title={canAdminister(user) ? undefined : 'Only an Admin or Developer can mark a sheet reviewed.'}>
-                <input type="checkbox" checked={!!sheet.reviewed} disabled={!canAdminister(user) || savingReview} onChange={toggleReviewed} />
-                Reviewed
-                {sheet.reviewed && <span style={{ fontWeight: 400, color: MUTED }}>by {sheet.reviewed.reviewed_by} on {new Date(sheet.reviewed.reviewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
-              </label>
-            </div>
+            {!mandatesOn && renderTotals(false)}
           </div>
         )}
       </div>

@@ -311,6 +311,13 @@ export const api = {
   getProviderCaseload: (provider) => request(`/providers/${encodeURIComponent(provider)}/caseload`),
   getBillingSheet: (provider, month) => request(`/billing?provider=${encodeURIComponent(provider || '')}&month=${month}`),
   setBillingReviewed: (provider, month, reviewed) => request('/billing/review', { method: 'PUT', body: JSON.stringify({ provider, month, reviewed }) }),
+  // The "mandates" feature (src/brand.js featureOn): every provider's month,
+  // each child's mandate week by week, and what needs attention.
+  getBillingOverview: (month) => request(`/billing/overview?month=${month}`),
+  getBillingMandates: (month) => request(`/billing/mandates?month=${month}`),
+  getBillingAttention: (month) => request(`/billing/attention?month=${month}`),
+  // The program a session bills under (EI asks why a child was absent).
+  getBillingProgramOn: (patient, provider, date) => request(`/billing/program-on?${new URLSearchParams({ patient, provider, date })}`),
   // EI-Hub entry list (Billing page): a month's EI sessions, and ticking one as entered.
   getEiHubSessions: (month) => request(`/billing/ei-hub?month=${month}`),
   setEiHubEntered: (payload) => request('/billing/ei-hub/entered', { method: 'PUT', body: JSON.stringify(payload) }),
