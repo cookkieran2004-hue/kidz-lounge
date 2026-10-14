@@ -7,6 +7,7 @@ import { useTasks } from './TasksContext';
 import { Avatar } from './Avatar';
 import { usePendingTimeOff } from './PendingTimeOffContext';
 import { useSupportOpenCount, canSeeSupportTickets } from './supportCount';
+import { canUseCentral } from './centralPractices';
 import { canAdminister } from './roles';
 import { CLINIC } from './brand';
 
@@ -80,12 +81,14 @@ function BellIcon() {
 }
 
 // Items in the username menu. `adminOnly` items are hidden from non-admins;
-// `supportOnly` is only for Developers.
+// `supportOnly` is only for Developers; `centralOnly` is Developers on the
+// PedsDesk (Demo) site.
 const ACCOUNT_LINKS = [
   { to: '/profile', label: 'My profile' },
   { to: '/time', label: 'My time' },
   { to: '/tasks', label: 'My tasks' },
   { to: '/support/tickets', label: 'Support tickets', supportOnly: true },
+  { to: '/central', label: 'Central', centralOnly: true },
   { to: '/admin', label: 'Admin', adminOnly: true },
 ];
 const SUPPORT_GREEN = '#16a34a';
@@ -239,7 +242,7 @@ export default function NavBar() {
   if (!user) return null;
 
   const isAdmin = canAdminister(user); // the Admin area: not reception
-  const accountLinks = ACCOUNT_LINKS.filter(l => (!l.adminOnly || isAdmin) && (!l.supportOnly || canSeeSupportTickets(user)));
+  const accountLinks = ACCOUNT_LINKS.filter(l => (!l.adminOnly || isAdmin) && (!l.supportOnly || canSeeSupportTickets(user)) && (!l.centralOnly || canUseCentral(user)));
   const badgeCount = isAdmin ? pendingCount : 0;
 
   if (!isMobile) {

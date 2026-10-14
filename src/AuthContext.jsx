@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { api, getToken, setToken } from './api';
+import { forgetPracticeTokens } from './centralPractices';
 
 const AuthContext = createContext(null);
 
@@ -55,6 +56,7 @@ export function AuthProvider({ children }) {
   // signing out.
   const logout = useCallback((reason) => {
     if (getToken()) api.logout(typeof reason === 'string' ? reason : 'signed out').catch(() => {});
+    forgetPracticeTokens(); // the central view's sign-ins to other practices
     setToken(null);
     setUser(null);
   }, []);

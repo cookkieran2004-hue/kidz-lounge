@@ -31,6 +31,7 @@ import PowerFormPage from './pages/PowerFormPage';
 import PowerFormsPage from './pages/PowerFormsPage';
 import ProviderDirectoryPage from './pages/ProviderDirectoryPage';
 import CredentialsPage from './pages/CredentialsPage';
+import CentralPage from './pages/CentralPage';
 
 function AppShell() {
   return (
@@ -62,6 +63,7 @@ function AppShell() {
             {/* Provider directory (footer link, everyone signed in) */}
             <Route path="/provider-directory" element={<RequireAuth><ProviderDirectoryPage /></RequireAuth>} />
             <Route path="/credentials" element={<RequireManage><CredentialsPage /></RequireManage>} />
+            <Route path="/central" element={<RequireAuth><CentralPage /></RequireAuth>} />
             {/* Help & Support: open to everyone, signed in or not */}
             <Route path="/support" element={<SupportPage />} />
             <Route path="/manual" element={<ManualPage />} />

@@ -191,3 +191,9 @@ Kieran plans to deploy this app for other pediatric therapy clinics, one deploym
 ## Evals (Oct 2026)
 
 - Booked only from the patient chart's Appointments tab (**Book eval** opens `AppointmentModal` with `prefill.isEval`: title "Book Eval", no repeat, sent with `is_eval: true`). Cards and chart rows show a blue **Eval** tag (`apt.is_eval`); billing shows **E** (key "Eval").
+
+## Central view (Oct 2026)
+
+- `/central` (`src/pages/CentralPage.jsx`, account menu "Central"): only in the PedsDesk build (the Demo site, `CENTRAL_ENABLED`) and only for Developers (`canUseCentral`). Kieran's one place for every practice: a health card per practice (server, code version, database updates not run, staff, failed sign-ins), then Support tickets / Chats / Your tasks from all practices together, each tagged with its practice. Act in place: reply to and close a ticket (the reply is the resolution note the sender sees), reply to a chat (opening one marks it read), mark a task done.
+- The practices are listed in `PRACTICES` in `src/centralPractices.js` (add one per new clinic). The browser calls each practice's API directly with the developer's own sign-in there (the practice this site belongs to uses the current sign-in; the others are signed in on their card and kept in sessionStorage as `central_token_<id>`, forgotten and signed out on logout). Each practice's `ALLOWED_ORIGINS` must include the Demo site. Health comes from the API's `GET /developer/health`; a practice whose API doesn't have it yet says so on its card.
+
