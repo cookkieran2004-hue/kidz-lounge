@@ -19,6 +19,9 @@ export default {
   // Intervention agencies. mandates: Billing's month overview, mandates and
   // needs attention, and the EI child-absence reason. Both PedsDesk only.
   features: { ei: true, mandates: true },
+  // The nav bar as four menus (Schedule, Patients, Clinical, Office) with a
+  // search box (src/NavBar.jsx, src/NavSearch.jsx); unset = the row of links.
+  nav: 'grouped',
   // Patient and schedule lists for an NYC Early Intervention agency (Kieran,
   // Oct 2026; src/patientOptions.js). Case manager pills come from the
   // patients' case managers. RX only matters for insurance.

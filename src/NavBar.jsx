@@ -10,6 +10,7 @@ import { useSupportOpenCount, canSeeSupportTickets } from './supportCount';
 import { canUseCentral } from './centralPractices';
 import { canAdminister, canManage } from './roles';
 import { CLINIC, featureOn } from './brand';
+import NavSearch from './NavSearch';
 
 const BRAND_COLOR = 'var(--brand-primary)';
 
@@ -22,6 +23,80 @@ const TABS = [
   // EI session notes (PedsDesk only, src/SessionNotes.jsx).
   ...(featureOn('ei') ? [{ to: '/session-notes', label: 'Notes' }, { to: '/progress-reports', label: 'Reports' }, { to: '/compliance', label: 'Compliance', manageOnly: true }] : []),
 ];
+
+// The grouped nav (Oct 2026; PedsDesk: `nav: 'grouped'` in its brand file;
+// Kieran: "it is often hard to find what I am looking for"): four menus
+// instead of a row of links, with the footer's pages brought in, plus a
+// search box (src/NavSearch.jsx). Kidz Lounge keeps the row of TABS.
+const GROUPED = CLINIC.nav === 'grouped';
+function navGroups(user) {
+  const manage = canManage(user);
+  return [
+    { label: 'Schedule', items: [
+      { to: '/', label: 'Daily schedule', end: true, keywords: 'today appointments calendar' },
+      { to: '/weekly', label: 'Weekly view', keywords: 'week calendar' },
+    ] },
+    { label: 'Patients', items: [
+      { to: '/patients', label: 'Patients', keywords: 'children charts add patient' },
+      { to: '/waitlist', label: 'Waitlist', keywords: 'referrals waiting' },
+      { to: '/provider-directory', label: 'Provider directory', keywords: 'therapists phone npi license' },
+    ] },
+    ...(featureOn('ei') ? [{ label: 'Clinical', items: [
+      { to: '/session-notes', label: 'Session notes', keywords: 'notes sign parent co-sign service log' },
+      { to: '/progress-reports', label: 'Progress reports', keywords: 'reports ifsp review' },
+      { to: '/eval-reports', label: 'Evaluation reports', keywords: 'evals evaluations' },
+    ] }] : []),
+    { label: 'Office', items: [
+      { to: '/billing', label: 'Billing', keywords: 'billing sheet mandates make-ups ei-hub claims payroll overview' },
+      ...(featureOn('ei') && manage ? [{ to: '/compliance', label: 'Compliance', keywords: 'late overdue audit authorizations credentials turning 3' }] : []),
+      ...(manage ? [{ to: '/credentials', label: 'Credentials', keywords: 'licenses expiring staff' }] : []),
+      ...(canAdminister(user) ? [{ to: '/power-forms', label: 'Power Forms', keywords: 'forms templates packets parents' }] : []),
+    ] },
+  ];
+}
+const isActivePath = (pathname, item) => (item.end ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`))
+  || (item.to === '/patients' && pathname.startsWith('/patients/'));
+
+// One nav menu (desktop): opens on hover, and on click for touch and keyboard.
+function GroupMenu({ group }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const closeTimer = useRef(null);
+  const location = useLocation();
+  const active = group.items.some(i => isActivePath(location.pathname, i));
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown); };
+  }, [open]);
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}
+      onMouseEnter={() => { clearTimeout(closeTimer.current); setOpen(true); }}
+      onMouseLeave={() => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setOpen(false), 150); }}>
+      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(true)}
+        style={{ ...tabStyle({ isActive: active }), display: 'flex', alignItems: 'center', gap: 6, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+        {group.label}
+        <Caret open={open} />
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, paddingTop: 6, zIndex: 60 }}>
+          <div role="menu" style={{ minWidth: 200, background: 'white', border: '1px solid var(--brand-border2)', borderRadius: 8, boxShadow: '0 10px 24px color-mix(in srgb, var(--brand-ink) 12%, transparent)', padding: '6px 0' }}>
+            {group.items.map(item => (
+              <NavLink key={item.to} to={item.to} end={item.end} role="menuitem" className="kl-menu-item" onClick={() => setOpen(false)}
+                style={() => menuItemStyle({ isActive: isActivePath(location.pathname, item) })}>
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const barStyle = {
   display: 'flex',
@@ -246,17 +321,26 @@ export default function NavBar() {
   const isAdmin = canAdminister(user); // the Admin area: not reception
   const accountLinks = ACCOUNT_LINKS.filter(l => (!l.adminOnly || isAdmin) && (!l.supportOnly || canSeeSupportTickets(user)) && (!l.centralOnly || canUseCentral(user)));
   const badgeCount = isAdmin ? pendingCount : 0;
+  const groups = GROUPED ? navGroups(user) : null;
+  // Everything the search box can open by name.
+  const searchPages = GROUPED ? [
+    ...groups.flatMap(g => g.items.map(i => ({ ...i, group: g.label }))),
+    ...accountLinks.map(l => ({ to: l.to, label: l.label, group: 'Account' })),
+    { to: '/manual', label: 'User manual', group: 'Help', keywords: 'how to guide' },
+    { to: '/support', label: 'Help & Support', group: 'Help', keywords: 'ticket problem' },
+  ] : [];
 
   if (!isMobile) {
     return (
       <nav ref={navRef} style={barStyle}>
         <img src={CLINIC.logo} alt={CLINIC.name} style={{ height: 34, width: 'auto', marginRight: 16 }} />
-        {visibleTabs.map(tab => (
+        {GROUPED ? groups.map(g => <GroupMenu key={g.label} group={g} />) : visibleTabs.map(tab => (
           <NavLink key={tab.to} to={tab.to} end={tab.end} style={tabStyle}>
             {tab.label}
           </NavLink>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {GROUPED && <NavSearch pages={searchPages} />}
           <button
             onClick={() => setDrawerOpen(o => !o)}
             aria-label="Toggle task drawer"
@@ -326,7 +410,19 @@ export default function NavBar() {
             zIndex: 50, display: 'flex', flexDirection: 'column',
           }}
         >
-          {visibleTabs.map(tab => (
+          {GROUPED ? (
+            <>
+              <div style={{ padding: '12px 20px 4px' }}><NavSearch pages={searchPages} compact /></div>
+              {groups.map(g => (
+                <div key={g.label} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ padding: '12px 20px 4px', fontSize: 11.5, fontWeight: 600, color: '#9CA3AF' }}>{g.label}</div>
+                  {g.items.map(item => (
+                    <NavLink key={item.to} to={item.to} end={item.end} style={mobileTabStyle}>{item.label}</NavLink>
+                  ))}
+                </div>
+              ))}
+            </>
+          ) : visibleTabs.map(tab => (
             <NavLink key={tab.to} to={tab.to} end={tab.end} style={mobileTabStyle}>
               {tab.label}
             </NavLink>
