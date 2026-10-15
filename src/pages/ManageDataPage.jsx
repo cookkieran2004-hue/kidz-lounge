@@ -1314,7 +1314,8 @@ export function PatientModal({ existing, onClose, onSaved }) {
 
           {tab !== 'patient' && plan.some(p => p.program === tab) && (
             <ProgramTab key={tab} entry={plan.find(p => p.program === tab)} plan={plan} onChange={updateEntry} onRemove={() => removeProgram(tab)}
-              childServices={form.Services} showAuth={showEiBilling} inputStyle={emrInputStyle()} labelStyle={emrLabelStyle()}>
+              childServices={form.Services} showAuth={showEiBilling} inputStyle={emrInputStyle()} labelStyle={emrLabelStyle()}
+              mandateElsewhere={ifspFromTab && existing && tab === 'EI' ? 'Change or correct the mandate and its authorizations on the chart’s Services tab, where each has its dates.' : null}>
               <div style={{ maxWidth: 240, marginBottom: 14 }}>
                 <label htmlFor="kl-program-id" style={emrLabelStyle()}>{tab === 'EI' ? 'ID # (EI child ID)' : 'ID #'}</label>
                 {idInput('kl-program-id')}

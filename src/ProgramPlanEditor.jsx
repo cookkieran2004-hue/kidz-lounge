@@ -313,7 +313,10 @@ export function ProgramChips({ options, plan, onPick }) {
 // sessions per week x minutes, plus the auth # for EI (not shown to
 // providers). A service can only be under one program at a time. `children`
 // goes below (the EI tab's IFSP and EI-Hub details).
-export function ProgramTab({ entry, plan, onChange, onRemove, childServices = [], showAuth, inputStyle, labelStyle, children }) {
+// `mandateElsewhere`: the mandate is shown read-only with this note (the
+// "ei" feature: an existing child's EI mandates and authorizations are
+// changed and corrected on the chart's Services tab, src/EiServicesTab.jsx).
+export function ProgramTab({ entry, plan, onChange, onRemove, childServices = [], showAuth, inputStyle, labelStyle, mandateElsewhere, children }) {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const program = entry.program;
   const coded = takesBillingCode(program);
@@ -343,6 +346,15 @@ export function ProgramTab({ entry, plan, onChange, onRemove, childServices = []
       )}
       <p style={sectionTitle}>Mandate</p>
       {entry.legacy && !entry.mandates.length && <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 8px' }}>Old mandate: {entry.legacy}</p>}
+      {mandateElsewhere ? (
+        <div style={{ marginBottom: 18 }}>
+          {entry.mandates.length ? entry.mandates.map(m => (
+            <div key={m.service} style={{ fontSize: 13.5, color: INK, padding: '2px 0' }}><strong style={{ display: 'inline-block', width: 40 }}>{m.service}</strong>{m.sessions}x{m.minutes} per week</div>
+          )) : !entry.legacy && <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>No mandate entered.</p>}
+          <p style={{ fontSize: 12.5, color: MUTED, margin: '6px 0 0' }}>{mandateElsewhere}</p>
+        </div>
+      ) : (
+      <>
       <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
         {order.map(s => {
           const owner = ownerOf(s);
@@ -379,6 +391,8 @@ export function ProgramTab({ entry, plan, onChange, onRemove, childServices = []
         })}
       </div>
       {authorized && <p style={{ margin: '-8px 0 18px', fontSize: 12, color: MUTED }}>Auth # is the EI-Hub authorization number for that service.</p>}
+      </>
+      )}
       {children}
       <div style={{ marginTop: 18, paddingTop: 12, borderTop: `1px solid ${HAIRLINE}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {confirmRemove ? (

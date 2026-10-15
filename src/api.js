@@ -355,6 +355,13 @@ export const api = {
   addEiConsent: (patientId, record) => request(`/patients/${patientId}/ei-consents`, { method: 'POST', body: JSON.stringify(record) }),
   withdrawEiConsent: (patientId, id, withdrawnOn) => request(`/patients/${patientId}/ei-consents/${id}`, { method: 'PUT', body: JSON.stringify({ withdrawn_on: withdrawnOn }) }),
   deleteEiConsent: (patientId, id) => request(`/patients/${patientId}/ei-consents/${id}`, { method: 'DELETE' }),
+  // The chart's Services tab: EI mandates and authorizations (routes/eiServices.js).
+  getEiServices: (patientId) => request(`/patients/${patientId}/ei-services`),
+  addEiMandate: (patientId, body) => request(`/patients/${patientId}/ei-services/mandates`, { method: 'POST', body: JSON.stringify(body) }),
+  correctEiMandate: (patientId, rowId, body) => request(`/patients/${patientId}/ei-services/mandates/${rowId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  addEiAuthorization: (patientId, body) => request(`/patients/${patientId}/ei-services/authorizations`, { method: 'POST', body: JSON.stringify(body) }),
+  correctEiAuthorization: (patientId, number, body) => request(`/patients/${patientId}/ei-services/authorizations/${encodeURIComponent(number)}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteEiAuthorization: (patientId, number) => request(`/patients/${patientId}/ei-services/authorizations/${encodeURIComponent(number)}`, { method: 'DELETE' }),
   addAbsenceNotice: (record) => request('/compliance/absence-notices', { method: 'POST', body: JSON.stringify(record) }),
   supervisorSignSessionNote: (record) => request('/session-notes/note/supervisor-sign', { method: 'POST', body: JSON.stringify(record) }),
   getSessionNotesToCosign: () => request('/session-notes/cosign?mine=1'),
