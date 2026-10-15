@@ -493,7 +493,7 @@ function GroupRows({ group, days, cell, stickyName, dayBg }) {
         <td colSpan={days.length + 2} style={{ ...cell, background: '#F4F4F5', height: 28, borderRight: 'none' }} />
       </tr>
       {group.rows.map(r => (
-        <tr key={`${r.patient_name}|${r.program || ''}|${r.mandate || ''}`}>
+        <tr key={`${r.patient_name}|${r.program || ''}|${r.mandate || ''}|${r.setting || ''}`}>
           <td style={{ ...cell, ...stickyName, padding: '0 10px', fontWeight: 500 }} title={r.patient_name}>{r.patient_name}</td>
           <td style={cell}>{r.mandate || ''}</td>
           {/* Program: EI, CPSE, CSE, NONE or a billing code (C-1 ... C-#). An
