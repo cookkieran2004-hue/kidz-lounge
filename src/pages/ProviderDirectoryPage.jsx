@@ -40,7 +40,9 @@ export default function ProviderDirectoryPage() {
     npi: p.npi ? <span style={NUMERIC}>{p.npi}</span> : dash,
     discipline: p.discipline || dash,
     license: p.license_number ? <span style={NUMERIC}>{p.license_number}</span> : dash,
-    current: <Tag tone={p.current ? 'success' : 'neutral'}>{p.current ? 'Yes' : 'No'}</Tag>,
+    // An archived provider stays listed for 60 days (the API's
+    // ARCHIVED_DIRECTORY_DAYS), marked Archived.
+    current: <Tag tone={p.current ? 'success' : 'neutral'}>{p.current ? 'Yes' : p.archived ? 'Archived' : 'No'}</Tag>,
     dob: birthday(p.birthday) || dash,
   });
 

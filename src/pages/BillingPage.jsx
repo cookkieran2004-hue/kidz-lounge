@@ -96,7 +96,18 @@ function Mark({ entry }) {
   );
 }
 
-export default function BillingPage() {
+// With the "mandates" feature (PedsDesk) Billing is three pages, one per
+// job (Kieran, Oct 2026: one page was combining too much): Payroll
+// (/billing: Overview, Billing sheets), Mandates (/mandates: Mandates, Needs
+// attention) and EI-Hub claims (/ei-hub). Without it (Kidz Lounge) /billing
+// is the one page it always was, and `section` is ignored.
+const SECTIONS = {
+  payroll: { title: 'Payroll', views: [['overview', 'Overview'], ['sheet', 'Billing sheets']] },
+  mandates: { title: 'Mandates', views: [['mandates', 'Mandates'], ['attention', 'Needs attention']] },
+  eihub: { title: 'EI-Hub claims', views: [['eihub', 'EI-Hub Entry']] },
+};
+
+export default function BillingPage({ section = 'payroll' }) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const manager = canManage(user);
@@ -117,7 +128,8 @@ export default function BillingPage() {
   // on the month overview, with Mandates and Needs attention tabs, the
   // payroll totals above the sheet and problem sessions flagged on it.
   const mandatesOn = featureOn('mandates');
-  const [view, setView] = useState(mandatesOn ? 'overview' : 'sheet');
+  const split = mandatesOn ? SECTIONS[section] || SECTIONS.payroll : null;
+  const [view, setView] = useState(split ? split.views[0][0] : 'sheet');
   const eiHub = eiHubAllowed && view === 'eihub';
   const onSheet = view === 'sheet';
   const headerRef = useRef(null);
@@ -156,10 +168,12 @@ export default function BillingPage() {
     }).filter(g => g.rows.length);
   }, [sheet]);
 
-  // The totals under the key (Kieran, Oct 2026), in 30-minute units: a
-  // 30-minute session is 1, 45 minutes 1.5, 60 minutes 2 (minutes / 30).
-  // Only sessions provided (X, M, E) count:
-  //   EI Center & School  EI sessions at a center or school
+  // The totals under the key (Kieran, Oct 2026; Oct 15: EI Center and EI
+  // School separate again), in 30-minute units: a 30-minute session is 1,
+  // 45 minutes 1.5, 60 minutes 2 (minutes / 30). Only sessions provided
+  // (X, M, E) count:
+  //   EI Center  EI sessions at a center (a room, or offsite at a center)
+  //   EI School  EI sessions at a school
   //   EI Home    EI sessions at home
   //   DOE 30     every DOE session as 30-minute units (45 = 1.5, 60 = 2)
   //   Insurance  every row with a billing code (C-1 ... C-#), or still
@@ -172,11 +186,11 @@ export default function BillingPage() {
     const t = sheet?.totals;
     if (mandatesOn && t) {
       return {
-        eiCenterSchool: t.ei_center_school, eiHome: t.ei_home, doe: t.doe, insurance: t.insurance,
+        eiCenter: t.ei_center, eiSchool: t.ei_school, eiHome: t.ei_home, doe: t.doe, insurance: t.insurance,
         missed: t.missed.map(m => ({ name: m.patient_name, day: m.day, time: m.time, reason: m.reason })),
       };
     }
-    const out = { eiCenterSchool: 0, eiHome: 0, doe: 0, insurance: 0, missed: [] };
+    const out = { eiCenter: 0, eiSchool: 0, eiHome: 0, doe: 0, insurance: 0, missed: [] };
     const miss = (r, day, e, reason) => out.missed.push({ name: r.patient_name, day: Number(day), time: e.time, reason });
     for (const r of sheet?.rows || []) {
       const pay = r.pay_group || r.group;
@@ -189,7 +203,8 @@ export default function BillingPage() {
           if (pay === 'EI') {
             const setting = settingOf(e.room);
             if (setting === 'H') out.eiHome += units;
-            else if (setting) out.eiCenterSchool += units;
+            else if (setting === 'S') out.eiSchool += units;
+            else if (setting === 'C') out.eiCenter += units;
             else miss(r, day, e, 'EI, no setting (Center / School / Home)');
           } else if (pay === 'DOE') {
             if (minutes === 30 || minutes === 45 || minutes === 60) out.doe += units;
@@ -267,7 +282,8 @@ export default function BillingPage() {
   const renderTotals = (atTop) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '12px 16px', [atTop ? 'borderBottom' : 'borderTop']: `1px solid ${HAIRLINE}`, background: '#FAFAFA', fontSize: 13, ...NUMERIC }}>
       {[
-        ['EI Center & School', totals.eiCenterSchool, 'EI sessions provided at a center or school, in 30-minute units (45 min = 1.5, 60 min = 2)'],
+        ['EI Center', totals.eiCenter, 'EI sessions provided at a center, in 30-minute units (45 min = 1.5, 60 min = 2)'],
+        ['EI School', totals.eiSchool, 'EI sessions provided at a school, in 30-minute units (45 min = 1.5, 60 min = 2)'],
         ['EI Home', totals.eiHome, 'EI sessions provided at home, in 30-minute units (45 min = 1.5, 60 min = 2)'],
         ['DOE 30', totals.doe, 'Every DOE session provided, in 30-minute units: 30 min = 1, 45 min = 1.5, 60 min = 2'],
         ['Insurance', totals.insurance, 'Sessions provided for every billing code (C-1 ... C-#), in 30-minute units'],
@@ -318,7 +334,7 @@ export default function BillingPage() {
           margin: isMobile ? '-16px -16px 0' : '-24px -28px 0', padding: isMobile ? '16px 16px 12px' : '24px 28px 12px',
         }}>
           <PageHeader
-            title="Billing"
+            title={split ? split.title : 'Billing'}
             isMobile={isMobile}
             actions={
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -336,13 +352,15 @@ export default function BillingPage() {
               </div>
             }
           />
-          {(eiHubAllowed || mandatesOn) && (
+          {split && split.views.length > 1 && (
+            <UnderlineTabs label={`${split.title} views`} active={view} onPick={setView} style={{ marginBottom: 12 }}
+              tabs={split.views.map(([key, label]) => ({ key, label }))} />
+          )}
+          {!split && eiHubAllowed && (
             <UnderlineTabs label="Billing views" active={view} onPick={setView} style={{ marginBottom: 12 }}
               tabs={[
-                ...(mandatesOn ? [{ key: 'overview', label: 'Overview' }] : []),
                 { key: 'sheet', label: 'Billing sheets' },
-                ...(mandatesOn ? [{ key: 'mandates', label: 'Mandates' }, { key: 'attention', label: 'Needs attention' }] : []),
-                ...(eiHubAllowed ? [{ key: 'eihub', label: 'EI-Hub Entry' }] : []),
+                { key: 'eihub', label: 'EI-Hub Entry' },
               ]} />
           )}
           {sheet && onSheet && (

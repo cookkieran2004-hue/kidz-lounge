@@ -344,7 +344,10 @@ export function computeConflicts(appointments, oooRecords, contractedGaps = [], 
       if (!overlaps) return;
       list.push({ kind: 'ooo', a: apt, ooo, types: ['ooo'] });
     });
-    const closed = closedByDate[apt.appointment_date];
+    // An outside hours session is an offsite visit the provider makes on
+    // their own time, so an office closure doesn't stop it (Kieran, Oct
+    // 2026; billing counts it on a closed day too).
+    const closed = apt.outside_hours ? null : closedByDate[apt.appointment_date];
     if (closed) {
       list.push({ kind: 'closed', a: apt, closed, types: ['closed'] });
       return;

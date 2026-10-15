@@ -5,7 +5,7 @@ import { useTasks } from '../TasksContext';
 import { useIsMobile } from '../useIsMobile';
 import { CalendarPicker, DateField, dateToInputValue } from './SchedulePage';
 import TaskDetailModal, { taskHasComments } from '../TaskDetailModal';
-import { canManage } from '../roles';
+import { canManage, canBeAssignedTasks } from '../roles';
 import Linkify from '../Linkify';
 
 const BRAND_COLOR = 'var(--brand-primary)';
@@ -269,7 +269,7 @@ export default function TasksPage() {
   const openMine = tasks.filter(t => t.status === 'open');
   const doneMine = tasks.filter(isRecentlyCompleted);
 
-  const staffOptions = staff.map(s => ({ username: s.username, name: staffDisplayName(s) }))
+  const staffOptions = staff.filter(s => canBeAssignedTasks(s, user)).map(s => ({ username: s.username, name: staffDisplayName(s) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const grouped = {};

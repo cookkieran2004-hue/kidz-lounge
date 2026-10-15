@@ -18,7 +18,7 @@ import {
   cardStyle, btn, inputStyle, labelStyle, pill, hintStyle, sectionTitleStyle,
   displayName, legalName, formatLongDate, dateOnly, staffSavePayload, scheduleNameFor,
 } from './adminUi';
-import { ROLES, ROLE_LABELS, ROLE_HINTS, roleLabel } from '../../roles';
+import { ROLES, ROLE_LABELS, ROLE_HINTS, roleLabel, showsStaffAccount } from '../../roles';
 import SpecialtyPicker from '../../SpecialtyPicker';
 import { EMPLOYMENT_TYPES, EMPLOYMENT_LABELS, EMPLOYMENT_HINTS, employmentLabel } from '../../employment';
 import { CredentialsPanel } from '../MyProfilePage';
@@ -790,7 +790,8 @@ export default function StaffProfilePage() {
   if (error) return <div style={{ padding: 28, fontFamily: FONT }}>{back}<p role="alert" style={{ color: DANGER, fontSize: 14 }}>This profile couldn't be loaded ({error}). Refresh the page to try again.</p></div>;
   if (!allStaff) return <div style={{ padding: 28, fontFamily: FONT, color: BRAND.muted, fontSize: 14 }}>Loading...</div>;
 
-  const staff = allStaff.find(s => s.username === username);
+  // A Developer's profile is hidden from Admins like their card (src/roles.js).
+  const staff = allStaff.find(s => s.username === username && showsStaffAccount(s, user));
   if (!staff) {
     return (
       <div style={{ padding: 28, fontFamily: FONT }}>
