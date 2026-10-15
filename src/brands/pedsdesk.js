@@ -19,6 +19,16 @@ export default {
   // Intervention agencies. mandates: Billing's month overview, mandates and
   // needs attention, and the EI child-absence reason. Both PedsDesk only.
   features: { ei: true, mandates: true },
+  // Patient and schedule lists for an NYC Early Intervention agency (Kieran,
+  // Oct 2026; src/patientOptions.js). Case manager pills come from the
+  // patients' case managers. RX only matters for insurance.
+  patientOptions: {
+    programs: ['EI', 'CPSE', 'CSE', 'Insurance', 'Private pay'],
+    statuses: ['Referral received', 'Evaluation scheduled', 'Awaiting IFSP', 'Awaiting authorization', 'On Program', 'On hold', 'Off Program'],
+    insurancePrograms: ['Insurance', 'Private pay'],
+    rooms: ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Gym', 'Group room'],
+    rxOnlyFor: ['Insurance'],
+  },
   theme: {
     primary: '#1D4ED8',
     primaryBright: '#2563EB',

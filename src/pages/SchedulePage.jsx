@@ -18,6 +18,7 @@ import { useAppointmentDrag } from '../useAppointmentDrag';
 import { AppointmentDragLayer, DropToast } from '../AppointmentDragLayer';
 import { saveDrop, movedFields, isMissedAppt } from '../scheduleDrag';
 import { featureOn } from '../brand';
+import { ROOM_OPTIONS, rxApplies } from '../patientOptions';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -129,7 +130,8 @@ export function isHoldPatient(patientOrName) {
   return isHoldPatient(patientOrName.Name || patientOrName.patient_name || '');
 }
 const DURATION_OPTIONS = [30, 45, 60];
-export const TREATMENT_AREA_OPTIONS = ['Green', 'Yellow', 'Orange A', 'Orange B', 'Purple', 'Gym A', 'Gym B', 'Gym Table'];
+// In-office rooms: the clinic's list (src/patientOptions.js, from its brand file).
+export const TREATMENT_AREA_OPTIONS = ROOM_OPTIONS;
 
 // ---------- Offsite ----------
 // "Offsite" is picked like a room but isn't one of the rooms. It's stored
@@ -646,7 +648,7 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
 
 export function programColor(programValue) {
   const map = {
-    EI: '#3b82f6', 'BCBS/Anthem': '#059669', 'BCBS/Anthen': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6',
+    EI: '#3b82f6', 'BCBS/Anthem': '#059669', 'BCBS/Anthen': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6', Insurance: '#059669', 'Private pay': '#059669',
     GHI: '#059669', P: '#059669', PP: '#059669', NONE: '#6b7280',
   };
   const first = (programValue || '').split(',')[0].trim();
@@ -726,6 +728,8 @@ function PatientDetailsPanel({ patientName }) {
   const hasIfspInfo = ifspFields.some(Boolean);
 
   const rxFields = [patient.RX_Date, patient.RX_Expiration, patient.Report_Date];
+  // RX only where it applies (PedsDesk: insurance; src/patientOptions.js).
+  const showRx = rxApplies(patient.Program) || !!patient.RX_Date;
   const hasRxInfo = rxFields.some(Boolean);
 
   return (
@@ -795,9 +799,9 @@ function PatientDetailsPanel({ patientName }) {
 
       {hasRxInfo && (
         <div style={{ marginBottom: 16 }}>
-          {sectionHeader('Prescription & Reports')}
-          {row('RX Date', formatDateMMDDYYYY(patient.RX_Date))}
-          {row('RX Expiration', formatDateMMDDYYYY(patient.RX_Expiration))}
+          {sectionHeader(showRx ? 'Prescription & Reports' : 'Reports')}
+          {showRx && row('RX Date', formatDateMMDDYYYY(patient.RX_Date))}
+          {showRx && row('RX Expiration', formatDateMMDDYYYY(patient.RX_Expiration))}
           {row('Report Date', formatDateMMDDYYYY(patient.Report_Date))}
         </div>
       )}

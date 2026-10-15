@@ -18,6 +18,7 @@ import { PowerFormsChartTab } from '../PowerFormsChartTab';
 import IfspTab from '../IfspTab';
 import { SessionNotesChartTab } from '../SessionNotes';
 import { featureOn } from '../brand';
+import { rxApplies } from '../patientOptions';
 
 // The Eval tag, same on the schedule (SchedulePage.jsx).
 const EVAL_BLUE = '#1D4ED8';
@@ -29,7 +30,7 @@ const BRAND_SERIF = 'inherit'; // headings use the app's one font (Oct 2026)
 
 function programColor(programValue) {
   const map = {
-    EI: '#3b82f6', 'BCBS/Anthem': '#059669', 'BCBS/Anthen': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6',
+    EI: '#3b82f6', 'BCBS/Anthem': '#059669', 'BCBS/Anthen': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6', Insurance: '#059669', 'Private pay': '#059669',
     GHI: '#059669', P: '#059669', PP: '#059669', NONE: '#6b7280',
   };
   const first = (programValue || '').split(',')[0].trim();
@@ -291,7 +292,8 @@ function PatientBanner({ patient, appointments }) {
   const facts = [
     { label: 'Age', value: age || '--' },
     { label: 'Next Appointment', value: nextAppt ? `${formatDate(nextAppt.appointment_date)} at ${formatTime(nextAppt.appointment_time)}` : 'None scheduled' },
-    { label: 'RX Expiration', value: formatDateMMDDYYYY(patient.RX_Expiration) || '--' },
+    // RX only where it applies (PedsDesk: insurance; src/patientOptions.js).
+    ...(rxApplies(patient.Program) || patient.RX_Expiration ? [{ label: 'RX Expiration', value: formatDateMMDDYYYY(patient.RX_Expiration) || '--' }] : []),
     { label: 'IFSP End Date', value: formatDateMMDDYYYY(patient.IFSP_End_Date) || '--' },
     { label: 'Report Date', value: formatDateMMDDYYYY(patient.Report_Date) || '--' },
     { label: 'Picture Consent', value: patient.Picture_Consent === true ? 'Yes' : patient.Picture_Consent === false ? 'No' : '--' },
@@ -454,7 +456,7 @@ function OverviewTab({ patient, isMobile, onPatientChanged }) {
           </div>
         </div>
         <div>
-          <p style={sectionHeaderStyle()}>SC / Admin Contact</p>
+          <p style={sectionHeaderStyle()}>{featureOn('ei') ? 'Service Coordinator' : 'SC / Admin Contact'}</p>
           <div style={cardStyle()}>
             <InfoRow label="Name" value={patient.SC_Admin_Name} />
             <InfoRow label="Phone" value={patient.SC_Admin_Phone} />
@@ -474,8 +476,8 @@ function OverviewTab({ patient, isMobile, onPatientChanged }) {
           {!patient.IFSP_Type && !patient.IFSP_Start_Date && <EmptyNote>None on file</EmptyNote>}
         </div>
         <div style={cardStyle()}>
-          <InfoRow label="RX Date" value={formatDateMMDDYYYY(patient.RX_Date)} />
-          <InfoRow label="RX Expiration" value={formatDateMMDDYYYY(patient.RX_Expiration)} />
+          {(rxApplies(patient.Program) || patient.RX_Date) && <InfoRow label="RX Date" value={formatDateMMDDYYYY(patient.RX_Date)} />}
+          {(rxApplies(patient.Program) || patient.RX_Date) && <InfoRow label="RX Expiration" value={formatDateMMDDYYYY(patient.RX_Expiration)} />}
           <InfoRow label="Case Manager" value={patient.Case_Manager} />
           {!patient.RX_Date && !patient.Case_Manager && <EmptyNote>None on file</EmptyNote>}
         </div>

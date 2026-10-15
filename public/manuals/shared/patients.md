@@ -13,7 +13,7 @@
 
 The number at the right (for example "10 of 11") shows how many patients match.
 
-Each patient's programs show as coloured bubbles. Insurers (such as BCBS/Anthem or CIGNA) all show as one **INS** bubble.
+Each patient's programs show as coloured bubbles. Insurance programs all show as one **INS** bubble.
 
 ### A patient's chart
 

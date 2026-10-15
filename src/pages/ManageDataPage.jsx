@@ -19,12 +19,12 @@ import LinkTextarea from '../LinkTextarea';
 import { PatientLinksEditor } from '../PatientLinksView';
 import { parseLinks, linkLabel } from '../patientLinks';
 import { IFSP_TYPE_OPTIONS } from '../ifspTypes';
+import { PROGRAM_OPTIONS, PATIENT_STATUS_OPTIONS, INSURANCE_PROGRAM_VALUES, CASE_MANAGER_PILLS, rxApplies } from '../patientOptions';
+import { featureOn } from '../brand';
 
 // ---------- Patient field option lists ----------
 const SERVICES_OPTIONS = ['PT', 'OT', 'ST', 'SI'];
-const PROGRAM_OPTIONS = ['EI', 'BCBS/Anthem', 'CIGNA', 'CPSE', 'CSE', 'GHI', 'P', 'PP', 'NONE'];
 const RELATIONSHIP_OPTIONS = ['Father', 'Mother', 'Grandmother', 'Grandfather', 'Legal Guardian', 'Caregiver'];
-const PATIENT_STATUS_OPTIONS = ['On Program', 'Awaiting Approval', 'Awaiting Family Paperwork', 'Awaiting Supervision Form', 'Off Program', 'Awaiting EI HUB'];
 
 // Program is stored as a comma-separated string in the existing text column
 // (no schema change) so multiple selections like "EI, CIGNA" fit right in
@@ -40,7 +40,7 @@ function joinMultiValue(arr) {
 export function programColor(programValue) {
   const map = {
     EI: '#3b82f6', 'BCBS/Anthem': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6',
-    GHI: '#059669', P: '#059669', PP: '#059669', NONE: '#6b7280',
+    GHI: '#059669', P: '#059669', PP: '#059669', NONE: '#6b7280', Insurance: '#059669', 'Private pay': '#059669',
   };
   const first = splitMultiValue(programValue)[0];
   return map[first] || '#6b7280';
@@ -67,17 +67,27 @@ function formatDateMMDDYYYY(dateStr) {
 }
 
 // ---------- Patient filtering: presets + search + column filter ----------
-const INSURANCE_PROGRAM_VALUES = ['BCBS/Anthem', 'BCBS/Anthen', 'PP', 'P', 'GHI', 'CIGNA'];
-
-export const PATIENT_PRESETS = [
+const BASE_PRESETS = [
   { key: 'all', label: 'All' },
   { key: 'insurance', label: 'Insurance' },
   { key: 'ei', label: 'Early Intervention' },
-  // One pill per case manager: their patients, matched on the case manager's
-  // name (first or preferred name, as shown in Case Manager).
-  { key: 'cm-heather', label: 'Case Manager Heather', caseManager: 'heather' },
-  { key: 'cm-fran', label: 'Case Manager Fran', caseManager: 'fran' },
 ];
+
+// The patient list's pills: All, Insurance, Early Intervention, then one
+// per case manager. A clinic can fix its case manager pills in its brand
+// file (Kidz Lounge: matched on the case manager's first name, as shown in
+// Case Manager); otherwise there's a pill for each case manager linked to
+// a patient (by account).
+export function patientPresets(patients) {
+  if (CASE_MANAGER_PILLS) return [...BASE_PRESETS, ...CASE_MANAGER_PILLS.map(p => ({ key: `cm-${p.caseManager}`, ...p }))];
+  const seen = new Map();
+  for (const p of patients || []) {
+    if (p.case_manager_username && !seen.has(p.case_manager_username)) seen.set(p.case_manager_username, p.Case_Manager || p.case_manager_username);
+  }
+  const pills = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([username, name]) => ({ key: `cmu-${username}`, label: `Case Manager ${String(name).split(/\s+/)[0]}`, caseManagerUsername: username }));
+  return [...BASE_PRESETS, ...pills];
+}
 
 export const PATIENT_FILTER_COLUMNS = [
   { key: 'Name', label: 'Name' },
@@ -122,7 +132,8 @@ function patientFieldToString(patient, key) {
 
 export function matchesPreset(patient, presetKey) {
   const programValues = splitMultiValue(patient.Program).map(v => v.toLowerCase());
-  const cm = PATIENT_PRESETS.find(p => p.key === presetKey)?.caseManager;
+  if (String(presetKey).startsWith('cmu-')) return patient.case_manager_username === presetKey.slice(4);
+  const cm = (CASE_MANAGER_PILLS || []).find(p => `cm-${p.caseManager}` === presetKey)?.caseManager;
   if (cm) return String(patient.Case_Manager || '').trim().toLowerCase().split(/\s+/)[0] === cm;
   switch (presetKey) {
     case 'insurance':
@@ -806,6 +817,19 @@ export function PatientModal({ existing, onClose, onSaved }) {
   // Once any program is picked, the ID # and IFSP fields move to the program
   // tabs (each tab shows the same fields; Kieran, Oct 2026).
   const hasPrograms = !!programsAvailable && plan.length > 0;
+  // Clinic rules (src/patientOptions.js): RX only where it applies (PedsDesk:
+  // insurance), and with the "ei" feature the IFSP is kept on the chart's
+  // IFSP tab (dated records), so here it's shown, not edited.
+  const programNames = programsAvailable ? plan.map(p => p.program) : form.Program;
+  const showRx = rxApplies(programNames) || !!form.RX_Date;
+  const ifspFromTab = featureOn('ei');
+  let sectionNo = 3;
+  const rxNo = showRx ? ++sectionNo : null;
+  // With "ei" the IFSP sits on the EI program tab only.
+  const ifspNo = !hasPrograms && !ifspFromTab ? ++sectionNo : null;
+  const scLabel = ifspFromTab ? 'Service coordinator' : 'SC / admin';
+  const consentNo = ++sectionNo;
+  const allergiesNo = sectionNo + 1;
 
   useEffect(() => {
     if (!showEiBilling) return undefined;
@@ -1028,9 +1052,22 @@ export function PatientModal({ existing, onClose, onSaved }) {
   ));
 
   // The IFSP fields: on the Patient tab, or on every program tab once a program is picked.
-  const ifspSection = (index) => (
+  const ifspHeading = (index) => (index ? <EMRSectionHeading index={index} label="IFSP" /> : <p style={{ fontSize: 13, fontWeight: 600, color: EMR_INK, margin: '4px 0 10px' }}>IFSP</p>);
+  const ifspSection = (index) => (ifspFromTab ? (
     <>
-      {index ? <EMRSectionHeading index={index} label="IFSP" /> : <p style={{ fontSize: 13, fontWeight: 600, color: EMR_INK, margin: '4px 0 10px' }}>IFSP</p>}
+      {ifspHeading(index)}
+      {form.IFSP_Start_Date || form.IFSP_Type ? (
+        <div style={{ ...emrLockedFieldStyle(), marginBottom: 6 }}>
+          {[form.IFSP_Type, `${formatDateMMDDYYYY(form.IFSP_Start_Date)} to ${formatDateMMDDYYYY(form.IFSP_End_Date)}`, form.Report_Date ? `report due ${formatDateMMDDYYYY(form.Report_Date)}` : null].filter(Boolean).join(' · ')}
+        </div>
+      ) : null}
+      <p style={{ fontSize: 12, color: EMR_MUTED, margin: '0 0 14px' }}>
+        {existing ? "IFSPs are kept on the chart's IFSP tab (each period with its outcomes); add or change them there." : "After saving, add the IFSP on the chart's IFSP tab."}
+      </p>
+    </>
+  ) : (
+    <>
+      {ifspHeading(index)}
     <div style={emrFieldGrid(2)}>
       <div>
         <label style={emrLabelStyle()}>IFSP start date</label>
@@ -1055,7 +1092,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
     </div>
     <p style={{ fontSize: 12, color: EMR_MUTED, margin: '4px 0 0' }}>Set automatically: 21 days before the IFSP end date.</p>
     </>
-  );
+  ));
 
   return (
     <div style={emrOverlayStyle()} onClick={onClose}>
@@ -1132,6 +1169,8 @@ export function PatientModal({ existing, onClose, onSaved }) {
           <select style={{ ...emrInputStyle(), marginBottom: 14, maxWidth: 320 }} value={form.Status} onChange={e => setField('Status', e.target.value)}>
             <option value="">Not set</option>
             {PATIENT_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            {/* A status from before the clinic's list changed stays visible. */}
+            {form.Status && !PATIENT_STATUS_OPTIONS.includes(form.Status) && <option value={form.Status}>{form.Status}</option>}
           </select>
 
           {/* Mandates are entered per program and service above; the old
@@ -1169,15 +1208,15 @@ export function PatientModal({ existing, onClose, onSaved }) {
           <EMRSectionHeading index={3} label="Care coordination" />
           <div style={emrFieldGrid(3)}>
             <div>
-              <label style={emrLabelStyle()}>SC / admin name</label>
+              <label style={emrLabelStyle()}>{scLabel} name</label>
               <input style={emrInputStyle()} value={form.SC_Admin_Name} onChange={e => setField('SC_Admin_Name', e.target.value)} />
             </div>
             <div>
-              <label style={emrLabelStyle()}>SC / admin phone</label>
+              <label style={emrLabelStyle()}>{scLabel} phone</label>
               <input style={emrInputStyle()} value={form.SC_Admin_Phone} onChange={e => setField('SC_Admin_Phone', e.target.value)} />
             </div>
             <div>
-              <label style={emrLabelStyle()}>SC / admin email</label>
+              <label style={emrLabelStyle()}>{scLabel} email</label>
               <input style={emrInputStyle()} value={form.SC_Admin_Email} onChange={e => setField('SC_Admin_Email', e.target.value)} />
             </div>
           </div>
@@ -1220,7 +1259,8 @@ export function PatientModal({ existing, onClose, onSaved }) {
             )}
           </div>
 
-          <EMRSectionHeading index={4} label="Prescription (RX)" />
+          {showRx && (<>
+          <EMRSectionHeading index={rxNo} label="Prescription (RX)" />
           <div style={emrFieldGrid(2)}>
             <div>
               <label style={emrLabelStyle()}>RX date</label>
@@ -1234,10 +1274,11 @@ export function PatientModal({ existing, onClose, onSaved }) {
               <p style={{ fontSize: 12, color: EMR_MUTED, margin: '4px 0 0' }}>Set automatically: 364 days after the RX date.</p>
             </div>
           </div>
+          </>)}
 
-          {!hasPrograms && ifspSection(5)}
+          {ifspNo && ifspSection(ifspNo)}
 
-          <EMRSectionHeading index={hasPrograms ? 5 : 6} label="Consent and documentation" />
+          <EMRSectionHeading index={consentNo} label="Consent and documentation" />
           <div style={emrFieldGrid(2)}>
             <div>
               <label style={emrLabelStyle()}>Picture consent</label>
@@ -1253,7 +1294,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
             </div>
           </div>
 
-          <EMRSectionHeading index={hasPrograms ? 6 : 7} label="Allergies and immunizations" />
+          <EMRSectionHeading index={allergiesNo} label="Allergies and immunizations" />
           <p style={{ fontSize: 12, color: EMR_MUTED, margin: '-4px 0 10px' }}>
             Anything entered here shows as a yellow alert on the patient chart and on their schedule appointments. Leave blank if none.
           </p>
@@ -1277,7 +1318,7 @@ export function PatientModal({ existing, onClose, onSaved }) {
                 <label htmlFor="kl-program-id" style={emrLabelStyle()}>{tab === 'EI' ? 'ID # (EI child ID)' : 'ID #'}</label>
                 {idInput('kl-program-id')}
               </div>
-              {ifspSection(0)}
+              {(!ifspFromTab || tab === 'EI') && ifspSection(0)}
               {tab === 'EI' && showEiBilling && eiBillingSection()}
               {existing && planChanged && (
                 <ChangeStartChoice firstChange={firstChange} replaceAll={replaceAll} onReplaceAll={setReplaceAll}
@@ -2597,7 +2638,7 @@ export default function ManageDataPage({ section: sectionProp, onSectionChange }
           </div>
 
           <div style={presetTabsWrap()}>
-            {PATIENT_PRESETS.map(preset => (
+            {patientPresets(patients).map(preset => (
               <button
                 key={preset.key}
                 type="button"
