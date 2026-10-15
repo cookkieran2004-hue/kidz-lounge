@@ -17,8 +17,8 @@ const labelStyle = { display: 'block', fontSize: 14, fontWeight: 600, color: INK
 const helpStyle = { fontSize: 13, color: MUTED, margin: '0 0 6px', lineHeight: 1.45, whiteSpace: 'pre-wrap' };
 
 // A box to sign in with a finger, pen or mouse. onChange gets a PNG data
-// URL, or null once cleared.
-function SignaturePad({ value, onChange, disabled }) {
+// URL, or null once cleared. Also EI session notes (src/SessionNotes.jsx).
+export function SignaturePad({ value, onChange, disabled }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const drawn = useRef(false);

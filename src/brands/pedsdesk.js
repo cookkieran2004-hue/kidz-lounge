@@ -14,6 +14,25 @@ export default {
     lines: ['A demonstration clinic. All names and details are made up.'],
     tagline: 'Occupational, physical and speech therapy for children.',
   },
+  // Optional features (Oct 2026), matched by FEATURES on the clinic's API
+  // (kidz-lounge-api lib/features.js). ei: the EMR for NYC Early
+  // Intervention agencies. mandates: Billing's month overview, mandates and
+  // needs attention, and the EI child-absence reason. Both PedsDesk only.
+  features: { ei: true, mandates: true },
+  // The nav bar as four menus (Schedule, Patients, Clinical, Office) with a
+  // search box (src/NavBar.jsx, src/NavSearch.jsx); unset = the row of links.
+  nav: 'grouped',
+  // Patient and schedule lists for an NYC Early Intervention agency (Kieran,
+  // Oct 2026; src/patientOptions.js). Case manager pills come from the
+  // patients' case managers. RX: insurance, and PT / OT (orders).
+  patientOptions: {
+    programs: ['EI', 'CPSE', 'CSE', 'Insurance', 'Private pay'],
+    statuses: ['Referral received', 'Evaluation scheduled', 'Awaiting IFSP', 'Awaiting authorization', 'On Program', 'On hold', 'Off Program'],
+    insurancePrograms: ['Insurance', 'Private pay'],
+    rooms: ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Gym', 'Group room'],
+    rxOnlyFor: ['Insurance'],
+    rxServices: ['PT', 'OT'], // EI PT and OT need a physician's order (NYC EI)
+  },
   theme: {
     primary: '#1D4ED8',
     primaryBright: '#2563EB',

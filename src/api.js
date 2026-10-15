@@ -311,6 +311,13 @@ export const api = {
   getProviderCaseload: (provider) => request(`/providers/${encodeURIComponent(provider)}/caseload`),
   getBillingSheet: (provider, month) => request(`/billing?provider=${encodeURIComponent(provider || '')}&month=${month}`),
   setBillingReviewed: (provider, month, reviewed) => request('/billing/review', { method: 'PUT', body: JSON.stringify({ provider, month, reviewed }) }),
+  // The "mandates" feature (src/brand.js featureOn): every provider's month,
+  // each child's mandate week by week, and what needs attention.
+  getBillingOverview: (month) => request(`/billing/overview?month=${month}`),
+  getBillingMandates: (month) => request(`/billing/mandates?month=${month}`),
+  getBillingAttention: (month) => request(`/billing/attention?month=${month}`),
+  // The program a session bills under (EI asks why a child was absent).
+  getBillingProgramOn: (patient, provider, date) => request(`/billing/program-on?${new URLSearchParams({ patient, provider, date })}`),
   // EI-Hub entry list (Billing page): a month's EI sessions, and ticking one as entered.
   getEiHubSessions: (month) => request(`/billing/ei-hub?month=${month}`),
   setEiHubEntered: (payload) => request('/billing/ei-hub/entered', { method: 'PUT', body: JSON.stringify(payload) }),
@@ -328,6 +335,48 @@ export const api = {
   takeBackEiReferral: (authorization, periodId) => request(`/ei-hub/referrals/${encodeURIComponent(authorization)}/periods/${periodId}`, { method: 'DELETE' }),
   // Reception, Admins and Developers: one child's EI billing details (the chart's EI Billing tab).
   getEiPatient: (id) => request(`/ei-hub/patient/${id}`),
+  // IFSP records and turning 3 (the "ei" feature, PedsDesk; API routes/ifsp.js).
+  getIfsp: (patientId) => request(`/patients/${patientId}/ifsp`),
+  addIfsp: (patientId, record) => request(`/patients/${patientId}/ifsps`, { method: 'POST', body: JSON.stringify(record) }),
+  updateIfsp: (patientId, id, record) => request(`/patients/${patientId}/ifsps/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
+  deleteIfsp: (patientId, id) => request(`/patients/${patientId}/ifsps/${id}`, { method: 'DELETE' }),
+  saveTransition: (patientId, record) => request(`/patients/${patientId}/transition`, { method: 'PUT', body: JSON.stringify(record) }),
+  // EI session notes (the "ei" feature, PedsDesk; API routes/sessionNotes.js).
+  getSessionNotes: (month, { provider, patientId } = {}) => request(`/session-notes?month=${month}${provider ? `&provider=${encodeURIComponent(provider)}` : ''}${patientId ? `&patient_id=${patientId}` : ''}`),
+  getSessionNote: (key) => request(`/session-notes/note?key=${encodeURIComponent(key)}`),
+  saveSessionNote: (record) => request('/session-notes/note', { method: 'PUT', body: JSON.stringify(record) }),
+  parentSignSessionNote: (record) => request('/session-notes/note/parent-sign', { method: 'POST', body: JSON.stringify(record) }),
+  providerSignSessionNote: (record) => request('/session-notes/note/provider-sign', { method: 'POST', body: JSON.stringify(record) }),
+  addSessionNoteAddendum: (key, body) => request('/session-notes/note/addenda', { method: 'POST', body: JSON.stringify({ key, body }) }),
+  sessionNoteParentLink: (key) => request('/session-notes/note/parent-link', { method: 'POST', body: JSON.stringify({ key }) }),
+  sessionNoteFamilyCopy: (key, givenOn) => request('/session-notes/note/family-copy', { method: 'POST', body: JSON.stringify({ key, given_on: givenOn }) }),
+  evalReportFamilyCopy: (key, givenOn) => request('/eval-reports/report/family-copy', { method: 'POST', body: JSON.stringify({ key, given_on: givenOn }) }),
+  getEiConsents: (patientId) => request(`/patients/${patientId}/ei-consents`),
+  addEiConsent: (patientId, record) => request(`/patients/${patientId}/ei-consents`, { method: 'POST', body: JSON.stringify(record) }),
+  withdrawEiConsent: (patientId, id, withdrawnOn) => request(`/patients/${patientId}/ei-consents/${id}`, { method: 'PUT', body: JSON.stringify({ withdrawn_on: withdrawnOn }) }),
+  deleteEiConsent: (patientId, id) => request(`/patients/${patientId}/ei-consents/${id}`, { method: 'DELETE' }),
+  addAbsenceNotice: (record) => request('/compliance/absence-notices', { method: 'POST', body: JSON.stringify(record) }),
+  supervisorSignSessionNote: (record) => request('/session-notes/note/supervisor-sign', { method: 'POST', body: JSON.stringify(record) }),
+  getSessionNotesToCosign: () => request('/session-notes/cosign?mine=1'),
+  getProgressReportsToCosign: () => request('/progress-reports/cosign?mine=1'),
+  // A telehealth parent signs a session note from a secure link (no sign-in).
+  getPublicSessionSign: (token) => request(`/sign/${encodeURIComponent(token)}`),
+  unlockSessionSign: (token, dob) => request(`/sign/${encodeURIComponent(token)}/unlock`, { method: 'POST', body: JSON.stringify({ dob }) }),
+  submitSessionSign: (token, record) => request(`/sign/${encodeURIComponent(token)}/submit`, { method: 'POST', body: JSON.stringify(record) }),
+  // EI progress reports (the "ei" feature, PedsDesk; API routes/progressReports.js).
+  getProgressReports: ({ patientId, provider } = {}) => request(`/progress-reports?${patientId ? `patient_id=${patientId}` : ''}${provider ? `&provider=${encodeURIComponent(provider)}` : ''}`),
+  startProgressReport: (record) => request('/progress-reports', { method: 'POST', body: JSON.stringify(record) }),
+  getProgressReport: (id) => request(`/progress-reports/${id}`),
+  saveProgressReport: (id, record) => request(`/progress-reports/${id}`, { method: 'PUT', body: JSON.stringify(record) }),
+  progressReportStep: (id, step, record) => request(`/progress-reports/${id}/${step}`, { method: 'POST', body: JSON.stringify(record || {}) }),
+  // EI evaluation reports and the compliance dashboard (PedsDesk).
+  getEvalReports: (month, provider) => request(`/eval-reports?month=${month}${provider ? `&provider=${encodeURIComponent(provider)}` : ''}`),
+  getEvalReport: (key) => request(`/eval-reports/report?key=${encodeURIComponent(key)}`),
+  saveEvalReport: (record) => request('/eval-reports/report', { method: 'PUT', body: JSON.stringify(record) }),
+  evalReportStep: (step, record) => request(`/eval-reports/report/${step}`, { method: 'POST', body: JSON.stringify(record) }),
+  getCompliance: () => request('/compliance'),
+  getPatientRecord: (patientId) => request(`/session-notes/record?patient_id=${patientId}`),
+  getServiceLog: (patientId, provider, month) => request(`/session-notes/service-log?patient_id=${patientId}&provider=${encodeURIComponent(provider)}&month=${month}`),
   // EI-Hub's Child Info and Authorizations report (Reception too): what it would change, then apply the ticked changes.
   previewEiImport: (file) => request('/ei-hub/import/preview', { method: 'POST', body: JSON.stringify(file) }),
   applyEiImport: (file, ids) => request('/ei-hub/import/apply', { method: 'POST', body: JSON.stringify({ ...file, ids }) }),

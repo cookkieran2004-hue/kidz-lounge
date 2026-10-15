@@ -5,7 +5,7 @@ import { useAuth } from '../AuthContext';
 import {
   pageWrap, pillTabsWrap, rowStyle, filterInputStyle, presetTabsWrap, presetTabStyle,
   matchesPreset, matchesSearchText, matchesOnProgram, splitMultiValue, programColor, serviceColor,
-  PATIENT_PRESETS, PatientFilterBuilder, matchesPatientFilters,
+  patientPresets, PatientFilterBuilder, matchesPatientFilters,
   PatientModal, DataTableOverlay, PasswordConfirmModal,
 } from './ManageDataPage';
 import { canManage } from '../roles';
@@ -14,7 +14,7 @@ import { PageHeader } from '../dashboardUi';
 import { INK, MUTED, HAIRLINE, NUMERIC, TONES, buttonStyle } from '../uiTokens';
 
 // Programs that aren't insurance; anything else is an insurer (shown as "INS").
-const NON_INSURANCE_PROGRAMS = new Set(['EI', 'CPSE', 'CSE', 'DOE', 'P', 'PP', 'NONE']);
+const NON_INSURANCE_PROGRAMS = new Set(['EI', 'CPSE', 'CSE', 'DOE', 'P', 'PP', 'NONE', 'PRIVATE PAY']);
 
 export default function PatientsPage() {
   const { user } = useAuth();
@@ -91,7 +91,7 @@ export default function PatientsPage() {
       {loadError && <p style={{ color: TONES.danger.fg, fontSize: 13 }}>{loadError}</p>}
 
       <div style={presetTabsWrap()} role="group" aria-label="Patient groups">
-        {PATIENT_PRESETS.map(p => (
+        {patientPresets(patients).map(p => (
           <button key={p.key} type="button" aria-pressed={preset === p.key} onClick={() => setPreset(p.key)} style={presetTabStyle(preset === p.key)}>
             {p.label}
           </button>

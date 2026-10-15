@@ -17,6 +17,20 @@ export default {
     ],
     tagline: 'Providing Occupational, Physical and Speech Therapy. We also offer classes for kidz.',
   },
+  // Optional features (Oct 2026), matched by FEATURES on the clinic's API
+  // (kidz-lounge-api lib/features.js). ei: the EMR for NYC Early
+  // Intervention agencies. mandates: Billing's month overview, mandates and
+  // needs attention, and the EI child-absence reason. Both PedsDesk only.
+  features: { ei: false, mandates: false },
+  // Patient and schedule lists (src/patientOptions.js has the program,
+  // status and room lists Kidz Lounge has always had): its two case
+  // managers' pills on the patient list.
+  patientOptions: {
+    caseManagerPills: [
+      { label: 'Case Manager Heather', caseManager: 'heather' },
+      { label: 'Case Manager Fran', caseManager: 'fran' },
+    ],
+  },
   theme: {
     primary: '#6D28D9', // primary buttons, links, the selected tab
     primaryBright: '#7C3AED',

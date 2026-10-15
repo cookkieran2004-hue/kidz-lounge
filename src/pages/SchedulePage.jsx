@@ -17,6 +17,8 @@ import { canceledLane, isCanceledAppt, NO_ROOM_NEEDED } from '../scheduleLanes';
 import { useAppointmentDrag } from '../useAppointmentDrag';
 import { AppointmentDragLayer, DropToast } from '../AppointmentDragLayer';
 import { saveDrop, movedFields, isMissedAppt } from '../scheduleDrag';
+import { featureOn } from '../brand';
+import { ROOM_OPTIONS, rxApplies } from '../patientOptions';
 
 export const TIME_SLOTS = [];
 for (let h = 8; h <= 17; h++) {
@@ -128,7 +130,8 @@ export function isHoldPatient(patientOrName) {
   return isHoldPatient(patientOrName.Name || patientOrName.patient_name || '');
 }
 const DURATION_OPTIONS = [30, 45, 60];
-export const TREATMENT_AREA_OPTIONS = ['Green', 'Yellow', 'Orange A', 'Orange B', 'Purple', 'Gym A', 'Gym B', 'Gym Table'];
+// In-office rooms: the clinic's list (src/patientOptions.js, from its brand file).
+export const TREATMENT_AREA_OPTIONS = ROOM_OPTIONS;
 
 // ---------- Offsite ----------
 // "Offsite" is picked like a room but isn't one of the rooms. It's stored
@@ -169,6 +172,9 @@ function areaAfterStatus(status, area) {
 // Holiday as H and Emergency Closure as Z, like an office closure; Other = A.
 // Mirrors kidz-lounge-api lib/cancelReason.js.
 const CANCEL_REASONS = [['holiday', 'Holiday'], ['emergency', 'Emergency Closure'], ['other', 'Other - see comments']];
+// Why a child missed an EI session (the "mandates" feature); mirrors
+// kidz-lounge-api lib/absenceReason.js.
+const ABSENCE_REASONS = [['illness', 'Illness'], ['vacation', 'Family vacation (no make-up)'], ['other', 'Other']];
 // Short form for the small status badge on a card.
 const CANCEL_REASON_SHORT = { holiday: 'Holiday', emergency: 'Emergency', other: 'Other' };
 
@@ -343,6 +349,9 @@ export function computeConflicts(appointments, oooRecords, contractedGaps = [], 
       list.push({ kind: 'closed', a: apt, closed, types: ['closed'] });
       return;
     }
+    // Outside hours sessions are meant to fall outside contracted hours, so
+    // they're never flagged for it (Kieran, Oct 2026).
+    if (apt.outside_hours) return;
     contractedGaps.forEach(gap => {
       if (gap.provider !== apt.provider) return;
       if (gap.date !== apt.appointment_date) return;
@@ -639,7 +648,7 @@ export function AppointmentCard({ apt, onClick, badgeLabel, badgeIcon, badgeColo
 
 export function programColor(programValue) {
   const map = {
-    EI: '#3b82f6', 'BCBS/Anthem': '#059669', 'BCBS/Anthen': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6',
+    EI: '#3b82f6', 'BCBS/Anthem': '#059669', 'BCBS/Anthen': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6', Insurance: '#059669', 'Private pay': '#059669',
     GHI: '#059669', P: '#059669', PP: '#059669', NONE: '#6b7280',
   };
   const first = (programValue || '').split(',')[0].trim();
@@ -719,6 +728,8 @@ function PatientDetailsPanel({ patientName }) {
   const hasIfspInfo = ifspFields.some(Boolean);
 
   const rxFields = [patient.RX_Date, patient.RX_Expiration, patient.Report_Date];
+  // RX only where it applies (PedsDesk: insurance; src/patientOptions.js).
+  const showRx = rxApplies(patient.Program, patient.Services) || !!patient.RX_Date;
   const hasRxInfo = rxFields.some(Boolean);
 
   return (
@@ -788,9 +799,9 @@ function PatientDetailsPanel({ patientName }) {
 
       {hasRxInfo && (
         <div style={{ marginBottom: 16 }}>
-          {sectionHeader('Prescription & Reports')}
-          {row('RX Date', formatDateMMDDYYYY(patient.RX_Date))}
-          {row('RX Expiration', formatDateMMDDYYYY(patient.RX_Expiration))}
+          {sectionHeader(showRx ? 'Prescription & Reports' : 'Reports')}
+          {showRx && row('RX Date', formatDateMMDDYYYY(patient.RX_Date))}
+          {showRx && row('RX Expiration', formatDateMMDDYYYY(patient.RX_Expiration))}
           {row('Report Date', formatDateMMDDYYYY(patient.Report_Date))}
         </div>
       )}
@@ -2650,6 +2661,26 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   // Only for a canceled offsite session; anything else saves no reason.
   const [cancelReason, setCancelReason] = useState(existing?.cancel_reason || '');
   const reasonToSave = status === 'Canceled' && roomChoice === OFFSITE ? (cancelReason || null) : null;
+  // The "mandates" feature (src/brand.js, Oct 2026): why a child missed an
+  // EI session. NYS's EI make-up policy allows a make-up for illness and
+  // other reasons, not for a family vacation (kidz-lounge-api
+  // lib/absenceReason.js, lib/mandates.js). Asked only when the session bills
+  // as EI, and not when it was a holiday / emergency closure.
+  const mandatesOn = featureOn('mandates');
+  const [absenceReason, setAbsenceReason] = useState(existing?.absence_reason || '');
+  const [billsAsEI, setBillsAsEI] = useState(!!existing?.absence_reason);
+  const missedStatus = MISSED_STATUSES.includes(status);
+  useEffect(() => {
+    if (!mandatesOn || !missedStatus || !patientConfirmed || !patientSearch || !provider || !appointmentDate) return undefined;
+    let alive = true;
+    api.getBillingProgramOn(patientSearch, provider, appointmentDate)
+      .then(r => { if (alive) setBillsAsEI(r?.group === 'EI'); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [mandatesOn, missedStatus, patientConfirmed, patientSearch, provider, appointmentDate]);
+  const askAbsence = mandatesOn && missedStatus && billsAsEI && reasonToSave !== 'holiday' && reasonToSave !== 'emergency';
+  // Sent only where the feature is on, so other clinics never clear one.
+  const absenceField = mandatesOn ? { absence_reason: askAbsence ? (absenceReason || null) : null } : {};
   // Outside hours (Oct 2026): an extra offsite visit outside contracted and
   // office hours -- any time, any day, shown under the grid. Offsite only.
   const [outsideHoursFlag, setOutsideHoursFlag] = useState(!!existing?.outside_hours || !!prefill?.outsideHours);
@@ -2706,6 +2737,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
       treatment_area: areaAfterStatus(status, treatmentArea),
       appointment_status: status,
       cancel_reason: reasonToSave,
+      ...absenceField,
       outside_hours: outsideHours,
     });
     setMaterializedRecord(created);
@@ -2836,6 +2868,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         treatment_area: areaAfterStatus(status, treatmentArea),
         appointment_status: status,
       cancel_reason: reasonToSave,
+      ...absenceField,
       outside_hours: outsideHours,
       };
 
@@ -2871,6 +2904,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 treatment_area: areaAfterStatus(status, treatmentArea),
                 appointment_status: status,
       cancel_reason: reasonToSave,
+      ...absenceField,
       outside_hours: outsideHours,
               });
             } else {
@@ -2978,6 +3012,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         treatment_area: areaAfterStatus(status, treatmentArea),
         appointment_status: status,
       cancel_reason: reasonToSave,
+      ...absenceField,
       outside_hours: outsideHours,
         fin: groupFin,
         ...(makeupFor ? { makeup_for: makeupFor.id } : {}),
@@ -3430,6 +3465,18 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 {CANCEL_REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             )}
+            {askAbsence && (
+              <select
+                value={absenceReason}
+                onChange={e => setAbsenceReason(e.target.value)}
+                aria-label="Why was the child absent?"
+                title="EI: a family vacation can't be made up"
+                style={{ ...inputStyle(), width: 'auto', minWidth: 200, display: 'inline-block', cursor: 'pointer' }}
+              >
+                <option value="">Why absent? (EI)</option>
+                {ABSENCE_REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            )}
             {/* Make-ups: a canceled / no-show appointment (as saved) can get one.
                 Not the HOLD placeholder: there's no patient session to make up. */}
             {existing && !effectiveIsVirtual && MISSED_STATUSES.includes(existing.appointment_status) && !isHoldPatient(existing.patient_name) && (
@@ -3446,6 +3493,18 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             )}
             {existing?.is_eval && (
               <p style={{ fontSize: 12.5, color: EVAL_BLUE, fontWeight: 600, margin: '9px 0 12px' }}>Eval · This is an evaluation.</p>
+            )}
+            {/* PedsDesk ("ei" feature): the EI session note for this session,
+                from its day on (src/SessionNotes.jsx; keyed like EI-Hub billing),
+                or for an evaluation its evaluation report (src/EvalReports.jsx). */}
+            {featureOn('ei') && existing && !isHoldPatient(existing.patient_name) && String(existing.appointment_date).slice(0, 10) <= dateToInputValue(new Date()) && (
+              <button type="button" onClick={() => navigate(`${existing.is_eval ? '/eval-reports/report' : '/session-notes/note'}?key=${encodeURIComponent(
+                existing.is_virtual ? `series:${existing.series_id}:${String(existing.appointment_date).slice(0, 10)}`
+                  : existing.exception_of_series_id ? `series:${existing.exception_of_series_id}:${String(existing.exception_occurrence_date).slice(0, 10)}`
+                    : `appt:${existing.id}`)}`)}
+                style={{ display: 'block', margin: '0 0 12px', padding: '8px 14px', borderRadius: 6, border: '1.5px solid var(--brand-primary)', background: 'white', color: 'var(--brand-primary)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                {existing.is_eval ? 'Evaluation report (EI)' : 'Session note (EI)'}
+              </button>
             )}
             {existing?.is_makeup && (
               <p style={{ fontSize: 12.5, color: MAKEUP_GREEN, fontWeight: 600, margin: '9px 0 12px', flex: '1 1 220px' }}>

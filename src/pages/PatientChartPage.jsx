@@ -15,6 +15,10 @@ import LinkTextarea from '../LinkTextarea';
 import { PatientLinksEditor, PatientLinksList } from '../PatientLinksView';
 import { EiChartCard } from '../EiChartCard';
 import { PowerFormsChartTab } from '../PowerFormsChartTab';
+import IfspTab from '../IfspTab';
+import { SessionNotesChartTab } from '../SessionNotes';
+import { featureOn } from '../brand';
+import { rxApplies } from '../patientOptions';
 
 // The Eval tag, same on the schedule (SchedulePage.jsx).
 const EVAL_BLUE = '#1D4ED8';
@@ -26,7 +30,7 @@ const BRAND_SERIF = 'inherit'; // headings use the app's one font (Oct 2026)
 
 function programColor(programValue) {
   const map = {
-    EI: '#3b82f6', 'BCBS/Anthem': '#059669', 'BCBS/Anthen': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6',
+    EI: '#3b82f6', 'BCBS/Anthem': '#059669', 'BCBS/Anthen': '#059669', CIGNA: '#059669', CPSE: '#8b5cf6', CSE: '#8b5cf6', Insurance: '#059669', 'Private pay': '#059669',
     GHI: '#059669', P: '#059669', PP: '#059669', NONE: '#6b7280',
   };
   const first = (programValue || '').split(',')[0].trim();
@@ -246,6 +250,9 @@ const TABS = [
 // EI billing details (EiChartCard.jsx): EI children only, and only for
 // Reception, Admins and Developers -- providers don't see it (Kieran, Oct 2026).
 const EI_TAB = { key: 'ei-billing', label: 'EI Billing' };
+// IFSP records and turning 3 (the "ei" feature, PedsDesk only; src/IfspTab.jsx).
+const IFSP_TAB = { key: 'ifsp', label: 'IFSP' };
+const NOTES_TAB = { key: 'session-notes', label: 'Session notes' };
 // Power Forms (PowerFormsChartTab.jsx): Reception, Admins and Developers.
 const FORMS_TAB = { key: 'power-forms', label: 'Power Forms' };
 const isEiPatient = (patient) => /(^|,)\s*EI\s*(,|$)/.test(patient?.Program || '');
@@ -285,7 +292,8 @@ function PatientBanner({ patient, appointments }) {
   const facts = [
     { label: 'Age', value: age || '--' },
     { label: 'Next Appointment', value: nextAppt ? `${formatDate(nextAppt.appointment_date)} at ${formatTime(nextAppt.appointment_time)}` : 'None scheduled' },
-    { label: 'RX Expiration', value: formatDateMMDDYYYY(patient.RX_Expiration) || '--' },
+    // RX only where it applies (PedsDesk: insurance; src/patientOptions.js).
+    ...(rxApplies(patient.Program, patient.Services) || patient.RX_Expiration ? [{ label: 'RX Expiration', value: formatDateMMDDYYYY(patient.RX_Expiration) || '--' }] : []),
     { label: 'IFSP End Date', value: formatDateMMDDYYYY(patient.IFSP_End_Date) || '--' },
     { label: 'Report Date', value: formatDateMMDDYYYY(patient.Report_Date) || '--' },
     { label: 'Picture Consent', value: patient.Picture_Consent === true ? 'Yes' : patient.Picture_Consent === false ? 'No' : '--' },
@@ -448,7 +456,7 @@ function OverviewTab({ patient, isMobile, onPatientChanged }) {
           </div>
         </div>
         <div>
-          <p style={sectionHeaderStyle()}>SC / Admin Contact</p>
+          <p style={sectionHeaderStyle()}>{featureOn('ei') ? 'Service Coordinator' : 'SC / Admin Contact'}</p>
           <div style={cardStyle()}>
             <InfoRow label="Name" value={patient.SC_Admin_Name} />
             <InfoRow label="Phone" value={patient.SC_Admin_Phone} />
@@ -468,8 +476,8 @@ function OverviewTab({ patient, isMobile, onPatientChanged }) {
           {!patient.IFSP_Type && !patient.IFSP_Start_Date && <EmptyNote>None on file</EmptyNote>}
         </div>
         <div style={cardStyle()}>
-          <InfoRow label="RX Date" value={formatDateMMDDYYYY(patient.RX_Date)} />
-          <InfoRow label="RX Expiration" value={formatDateMMDDYYYY(patient.RX_Expiration)} />
+          {(rxApplies(patient.Program, patient.Services) || patient.RX_Date) && <InfoRow label="RX Date" value={formatDateMMDDYYYY(patient.RX_Date)} />}
+          {(rxApplies(patient.Program, patient.Services) || patient.RX_Date) && <InfoRow label="RX Expiration" value={formatDateMMDDYYYY(patient.RX_Expiration)} />}
           <InfoRow label="Case Manager" value={patient.Case_Manager} />
           {!patient.RX_Date && !patient.Case_Manager && <EmptyNote>None on file</EmptyNote>}
         </div>
@@ -1131,7 +1139,8 @@ export default function PatientChartPage() {
   }
 
   const showEiTab = canManage(user) && isEiPatient(patient);
-  const tabs = [...TABS, ...(showEiTab ? [EI_TAB] : []), ...(canManage(user) ? [{ ...FORMS_TAB, badge: formsToReview }] : [])];
+  const showIfspTab = featureOn('ei') && isEiPatient(patient);
+  const tabs = [...TABS, ...(showIfspTab ? [IFSP_TAB, NOTES_TAB] : []), ...(showEiTab ? [EI_TAB] : []), ...(canManage(user) ? [{ ...FORMS_TAB, badge: formsToReview }] : [])];
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: 'flex', flexDirection: 'column', height: '100vh', boxSizing: 'border-box' }}>
@@ -1148,6 +1157,8 @@ export default function PatientChartPage() {
           {activeTab === 'appointments' && <AppointmentsTab patient={patient} appointments={appointments} onChanged={reloadAppointments} />}
           {activeTab === 'documents' && <DocumentsTab patient={patient} isMobile={isMobile} />}
           {activeTab === 'care-team' && <CareTeamTab patient={patient} appointments={appointments} />}
+          {activeTab === NOTES_TAB.key && showIfspTab && <SessionNotesChartTab patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} />}
+          {activeTab === IFSP_TAB.key && showIfspTab && <IfspTab patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} onPatientChanged={() => api.getPatient(name).then(p => p && setPatient(p)).catch(() => {})} />}
           {activeTab === EI_TAB.key && showEiTab && <EiChartCard patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} />}
           {activeTab === FORMS_TAB.key && canManage(user) && <PowerFormsChartTab patient={patient} headerStyle={sectionHeaderStyle()} boxStyle={cardStyle()} onReviewChange={() => setFormsReload(n => n + 1)} />}
         </div>
