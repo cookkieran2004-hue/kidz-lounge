@@ -32,14 +32,51 @@ const STATUS = {
   draft: { text: 'Draft', tone: 'warning' },
   needs_parent: { text: 'Needs parent signature', tone: 'warning' },
   needs_provider: { text: 'Needs your signature', tone: 'warning' },
+  needs_supervisor: { text: 'Needs co-signature', tone: 'warning' },
   complete: { text: 'Signed', tone: 'success' },
 };
 const TABS = [
   { key: 'todo', label: 'To write', statuses: ['none', 'draft'] },
-  { key: 'signatures', label: 'Waiting for signatures', statuses: ['needs_parent', 'needs_provider'] },
+  { key: 'signatures', label: 'Waiting for signatures', statuses: ['needs_parent', 'needs_provider', 'needs_supervisor'] },
   { key: 'done', label: 'Signed', statuses: ['complete'] },
 ];
 const noteHref = (key) => `/session-notes/note?key=${encodeURIComponent(key)}`;
+const GROUP_LABEL = { group: 'Group (children only)', parent_child: 'Parent-child group', family_support: 'Family support group' };
+
+// For a supervisor: their supervisees' signed notes and progress reports
+// waiting for a co-signature (NYC: within 45 days).
+function CosignCard({ isMobile }) {
+  const navigate = useNavigate();
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([api.getSessionNotesToCosign(), api.getProgressReportsToCosign()])
+      .then(([n, r]) => {
+        if (!alive) return;
+        const days = n.cosign_days || 45;
+        const due = (at) => { const d = new Date(at); d.setDate(d.getDate() + days); return d.toLocaleDateString('en-CA'); };
+        setItems([
+          ...(n.notes || []).map(x => ({ id: `n${x.id}`, href: noteHref(x.session_key), what: `Session note · ${dayLabel(String(x.session_date).slice(0, 10))}`, ...x, due: due(x.provider_signed_at) })),
+          ...(r.reports || []).map(x => ({ id: `r${x.id}`, href: `/progress-reports/${x.id}`, what: 'Progress report', ...x, due: due(x.provider_signed_at) })),
+        ].sort((a, b) => a.due.localeCompare(b.due)));
+      })
+      .catch(() => { if (alive) setItems([]); });
+    return () => { alive = false; };
+  }, []);
+  if (!items || !items.length) return null;
+  const today = new Date().toLocaleDateString('en-CA');
+  return (
+    <Card pad={isMobile ? 14 : 20} style={{ marginBottom: 16 }} title={`To co-sign (${items.length})`}>
+      {items.map((x, i) => (
+        <button key={x.id} type="button" onClick={() => navigate(x.href)}
+          style={{ display: 'flex', justifyContent: 'space-between', gap: 12, width: '100%', textAlign: 'left', padding: '9px 0', border: 'none', borderTop: i ? `1px solid ${HAIRLINE}` : 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, color: INK }}>
+          <span><strong>{x.patient_name}</strong> <span style={{ color: MUTED }}>· {x.what} · {x.provider}</span></span>
+          <Tag tone={x.due < today ? 'danger' : 'warning'}>{x.due < today ? 'Overdue' : `By ${fmtDate(x.due)}`}</Tag>
+        </button>
+      ))}
+    </Card>
+  );
+}
 
 function MonthNav({ month, setMonth }) {
   return (
@@ -129,6 +166,7 @@ export function SessionNotesPage() {
             <MonthNav month={month} setMonth={setMonth} />
           </div>
         )} />
+        <CosignCard isMobile={isMobile} />
         <UnderlineTabs label="Session note views" active={tab} onPick={setTab} style={{ marginBottom: 16 }}
           tabs={TABS.map(t => ({ key: t.key, label: t.label, count: data ? counts[t.key] : null, alert: t.key === 'todo' && counts.todo ? 'warning' : null }))} />
         <Card pad={isMobile ? 14 : 20}>
@@ -196,12 +234,16 @@ const Question = ({ n, title, children }) => (
   </div>
 );
 const toggle = (list, v, on) => (on ? [...new Set([...(list || []), v])] : (list || []).filter(x => x !== v));
-const blank = { location: '', delivery: 'in_person', participants: ['child', 'parent'], participants_other: '', outcome_ids: [], outcomes_text: '', narrative: '', parent_methods: [], parent_methods_other: '', strategies: '' };
+const blankGroup = { group_type: '', group_children: '', group_duration: '', group_site: '', aide_name: '', aide_notes: '' };
+const blank = { location: '', delivery: 'in_person', participants: ['child', 'parent'], participants_other: '', outcome_ids: [], outcomes_text: '', narrative: '', parent_methods: [], parent_methods_other: '', strategies: '', ...blankGroup };
 const fromNote = (n, session) => (n ? {
   location: n.location || '', delivery: n.delivery || '', participants: n.participants || [], participants_other: n.participants_other || '',
   outcome_ids: n.outcome_ids || [], outcomes_text: n.outcomes_text || '', narrative: n.narrative || '', parent_methods: n.parent_methods || [],
   parent_methods_other: n.parent_methods_other || '', strategies: n.strategies || '',
+  group_type: n.group_type || '', group_children: n.group_children ?? '', group_duration: n.group_duration ?? '', group_site: n.group_site || '',
+  aide_name: n.aide_name || '', aide_notes: n.aide_notes || '',
 } : { ...blank, location: session.location || '' });
+const sigTime = (at) => new Date(at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 // Full-screen panel the provider hands to the parent: name, relationship,
 // and two drawn signatures (the session note and the service log). Above
@@ -265,6 +307,9 @@ export function SessionNotePage() {
   const [providerSig, setProviderSig] = useState(null);
   const [license, setLicense] = useState('');
   const [addendum, setAddendum] = useState('');
+  const [link, setLink] = useState(null);
+  const [supSig, setSupSig] = useState(null);
+  const [supLicense, setSupLicense] = useState('');
 
   const load = useCallback(() => api.getSessionNote(key)
     .then(d => { setData(d); setError(null); setForm(fromNote(d.note, d.session)); setDirty(!d.note && d.can_write); setLicense(d.note?.provider_license || d.session.header.license || ''); })
@@ -306,6 +351,25 @@ export function SessionNotePage() {
     const left = dirty ? (await save())?.missing : data.missing;
     if (!left || left.length) return;
     setParentSigning(true);
+  };
+  // Telehealth: the parent signs on their own device from a secure link.
+  const sendLink = async () => {
+    const left = dirty ? (await save())?.missing : data.missing;
+    if (!left || left.length) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const r = await api.sessionNoteParentLink(key);
+      setLink(`${window.location.origin}${r.path}`);
+      setData(d => ({ ...d, note: { ...d.note, parent_link_open: true } }));
+    } catch (err) { setSaveError(err.message); }
+    setSaving(false);
+  };
+  const supervisorSign = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try { await api.supervisorSignSessionNote({ key, signature: supSig, license: supLicense }); setSupSig(null); await load(); } catch (err) { setSaveError(err.message); }
+    setSaving(false);
   };
   const addAddendum = async () => {
     try { const r = await api.addSessionNoteAddendum(key, addendum); setData(d => ({ ...d, addenda: r.addenda })); setAddendum(''); } catch (err) { window.alert(err.message); }
@@ -365,6 +429,41 @@ export function SessionNotePage() {
 
           {!cancelled && (
             <Question title="Session">
+              <div style={{ marginBottom: 12 }}>
+                <span style={eiLabel}>Individual or group</span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[['', 'Individual'], ...Object.entries(GROUP_LABEL)].map(([v, l]) => (
+                    <button key={v || 'ind'} type="button" disabled={!editable} aria-pressed={form.group_type === v} onClick={() => set(v ? { group_type: v } : { ...blankGroup })} style={choiceStyle(form.group_type === v)}>{l}</button>
+                  ))}
+                </div>
+                {form.group_type && (
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '140px 160px minmax(0, 1fr)', gap: 10, marginTop: 10 }}>
+                    <div>
+                      <label htmlFor="sn-gchildren" style={eiLabel}>Children (2 to 10)</label>
+                      <input id="sn-gchildren" type="number" min={2} max={10} value={form.group_children} disabled={!editable} onChange={e => set({ group_children: e.target.value })} style={eiInput} />
+                    </div>
+                    <div>
+                      <label htmlFor="sn-gduration" style={eiLabel}>Length</label>
+                      <select id="sn-gduration" value={form.group_duration} disabled={!editable} onChange={e => set({ group_duration: e.target.value })} style={eiInput}>
+                        <option value="">Choose</option>
+                        {[60, 90, 120].map(m => <option key={m} value={m}>{m} minutes</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="sn-gsite" style={eiLabel}>Where the group met</label>
+                      <input id="sn-gsite" value={form.group_site} disabled={!editable} onChange={e => set({ group_site: e.target.value })} placeholder="e.g. Center, Room 2" style={eiInput} />
+                    </div>
+                    <div>
+                      <label htmlFor="sn-aide" style={eiLabel}>Aide (if any)</label>
+                      <input id="sn-aide" value={form.aide_name} disabled={!editable} onChange={e => set({ aide_name: e.target.value })} style={eiInput} />
+                    </div>
+                    <div style={{ gridColumn: isMobile ? 'auto' : 'span 2' }}>
+                      <label htmlFor="sn-aide-notes" style={eiLabel}>What the aide did</label>
+                      <input id="sn-aide-notes" value={form.aide_notes} disabled={!editable} onChange={e => set({ aide_notes: e.target.value })} style={eiInput} />
+                    </div>
+                  </div>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
                 <div>
                   <span style={eiLabel}>IFSP service location</span>
@@ -413,12 +512,12 @@ export function SessionNotePage() {
                 <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 6px' }}>Include the routine activity and the strategies used. When available, include the parent's feedback on using the strategies between sessions.</p>
                 {ta('narrative', 7)}
               </Question>
-              <Question n={3} title="How did you work with the parent/caregiver?">
+              {form.group_type !== 'group' && <Question n={3} title="How did you work with the parent/caregiver?">
                 {Object.entries(METHOD_LABEL).map(([v, l]) => (
                   <Check key={v} checked={form.parent_methods.includes(v)} disabled={!editable} onChange={on => set({ parent_methods: toggle(form.parent_methods, v, on) })}>{l}</Check>
                 ))}
                 {form.parent_methods.includes('other') && <div style={{ marginTop: 4 }}>{ta('parent_methods_other', 2, 'Describe (or, if the parent didn\'t take part, why and how you tried to include them)')}</div>}
-              </Question>
+              </Question>}
               <Question n={4} title="What strategies/activities did you and the parent/caregiver agree to do between visits?">
                 {ta('strategies', 4)}
               </Question>
@@ -447,18 +546,36 @@ export function SessionNotePage() {
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                   <img src={note.parent_note_signature} alt="Parent's signature on the note" style={{ height: 46, border: `1px solid ${HAIRLINE}`, borderRadius: 6, background: 'white' }} />
                   <img src={note.parent_log_signature} alt="Parent's signature on the service log" style={{ height: 46, border: `1px solid ${HAIRLINE}`, borderRadius: 6, background: 'white' }} />
-                  <span style={{ fontSize: 13, color: INK }}>{note.parent_name} · {note.parent_relationship}<br /><span style={{ color: MUTED }}>{new Date(note.parent_signed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span></span>
+                  <span style={{ fontSize: 13, color: INK }}>{note.parent_name} · {note.parent_relationship}<br /><span style={{ color: MUTED }}>{sigTime(note.parent_signed_at)}{note.parent_signed_via === 'link' ? ' · signed from a link' : ''}</span></span>
                 </div>
               ) : data.can_write ? (
-                <button type="button" disabled={saving || (!dirty && missing?.length > 0)} onClick={startParent} style={buttonStyle('primary')}>Hand to parent to sign</button>
-              ) : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Not signed yet.</p>}
+                <div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" disabled={saving || (!dirty && missing?.length > 0)} onClick={startParent} style={buttonStyle(form.delivery === 'telehealth' ? 'secondary' : 'primary')}>Hand to parent to sign</button>
+                    {form.delivery === 'telehealth' && (
+                      <button type="button" disabled={saving || (!dirty && missing?.length > 0)} onClick={sendLink} style={buttonStyle('primary')}>{note?.parent_link_open ? 'Make a new signing link' : 'Get a signing link'}</button>
+                    )}
+                  </div>
+                  {link ? (
+                    <div style={{ marginTop: 10, fontSize: 13, color: INK }}>
+                      Send this link to the parent (text or email). It works for 7 days and asks for the child's date of birth:
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                        <input readOnly value={link} aria-label="Signing link" onFocus={e => e.target.select()} style={{ ...eiInput, flex: 1 }} />
+                        <button type="button" onClick={() => navigator.clipboard?.writeText(link)} style={buttonStyle('secondary')}>Copy</button>
+                      </div>
+                    </div>
+                  ) : note?.parent_link_open ? (
+                    <p style={{ fontSize: 12.5, color: MUTED, margin: '8px 0 0' }}>A signing link was sent and is waiting for the parent. Changing the note cancels it.</p>
+                  ) : null}
+                </div>
+              ) : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>{note?.parent_link_open ? 'A signing link was sent to the parent.' : 'Not signed yet.'}</p>}
             </div>
           )}
           <p style={{ fontSize: 13.5, fontWeight: 600, color: INK, margin: '0 0 6px' }}>Interventionist</p>
           {note?.provider_signed_at ? (
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
               <img src={note.provider_signature} alt="Interventionist's signature" style={{ height: 46, border: `1px solid ${HAIRLINE}`, borderRadius: 6, background: 'white' }} />
-              <span style={{ fontSize: 13, color: INK }}>{h.interventionist}{h.credentials ? `, ${h.credentials}` : ''} · License # {note.provider_license}<br /><span style={{ color: MUTED }}>{new Date(note.provider_signed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span></span>
+              <span style={{ fontSize: 13, color: INK }}>{h.interventionist}{h.credentials ? `, ${h.credentials}` : ''} · License # {note.provider_license}<br /><span style={{ color: MUTED }}>{sigTime(note.provider_signed_at)}</span></span>
             </div>
           ) : data.can_write ? (
             <div style={{ maxWidth: 460 }}>
@@ -470,6 +587,29 @@ export function SessionNotePage() {
               {saveError && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg, margin: '8px 0 0' }}>{saveError}</p>}
             </div>
           ) : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Not signed yet.</p>}
+          {(note?.supervisor_name || (!note?.provider_signed_at && session.supervisor)) && (
+            <div style={{ paddingTop: 12, marginTop: 12, borderTop: `1px solid ${HAIRLINE}` }}>
+              <p style={{ fontSize: 13.5, fontWeight: 600, color: INK, margin: '0 0 6px' }}>Supervisor</p>
+              {note?.supervisor_signed_at ? (
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <img src={note.supervisor_signature} alt="Supervisor's signature" style={{ height: 46, border: `1px solid ${HAIRLINE}`, borderRadius: 6, background: 'white' }} />
+                  <span style={{ fontSize: 13, color: INK }}>{note.supervisor_name} · License # {note.supervisor_license}<br /><span style={{ color: MUTED }}>{sigTime(note.supervisor_signed_at)}</span></span>
+                </div>
+              ) : data.can_cosign ? (
+                <div style={{ maxWidth: 460 }}>
+                  <label htmlFor="sn-sup-license" style={eiLabel}>Your license #</label>
+                  <input id="sn-sup-license" value={supLicense} onChange={e => setSupLicense(e.target.value)} placeholder="Filled in from your credentials if left blank" style={{ ...eiInput, marginBottom: 10 }} />
+                  <SignaturePad value={supSig} onChange={setSupSig} />
+                  <button type="button" disabled={saving || !supSig} onClick={supervisorSign} style={buttonStyle('primary', { marginTop: 10 })}>Co-sign note</button>
+                  {saveError && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg, margin: '8px 0 0' }}>{saveError}</p>}
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>
+                  {note?.provider_signed_at ? `Waiting for ${note.supervisor_name} to co-sign (within ${data.cosign_days} days of the provider's signature).` : `${session.supervisor} co-signs after the provider signs.`}
+                </p>
+              )}
+            </div>
+          )}
         </Card>
 
         {locked && (

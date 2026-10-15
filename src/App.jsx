@@ -28,12 +28,15 @@ import SupportNotifier from './SupportNotifier';
 import WhatsNewNotifier from './WhatsNewNotifier';
 import BillingPage from './pages/BillingPage';
 import PowerFormPage from './pages/PowerFormPage';
+import SessionSignPage from './pages/SessionSignPage';
 import PowerFormsPage from './pages/PowerFormsPage';
 import ProviderDirectoryPage from './pages/ProviderDirectoryPage';
 import CredentialsPage from './pages/CredentialsPage';
 import CentralPage from './pages/CentralPage';
 import { SessionNotesPage, SessionNotePage } from './SessionNotes';
 import { ProgressReportsPage, ProgressReportPage } from './ProgressReports';
+import { EvalReportsPage, EvalReportPage } from './EvalReports';
+import CompliancePage from './CompliancePage';
 import { featureOn } from './brand';
 
 function AppShell() {
@@ -56,6 +59,9 @@ function AppShell() {
             {featureOn('ei') && <Route path="/session-notes/note" element={<RequireAuth><SessionNotePage /></RequireAuth>} />}
             {featureOn('ei') && <Route path="/progress-reports" element={<RequireAuth><ProgressReportsPage /></RequireAuth>} />}
             {featureOn('ei') && <Route path="/progress-reports/:id" element={<RequireAuth><ProgressReportPage /></RequireAuth>} />}
+            {featureOn('ei') && <Route path="/eval-reports" element={<RequireAuth><EvalReportsPage /></RequireAuth>} />}
+            {featureOn('ei') && <Route path="/eval-reports/report" element={<RequireAuth><EvalReportPage /></RequireAuth>} />}
+            {featureOn('ei') && <Route path="/compliance" element={<RequireManage><CompliancePage /></RequireManage>} />}
             <Route path="/patients" element={<RequireAuth><PatientsPage /></RequireAuth>} />
             <Route path="/waitlist" element={<RequireAuth><WaitlistPage /></RequireAuth>} />
             <Route path="/patients/:name" element={<RequireAuth><PatientChartPage /></RequireAuth>} />
@@ -98,6 +104,8 @@ export default function App() {
           <Route path="/set-password" element={<RequireLoggedIn><SetPasswordPage /></RequireLoggedIn>} />
           {/* A parent's Power Form (secure link, no sign-in, no staff navigation). */}
           <Route path="/f/:token" element={<PowerFormPage />} />
+          {/* A telehealth parent signs an EI session note (PedsDesk "ei"; secure link, no sign-in). */}
+          {featureOn('ei') && <Route path="/s/:token" element={<SessionSignPage />} />}
           <Route path="/*" element={<AppShell />} />
         </Routes>
       </AuthProvider>

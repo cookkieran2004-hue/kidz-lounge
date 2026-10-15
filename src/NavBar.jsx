@@ -8,7 +8,7 @@ import { Avatar } from './Avatar';
 import { usePendingTimeOff } from './PendingTimeOffContext';
 import { useSupportOpenCount, canSeeSupportTickets } from './supportCount';
 import { canUseCentral } from './centralPractices';
-import { canAdminister } from './roles';
+import { canAdminister, canManage } from './roles';
 import { CLINIC, featureOn } from './brand';
 
 const BRAND_COLOR = 'var(--brand-primary)';
@@ -20,7 +20,7 @@ const TABS = [
   { to: '/waitlist', label: 'Waitlist' },
   { to: '/billing', label: 'Billing' },
   // EI session notes (PedsDesk only, src/SessionNotes.jsx).
-  ...(featureOn('ei') ? [{ to: '/session-notes', label: 'Notes' }, { to: '/progress-reports', label: 'Reports' }] : []),
+  ...(featureOn('ei') ? [{ to: '/session-notes', label: 'Notes' }, { to: '/progress-reports', label: 'Reports' }, { to: '/compliance', label: 'Compliance', manageOnly: true }] : []),
 ];
 
 const barStyle = {
@@ -226,7 +226,7 @@ function UserMenu({ user, links, pendingCount, supportCount, onSignOut }) {
 
 export default function NavBar() {
   const { user, logout } = useAuth();
-  const visibleTabs = TABS;
+  const visibleTabs = TABS.filter(t => !t.manageOnly || canManage(user));
   const { openCount, drawerOpen, setDrawerOpen } = useTasks();
   const isMobile = useIsMobile();
   const location = useLocation();

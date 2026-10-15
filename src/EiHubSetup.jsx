@@ -3,6 +3,7 @@ import { api } from './api';
 import { formatPhone } from './phone';
 import { INK, MUTED, HAIRLINE, TONES, buttonStyle } from './uiTokens';
 import { eiInput, eiLabel, eiGrid as grid } from './eiHubUi';
+import { featureOn } from './brand';
 
 // EI-Hub billing setup (Admins and Developers; kidz-lounge-api routes/eiHub.js):
 // the agency as billing provider and submitter, and each provider as EI-Hub
@@ -79,12 +80,13 @@ const LINES = { OT: 2, PT: 2, SI: 2, ST: 1 };
 // A provider's EI-Hub details being edited -- shared by the Setup table and
 // the staff profile's Linked provider tab (ProviderEiCard), so both behave
 // the same and save the same way.
-function useProviderEiForm(provider, allowed, onSaved) {
+function useProviderEiForm(provider, allowed, onSaved, withSupervisor = false) {
   const [form, setForm] = useState(() => ({
     npi: provider.npi || '',
     ei_first_name: provider.ei_first_name || '',
     ei_last_name: provider.ei_last_name || '',
     codes: provider.ei_default_codes || {},
+    supervisor_name: provider.supervisor_name || '',
   }));
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -98,7 +100,10 @@ function useProviderEiForm(provider, allowed, onSaved) {
     setBusy(true); setStatus(null);
     try {
       const codes = Object.fromEntries(Object.entries(form.codes).map(([d, list]) => [d, (list || []).filter(Boolean)]));
-      const saved = await api.saveEiProvider(provider.Name, { npi: form.npi, ei_first_name: form.ei_first_name, ei_last_name: form.ei_last_name, ei_default_codes: codes });
+      const saved = await api.saveEiProvider(provider.Name, {
+        npi: form.npi, ei_first_name: form.ei_first_name, ei_last_name: form.ei_last_name, ei_default_codes: codes,
+        ...(withSupervisor ? { supervisor_name: form.supervisor_name || null } : {}),
+      });
       setStatus({ ok: 'Saved.' });
       onSaved?.(saved);
     } catch (err) {
@@ -142,11 +147,14 @@ export function ProviderEiCard({ providerName }) {
   if (state.error) return <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg }}>{state.error}</p>;
   if (!state.data.available) return <p style={{ fontSize: 13, color: TONES.warning.fg }}>EI-Hub billing details need a database update. Ask an admin to run it.</p>;
   if (!state.provider) return null;
-  return <ProviderEiForm provider={state.provider} allowed={state.data.allowed_codes} />;
+  return <ProviderEiForm provider={state.provider} allowed={state.data.allowed_codes} others={(state.data.providers || []).filter(p => p.Name !== providerName && !p.archived)} />;
 }
 
-function ProviderEiForm({ provider, allowed }) {
-  const { form, setForm, status, busy, disciplines, setCode, save } = useProviderEiForm(provider, allowed);
+function ProviderEiForm({ provider, allowed, others }) {
+  // PedsDesk's EI records: a provider under supervision (CFY, OTA, PTA...)
+  // has their notes and progress reports co-signed by their supervisor.
+  const withSupervisor = featureOn('ei');
+  const { form, setForm, status, busy, disciplines, setCode, save } = useProviderEiForm(provider, allowed, null, withSupervisor);
   return (
     <div>
       <div style={grid}>
@@ -167,6 +175,15 @@ function ProviderEiForm({ provider, allowed }) {
       <p style={{ margin: '4px 0 12px', fontSize: 12, color: MUTED }}>Leave the names blank if EI-Hub spells them as shown. The NPI and name must match their therapist record in EI-Hub.</p>
       <span style={eiLabel}>Default codes (one per 15 minutes, changeable per session)</span>
       <CodePickers provider={provider} disciplines={disciplines} allowed={allowed} form={form} setCode={setCode} />
+      {withSupervisor && (
+        <div style={{ marginTop: 10, maxWidth: 360 }}>
+          <label htmlFor="ei-prov-supervisor" style={eiLabel}>Supervisor (co-signs notes and progress reports)</label>
+          <select id="ei-prov-supervisor" style={eiInput} value={form.supervisor_name} onChange={e => setForm(f => ({ ...f, supervisor_name: e.target.value }))}>
+            <option value="">No supervisor (fully licensed)</option>
+            {(others || []).map(p => <option key={p.Name} value={p.Name}>{p.Name}</option>)}
+          </select>
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
         <button type="button" onClick={save} disabled={busy} style={buttonStyle('primary')}>{busy ? 'Saving...' : 'Save EI-Hub details'}</button>
         <Status status={status} />

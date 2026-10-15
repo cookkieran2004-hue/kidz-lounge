@@ -35,9 +35,11 @@ const block = (title, body) => ({
   layout: 'lightHorizontalLines', margin: [0, 4, 0, 0],
 });
 
-// One note as a PDF Blob. `data` is GET /session-notes/note's answer.
-export async function buildSessionNotePdf(data) {
-  const pdfMake = await loadPdfMake();
+export const GROUP_TITLE = { group: 'Group', parent_child: 'Parent-Child Group', family_support: 'Family Support Group' };
+
+// One note as pdfmake content (also used by the chart's record pack).
+// `data` is GET /session-notes/note's answer.
+export function sessionNoteContent(data) {
   const { session, note, addenda } = data;
   const h = note.header || session.header;
   // A signed note keeps its own copy of the outcomes it worked on.
@@ -45,16 +47,18 @@ export async function buildSessionNotePdf(data) {
   const codes = [...(h.cpt_codes || []).map((c, i) => `CPT ${i + 1}: ${c}`), ...(h.hcpcs_codes || []).map(c => `HCPCS: ${c}`)].join('   ');
   const content = [
     { columns: [
-      { text: 'Early Intervention Program\nIndividual Session Note (Home/Facility)', bold: true, fontSize: 13 },
+      { text: note.group_type ? `Early Intervention Program\nGroup Session Note (${GROUP_TITLE[note.group_type]})` : 'Early Intervention Program\nIndividual Session Note (Home/Facility)', bold: true, fontSize: 13 },
       { text: CLINIC.name, alignment: 'right', fontSize: 10, color: '#52525B' },
     ], margin: [0, 0, 0, 8] },
     { table: { widths: ['*', '*', '*', '*'], body: [
       [cell("Child's name", h.child_name), cell('DOB', fmtDate(h.date_of_birth)), cell('Sex', h.sex === 'F' ? 'Female' : h.sex === 'M' ? 'Male' : ''), cell('EI #', h.ei_number)],
       [cell("Interventionist's name", h.interventionist), cell('Credentials', h.credentials), cell('NPI #', h.npi), cell('Service type', SERVICE_LABEL[h.service] || h.service)],
       [cell('Session date', fmtDate(note.session_date)), cell('Time', `${fmtTime(note.start_time)} to ${fmtTime(note.end_time)}`), cell('IFSP service location', LOCATION_LABEL[note.location]), cell('Session delivered', DELIVERY_LABEL[note.delivery])],
-      [cell('Intensity', note.location === 'facility' ? 'Individual - facility' : note.location ? 'Home/community' : ''), cell('Date note written', fmtDate(dayOf(note.provider_signed_at))), cell('ICD-10', h.icd10), cell('Codes', codes)],
+      [cell('Intensity', note.group_type ? `Group - ${GROUP_TITLE[note.group_type]}` : note.location === 'facility' ? 'Individual - facility' : note.location ? 'Home/community' : ''), cell('Date note written', fmtDate(dayOf(note.provider_signed_at))), cell('ICD-10', h.icd10), cell('Codes', codes)],
+      ...(note.group_type ? [[cell('Children in the group', String(note.group_children || '')), cell('Group length', note.group_duration ? `${note.group_duration} minutes` : ''), cell('Group site', note.group_site), cell('Aide', note.aide_name)]] : []),
     ] }, layout: 'lightHorizontalLines' },
   ];
+  if (note.group_type && note.aide_notes) content.push({ text: `Aide's role: ${note.aide_notes}`, fontSize: 9.5, margin: [0, 4, 0, 0] });
   if (note.cancelled) content.push({ text: `Session cancelled - reason in #1. Session must be made up by: ${fmtDate(note.makeup_by)}`, bold: true, fontSize: 10, margin: [0, 6, 0, 0] });
   if (note.makeup_for_date) content.push({ text: `This is a make-up for a missed session on ${fmtDate(note.makeup_for_date)}.`, fontSize: 10, margin: [0, 6, 0, 0] });
   if (!note.cancelled) {
@@ -66,7 +70,7 @@ export async function buildSessionNotePdf(data) {
   ]));
   if (!note.cancelled) {
     content.push(block("2. What happened during today's session and the progress made toward the IFSP outcome(s)", { text: note.narrative || '', fontSize: 10 }));
-    content.push(block('3. How did you work with the parent/caregiver?', { text: [...(note.parent_methods || []).filter(m => m !== 'other').map(m => METHOD_LABEL[m]), ...(note.parent_methods || []).includes('other') ? [`Other: ${note.parent_methods_other || ''}`] : []].join('; '), fontSize: 10 }));
+    if (note.group_type !== 'group') content.push(block('3. How did you work with the parent/caregiver?', { text: [...(note.parent_methods || []).filter(m => m !== 'other').map(m => METHOD_LABEL[m]), ...(note.parent_methods || []).includes('other') ? [`Other: ${note.parent_methods_other || ''}`] : []].join('; '), fontSize: 10 }));
     content.push(block("4. Strategies/activities agreed to support the child's learning and development between visits", { text: note.strategies || '', fontSize: 10 }));
   }
   const sigRow = (title, image, lines) => ({ columns: [
@@ -84,17 +88,34 @@ export async function buildSessionNotePdf(data) {
     note.provider_license ? `License/certification #: ${note.provider_license}` : '',
     note.provider_signed_at ? `Date: ${fmtDate(dayOf(note.provider_signed_at))}` : 'Not signed yet',
   ]));
-  if (addenda.length) {
-    content.push({ text: 'Addenda', bold: true, fontSize: 10.5, margin: [0, 12, 0, 2] });
-    for (const a of addenda) content.push({ text: [{ text: `${stamp(a.signed_at)} · ${a.signed_name || a.signed_by}: `, bold: true }, a.body], fontSize: 9.5, margin: [0, 2, 0, 0] });
+  if (note.supervisor_name) {
+    content.push(sigRow('Supervisor signature', note.supervisor_signature, [
+      note.supervisor_name,
+      note.supervisor_license ? `License #: ${note.supervisor_license}` : '',
+      note.supervisor_signed_at ? `Date: ${fmtDate(dayOf(note.supervisor_signed_at))}` : 'Not co-signed yet',
+    ]));
   }
-  return pdfMake.createPdf({ content, pageMargins: [36, 36, 36, 36], defaultStyle: { fontSize: 10 } }).getBlob();
+  content.push(...addendaContent(addenda));
+  return content;
 }
 
-// A month's service log for one child and provider. `log` is GET
-// /session-notes/service-log's answer; `child` the note header to use.
-export async function buildServiceLogPdf(log, child) {
+export function addendaContent(addenda) {
+  if (!addenda?.length) return [];
+  return [
+    { text: 'Addenda', bold: true, fontSize: 10.5, margin: [0, 12, 0, 2] },
+    ...addenda.map(a => ({ text: [{ text: `${stamp(a.signed_at)} · ${a.signed_name || a.signed_by}: `, bold: true }, a.body], fontSize: 9.5, margin: [0, 2, 0, 0] })),
+  ];
+}
+
+// One note as a PDF Blob.
+export async function buildSessionNotePdf(data) {
   const pdfMake = await loadPdfMake();
+  return pdfMake.createPdf({ content: sessionNoteContent(data), pageMargins: [36, 36, 36, 36], defaultStyle: { fontSize: 10 } }).getBlob();
+}
+
+// A month's service log for one child and provider as pdfmake content.
+// `log` is GET /session-notes/service-log's answer; `child` the note header.
+export function serviceLogContent(log, child) {
   const h = child || log.rows[0]?.header || {};
   const body = [[
     'Date of service', 'Start time', 'End time', 'In-person (I) or telehealth (T)', 'CPT code', 'Signature of parent/caregiver verifying that the service was delivered on the date and time indicated', 'Date signed',
@@ -119,7 +140,12 @@ export async function buildServiceLogPdf(log, child) {
       ? { table: { headerRows: 1, widths: [52, 46, 46, 50, 52, '*', 52], body }, layout: 'lightHorizontalLines' }
       : { text: 'No signed sessions this month.', fontSize: 10 },
   ];
-  return pdfMake.createPdf({ content, pageOrientation: 'landscape', pageMargins: [30, 30, 30, 30] }).getBlob();
+  return content;
+}
+
+export async function buildServiceLogPdf(log, child) {
+  const pdfMake = await loadPdfMake();
+  return pdfMake.createPdf({ content: serviceLogContent(log, child), pageOrientation: 'landscape', pageMargins: [30, 30, 30, 30] }).getBlob();
 }
 
 // Opens a Blob in a new tab (the browser's viewer prints and saves it).

@@ -1,6 +1,6 @@
 import { loadPdfMake } from './manualPdf';
 import { CLINIC } from './brand';
-import { fmtDate, SERVICE_LABEL } from './sessionNotePdf';
+import { fmtDate, SERVICE_LABEL, addendaContent } from './sessionNotePdf';
 
 // EI progress reports (the "ei" feature, PedsDesk; src/ProgressReports.jsx)
 // as a PDF laid out like the NYC Provider Progress Note (9/2024), for the
@@ -28,8 +28,8 @@ const cell = (l, v) => ({ stack: [label(l), { text: v || '—', fontSize: 10 }],
 const dayOf = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA') : null);
 const yes = (v) => (v === true ? 'Yes' : v === false ? 'No' : '—');
 
-export async function buildProgressReportPdf({ report, header, addenda }) {
-  const pdfMake = await loadPdfMake();
+// One report as pdfmake content (also used by the chart's record pack).
+export function progressReportContent({ report, header, addenda }) {
   const d = report.details || {};
   const h = report.header || header;
   const content = [
@@ -76,9 +76,14 @@ export async function buildProgressReportPdf({ report, header, addenda }) {
   ], margin: [0, 4, 0, 0] });
   content.push(sig('Signature/credentials of therapist', report.provider_signature, [`${h.interventionist}${h.credentials ? `, ${h.credentials}` : ''}`, `License number: ${report.provider_license || ''}`, `Date report was completed: ${fmtDate(dayOf(report.provider_signed_at))}`]));
   content.push(sig("Parent's signature", report.parent_signature, [report.parent_name ? `${report.parent_name} · ${report.parent_relationship}` : 'Not signed', report.parent_reviewed_on ? `Reviewed with the parent on ${fmtDate(report.parent_reviewed_on)}` : '']));
-  if (addenda.length) {
-    content.push({ text: 'Addenda', bold: true, fontSize: 10.5, margin: [0, 12, 0, 2] });
-    for (const a of addenda) content.push({ text: [{ text: `${new Date(a.signed_at).toLocaleString('en-US')} · ${a.signed_name || a.signed_by}: `, bold: true }, a.body], fontSize: 9.5, margin: [0, 2, 0, 0] });
+  if (report.supervisor_name) {
+    content.push(sig('Supervisor signature', report.supervisor_signature, [report.supervisor_name, report.supervisor_license ? `License number: ${report.supervisor_license}` : '', report.supervisor_signed_at ? `Date: ${fmtDate(dayOf(report.supervisor_signed_at))}` : 'Not co-signed yet']));
   }
-  return pdfMake.createPdf({ content, pageMargins: [36, 36, 36, 36], defaultStyle: { fontSize: 10 } }).getBlob();
+  content.push(...addendaContent(addenda));
+  return content;
+}
+
+export async function buildProgressReportPdf(data) {
+  const pdfMake = await loadPdfMake();
+  return pdfMake.createPdf({ content: progressReportContent(data), pageMargins: [36, 36, 36, 36], defaultStyle: { fontSize: 10 } }).getBlob();
 }

@@ -26,13 +26,14 @@ const STATUS = {
   draft: { text: 'Draft', tone: 'warning' },
   needs_parent: { text: 'Needs parent signature', tone: 'warning' },
   needs_provider: { text: 'Needs provider signature', tone: 'warning' },
+  needs_supervisor: { text: 'Needs co-signature', tone: 'warning' },
   to_approve: { text: 'Waiting for the office', tone: 'neutral' },
   returned: { text: 'Returned: add an addendum', tone: 'danger' },
   approved: { text: 'Approved, not sent', tone: 'accent' },
   sent: { text: 'Sent', tone: 'success' },
 };
 const TABS = [
-  { key: 'todo', label: 'To write', statuses: ['not_started', 'draft', 'needs_parent', 'needs_provider', 'returned'] },
+  { key: 'todo', label: 'To write', statuses: ['not_started', 'draft', 'needs_parent', 'needs_provider', 'needs_supervisor', 'returned'] },
   { key: 'office', label: 'With the office', statuses: ['to_approve', 'approved'] },
   { key: 'sent', label: 'Sent', statuses: ['sent'] },
 ];
@@ -109,7 +110,7 @@ export function ProgressReportsPage() {
   return (
     <div style={{ background: PAGE_BG, fontFamily: FONT, minHeight: '100%' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '18px 14px 40px' : '28px 28px 56px' }}>
-        <PageHeader title="Progress reports" isMobile={isMobile} />
+        <PageHeader title="Progress reports" isMobile={isMobile} actions={<Link to="/eval-reports" style={{ fontSize: 13.5, color: 'var(--brand-primary)' }}>Evaluation reports →</Link>} />
         <UnderlineTabs label="Progress report views" active={tab} onPick={setTab} style={{ marginBottom: 16 }}
           tabs={TABS.map(t => ({ key: t.key, label: t.label, count: data ? counts[t.key] : null, alert: (t.key === 'todo' && counts.todo) || (t.key === 'office' && manager && counts.office) ? 'warning' : null }))} />
         <Card pad={isMobile ? 14 : 20}>
@@ -183,6 +184,8 @@ export function ProgressReportPage() {
   const [addendum, setAddendum] = useState('');
   const [officeComment, setOfficeComment] = useState('');
   const [sentOn, setSentOn] = useState('');
+  const [supSig, setSupSig] = useState(null);
+  const [supLicense, setSupLicense] = useState('');
 
   const load = useCallback(() => api.getProgressReport(id).then(d => {
     setData(d); setError(null); setDirty(false);
@@ -258,7 +261,9 @@ export function ProgressReportPage() {
 
         {data.can_office && report.provider_signed_at && report.parent_signed_at && !report.sent_on && (
           <Section title="Office review" isMobile={isMobile}>
-            {report.office_status === 'approved' ? (
+            {report.supervisor_name && !report.supervisor_signed_at ? (
+              <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Waiting for {report.supervisor_name} (the provider's supervisor) to co-sign before it can be approved.</p>
+            ) : report.office_status === 'approved' ? (
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div><span style={eiLabel}>Sent to the service coordinator on</span><DateField style={{ ...eiInput, width: 190 }} ariaLabel="Date sent" value={sentOn} onChange={setSentOn} /></div>
                 <button type="button" disabled={busy} onClick={() => step('sent', { sent_on: sentOn })} style={buttonStyle('primary')}>Mark sent</button>
@@ -417,6 +422,24 @@ export function ProgressReportPage() {
               <button type="button" disabled={busy || !sig || (!dirty && missing?.length > 0)} onClick={providerSign} style={{ ...buttonStyle('primary'), marginTop: 10 }}>Sign report</button>
             </div>
           ) : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Not signed yet.</p>}
+          {report.supervisor_name && (
+            <>
+              <p style={{ fontSize: 13.5, fontWeight: 600, color: INK, margin: '12px 0 6px', paddingTop: 12, borderTop: `1px solid ${HAIRLINE}` }}>Supervisor</p>
+              {report.supervisor_signed_at ? (
+                <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <img src={report.supervisor_signature} alt="Supervisor's signature" style={{ height: 46, border: `1px solid ${HAIRLINE}`, borderRadius: 6, background: 'white' }} />
+                  <span style={{ fontSize: 13, color: INK }}>{report.supervisor_name} · License # {report.supervisor_license}<br /><span style={{ color: MUTED }}>Co-signed {new Date(report.supervisor_signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></span>
+                </div>
+              ) : data.can_cosign ? (
+                <div style={{ maxWidth: 500 }}>
+                  <label htmlFor="pr-sup-license" style={eiLabel}>Your license #</label>
+                  <input id="pr-sup-license" value={supLicense} onChange={e => setSupLicense(e.target.value)} placeholder="Filled in from your credentials if left blank" style={{ ...eiInput, marginBottom: 10 }} />
+                  <SignaturePad value={supSig} onChange={setSupSig} />
+                  <button type="button" disabled={busy || !supSig} onClick={() => step('supervisor-sign', { signature: supSig, license: supLicense }, () => setSupSig(null))} style={{ ...buttonStyle('primary'), marginTop: 10 }}>Co-sign report</button>
+                </div>
+              ) : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Waiting for {report.supervisor_name} to co-sign.</p>}
+            </>
+          )}
         </Section>
 
         {locked && (

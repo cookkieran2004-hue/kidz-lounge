@@ -8,6 +8,8 @@ import { formatPhone } from './phone';
 import { useAuth } from './AuthContext';
 import { useIsMobile } from './useIsMobile';
 import { ProgressReportRows } from './ProgressReports';
+import { openBlob } from './sessionNotePdf';
+import { buildRecordPack } from './recordPack';
 
 // The patient chart's IFSP tab (the "ei" feature, PedsDesk only, Oct 2026;
 // API routes/ifsp.js, lib/ifsp.js). Every IFSP period the child has had,
@@ -295,6 +297,17 @@ function ProgressReportsBox({ patient, headerStyle, boxStyle, reload }) {
   );
 }
 
+// The office: the child's whole EI record as one PDF (src/recordPack.js).
+function RecordPackButton({ patient }) {
+  const [busy, setBusy] = useState(false);
+  const make = async () => {
+    setBusy(true);
+    try { openBlob(await buildRecordPack(patient)); } catch (err) { window.alert(err.message); }
+    setBusy(false);
+  };
+  return <button type="button" disabled={busy} onClick={make} style={linkButton}>{busy ? 'Making the record pack...' : 'Record pack (PDF)'}</button>;
+}
+
 export default function IfspTab({ patient, headerStyle, boxStyle, onPatientChanged }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -323,9 +336,12 @@ export default function IfspTab({ patient, headerStyle, boxStyle, onPatientChang
     <>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <p style={headerStyle}>Current IFSP</p>
-        {canEdit && editing !== 'new' && (
-          <button type="button" onClick={() => setEditing('new')} style={linkButton}>+ New IFSP</button>
-        )}
+        <span style={{ display: 'flex', gap: 14 }}>
+          {canEdit && <RecordPackButton patient={patient} />}
+          {canEdit && editing !== 'new' && (
+            <button type="button" onClick={() => setEditing('new')} style={linkButton}>+ New IFSP</button>
+          )}
+        </span>
       </div>
       <div style={boxStyle}>
         {editing === 'new' && (
