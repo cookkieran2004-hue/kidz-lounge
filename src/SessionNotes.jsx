@@ -9,9 +9,10 @@ import { INK, MUTED, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle, choic
 import { eiInput, eiLabel } from './eiHubUi';
 import { SignaturePad } from './PowerFormFields';
 import {
-  buildSessionNotePdf, buildServiceLogPdf, openBlob, fmtDate, fmtTime,
+  openBlob, fmtDate, fmtTime,
   LOCATION_LABEL, DELIVERY_LABEL, PARTICIPANT_LABEL, METHOD_LABEL, SERVICE_LABEL,
 } from './sessionNotePdf';
+import { buildEiPdf, sessionNoteV2Section, serviceLogSections } from './eiFormsPdf';
 
 // EI session notes (the "ei" feature, PedsDesk only, Oct 2026; API
 // routes/sessionNotes.js, rules in lib/sessionNotes.js). Follows the NYC EI
@@ -198,7 +199,7 @@ export function SessionNotesChartTab({ patient, headerStyle, boxStyle }) {
     try {
       const log = await api.getServiceLog(patient.id, prov, month);
       if (!log.rows.length) { window.alert(`No sessions with ${prov} have been signed by the parent in ${monthLabel(month)}.`); return; }
-      openBlob(await buildServiceLogPdf(log));
+      openBlob(await buildEiPdf(serviceLogSections(log), { title: 'Service log' }));
     } catch (err) { window.alert(err.message); }
   };
   return (
@@ -234,13 +235,14 @@ const Question = ({ n, title, children }) => (
   </div>
 );
 const toggle = (list, v, on) => (on ? [...new Set([...(list || []), v])] : (list || []).filter(x => x !== v));
-const blankGroup = { group_type: '', group_children: '', group_duration: '', group_site: '', aide_name: '', aide_notes: '' };
+const blankGroup = { group_type: '', group_children: '', group_duration: '', group_site: '', group_location: '', group_location_other: '', group_address: '', aide_name: '', aide_notes: '' };
 const blank = { location: '', delivery: 'in_person', participants: ['child', 'parent'], participants_other: '', outcome_ids: [], outcomes_text: '', narrative: '', parent_methods: [], parent_methods_other: '', strategies: '', ...blankGroup };
 const fromNote = (n, session) => (n ? {
   location: n.location || '', delivery: n.delivery || '', participants: n.participants || [], participants_other: n.participants_other || '',
   outcome_ids: n.outcome_ids || [], outcomes_text: n.outcomes_text || '', narrative: n.narrative || '', parent_methods: n.parent_methods || [],
   parent_methods_other: n.parent_methods_other || '', strategies: n.strategies || '',
   group_type: n.group_type || '', group_children: n.group_children ?? '', group_duration: n.group_duration ?? '', group_site: n.group_site || '',
+  group_location: n.group_location || '', group_location_other: n.group_location_other || '', group_address: n.group_address || n.group_site || '',
   aide_name: n.aide_name || '', aide_notes: n.aide_notes || '',
 } : { ...blank, location: session.location || '' });
 const sigTime = (at) => new Date(at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -294,6 +296,7 @@ function ParentSignPanel({ data, onDone, onCancel }) {
 
 // /session-notes/note?key=...: write, sign and print one session's note.
 export function SessionNotePage() {
+  const { user } = useAuth();
   const [params] = useSearchParams();
   const key = params.get('key') || '';
   const isMobile = useIsMobile(900);
@@ -365,6 +368,10 @@ export function SessionNotePage() {
     } catch (err) { setSaveError(err.message); }
     setSaving(false);
   };
+  // NYC: the family gets a copy "as close as possible to the completed session".
+  const familyCopy = async () => {
+    try { const r = await api.sessionNoteFamilyCopy(key); setData(d => ({ ...d, note: r.note })); } catch (err) { window.alert(err.message); }
+  };
   const supervisorSign = async () => {
     setSaving(true);
     setSaveError(null);
@@ -374,9 +381,9 @@ export function SessionNotePage() {
   const addAddendum = async () => {
     try { const r = await api.addSessionNoteAddendum(key, addendum); setData(d => ({ ...d, addenda: r.addenda })); setAddendum(''); } catch (err) { window.alert(err.message); }
   };
-  const pdf = async () => { try { openBlob(await buildSessionNotePdf(data)); } catch (err) { window.alert(err.message); } };
+  const pdf = async () => { try { openBlob(await buildEiPdf([sessionNoteV2Section(data)], { title: 'Session note' })); } catch (err) { window.alert(err.message); } };
   const serviceLog = async () => {
-    try { openBlob(await buildServiceLogPdf(await api.getServiceLog(session.patient_id, session.provider, session.date.slice(0, 7)))); } catch (err) { window.alert(err.message); }
+    try { openBlob(await buildEiPdf(serviceLogSections(await api.getServiceLog(session.patient_id, session.provider, session.date.slice(0, 7))), { title: 'Service log' })); } catch (err) { window.alert(err.message); }
   };
   const missing = dirty ? null : data.missing;
   const st = STATUS[data.status] || STATUS.none;
@@ -437,30 +444,42 @@ export function SessionNotePage() {
                   ))}
                 </div>
                 {form.group_type && (
+                  // NYC Group Session Note (7/29/2024): location type and address,
+                  // duration, children present, the 1-to-1 aide.
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '140px 160px minmax(0, 1fr)', gap: 10, marginTop: 10 }}>
+                    <div style={{ gridColumn: isMobile ? 'auto' : 'span 3' }}>
+                      <span style={eiLabel}>IFSP service location</span>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {[['center', 'Center-based program'], ['other', 'Other EI-approved site']].map(([v, l]) => (
+                          <button key={v} type="button" disabled={!editable} aria-pressed={form.group_location === v} onClick={() => set({ group_location: v })} style={choiceStyle(form.group_location === v)}>{l}</button>
+                        ))}
+                        {form.group_location === 'other' && <input aria-label="Which other EI-approved site" value={form.group_location_other} disabled={!editable} onChange={e => set({ group_location_other: e.target.value })} placeholder="e.g. Library, community center" style={{ ...eiInput, width: 'auto', flex: '1 1 200px' }} />}
+                      </div>
+                    </div>
+                    <div style={{ gridColumn: isMobile ? 'auto' : 'span 3' }}>
+                      <label htmlFor="sn-gaddress" style={eiLabel}>Address of the service location</label>
+                      <input id="sn-gaddress" value={form.group_address} disabled={!editable} onChange={e => set({ group_address: e.target.value })} style={eiInput} />
+                    </div>
                     <div>
-                      <label htmlFor="sn-gchildren" style={eiLabel}>Children (2 to 10)</label>
+                      <label htmlFor="sn-gchildren" style={eiLabel}>Children present (2 to 10)</label>
                       <input id="sn-gchildren" type="number" min={2} max={10} value={form.group_children} disabled={!editable} onChange={e => set({ group_children: e.target.value })} style={eiInput} />
                     </div>
                     <div>
-                      <label htmlFor="sn-gduration" style={eiLabel}>Length</label>
+                      <label htmlFor="sn-gduration" style={eiLabel}>Group duration</label>
                       <select id="sn-gduration" value={form.group_duration} disabled={!editable} onChange={e => set({ group_duration: e.target.value })} style={eiInput}>
                         <option value="">Choose</option>
                         {[60, 90, 120].map(m => <option key={m} value={m}>{m} minutes</option>)}
                       </select>
                     </div>
                     <div>
-                      <label htmlFor="sn-gsite" style={eiLabel}>Where the group met</label>
-                      <input id="sn-gsite" value={form.group_site} disabled={!editable} onChange={e => set({ group_site: e.target.value })} placeholder="e.g. Center, Room 2" style={eiInput} />
-                    </div>
-                    <div>
-                      <label htmlFor="sn-aide" style={eiLabel}>Aide (if any)</label>
+                      <label htmlFor="sn-aide" style={eiLabel}>1-to-1 aide (print name, if authorized)</label>
                       <input id="sn-aide" value={form.aide_name} disabled={!editable} onChange={e => set({ aide_name: e.target.value })} style={eiInput} />
                     </div>
-                    <div style={{ gridColumn: isMobile ? 'auto' : 'span 2' }}>
-                      <label htmlFor="sn-aide-notes" style={eiLabel}>What the aide did</label>
-                      <input id="sn-aide-notes" value={form.aide_notes} disabled={!editable} onChange={e => set({ aide_notes: e.target.value })} style={eiInput} />
-                    </div>
+                    {form.group_type === 'group' && (
+                      <p style={{ gridColumn: isMobile ? 'auto' : 'span 3', fontSize: 12.5, color: MUTED, margin: 0 }}>
+                        No parents in the group: as the group leader you sign for the caregiver on the note and the service log when you sign.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -480,6 +499,9 @@ export function SessionNotePage() {
                       <button key={v} type="button" disabled={!editable} aria-pressed={form.delivery === v} onClick={() => set({ delivery: v })} style={choiceStyle(form.delivery === v)}>{l}</button>
                     ))}
                   </div>
+                  {form.delivery === 'telehealth' && data.consents?.telehealth === false && (
+                    <p style={{ fontSize: 12.5, color: TONES.danger.fg, margin: '6px 0 0', maxWidth: 360 }}>No telehealth consent for {session.service} is on file. NYS requires the parent's signed consent before any telehealth session (chart → IFSP tab).</p>
+                  )}
                 </div>
               </div>
               <span style={{ ...eiLabel, marginTop: 12 }}>Who took part</span>
@@ -512,15 +534,22 @@ export function SessionNotePage() {
                 <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 6px' }}>Include the routine activity and the strategies used. When available, include the parent's feedback on using the strategies between sessions.</p>
                 {ta('narrative', 7)}
               </Question>
-              {form.group_type !== 'group' && <Question n={3} title="How did you work with the parent/caregiver?">
+              {form.group_type !== 'group' && <Question n={3} title={form.group_type ? 'Parent-child and family support groups: how did you work with the parent/caregiver?' : 'How did you work with the parent/caregiver?'}>
                 {Object.entries(METHOD_LABEL).map(([v, l]) => (
                   <Check key={v} checked={form.parent_methods.includes(v)} disabled={!editable} onChange={on => set({ parent_methods: toggle(form.parent_methods, v, on) })}>{l}</Check>
                 ))}
                 {form.parent_methods.includes('other') && <div style={{ marginTop: 4 }}>{ta('parent_methods_other', 2, 'Describe (or, if the parent didn\'t take part, why and how you tried to include them)')}</div>}
               </Question>}
-              <Question n={4} title="What strategies/activities did you and the parent/caregiver agree to do between visits?">
-                {ta('strategies', 4)}
-              </Question>
+              {form.group_type ? (
+                // On NYC's group note question 4 is about the 1-to-1 aide.
+                <Question n={4} title="If a 1-to-1 aide is authorized, describe how the aide worked with the child to support progress toward the IFSP outcome(s)">
+                  {form.aide_name ? ta('aide_notes', 3, "Include how the aide promoted the child's positive behaviors, attention, responsiveness, socialization and/or generalization.") : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>N/A (no aide). Add the aide's name above if one is authorized.</p>}
+                </Question>
+              ) : (
+                <Question n={4} title="What strategies/activities did you and the parent/caregiver agree to do between visits?">
+                  {ta('strategies', 4)}
+                </Question>
+              )}
             </>
           )}
 
@@ -539,26 +568,34 @@ export function SessionNotePage() {
               <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{missing.map(m => <li key={m}>{m}</li>)}</ul>
             </div>
           )}
-          {!cancelled && (
+          {!cancelled && (form.group_type === 'group' && !note?.parent_signed_at ? (
+            <div style={{ paddingBottom: 12, marginBottom: 12, borderBottom: `1px solid ${HAIRLINE}` }}>
+              <p style={{ fontSize: 13.5, fontWeight: 600, color: INK, margin: '0 0 6px' }}>Caregiver</p>
+              <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Children-only group: your signature below also signs for the caregiver (group leader) on the note and the service log.</p>
+            </div>
+          ) : (
             <div style={{ paddingBottom: 12, marginBottom: 12, borderBottom: `1px solid ${HAIRLINE}` }}>
               <p style={{ fontSize: 13.5, fontWeight: 600, color: INK, margin: '0 0 6px' }}>Parent or caregiver</p>
               {note?.parent_signed_at ? (
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                   <img src={note.parent_note_signature} alt="Parent's signature on the note" style={{ height: 46, border: `1px solid ${HAIRLINE}`, borderRadius: 6, background: 'white' }} />
                   <img src={note.parent_log_signature} alt="Parent's signature on the service log" style={{ height: 46, border: `1px solid ${HAIRLINE}`, borderRadius: 6, background: 'white' }} />
-                  <span style={{ fontSize: 13, color: INK }}>{note.parent_name} · {note.parent_relationship}<br /><span style={{ color: MUTED }}>{sigTime(note.parent_signed_at)}{note.parent_signed_via === 'link' ? ' · signed from a link' : ''}</span></span>
+                  <span style={{ fontSize: 13, color: INK }}>{note.parent_name} · {note.parent_relationship}<br /><span style={{ color: MUTED }}>{sigTime(note.parent_signed_at)}{note.parent_signed_via === 'link' ? ' · signed from an emailed link' : ''}</span></span>
                 </div>
               ) : data.can_write ? (
                 <div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button type="button" disabled={saving || (!dirty && missing?.length > 0)} onClick={startParent} style={buttonStyle(form.delivery === 'telehealth' ? 'secondary' : 'primary')}>Hand to parent to sign</button>
                     {form.delivery === 'telehealth' && (
-                      <button type="button" disabled={saving || (!dirty && missing?.length > 0)} onClick={sendLink} style={buttonStyle('primary')}>{note?.parent_link_open ? 'Make a new signing link' : 'Get a signing link'}</button>
+                      <button type="button" disabled={saving || (!dirty && missing?.length > 0) || data.consents?.email === false} onClick={sendLink} style={buttonStyle('primary')}>{note?.parent_link_open ? 'Make a new signing link' : 'Get a signing link to email'}</button>
                     )}
                   </div>
+                  {form.delivery === 'telehealth' && data.consents?.email === false && !link && (
+                    <p style={{ fontSize: 12.5, color: MUTED, margin: '8px 0 0' }}>A signing link goes by email, which needs the parent's signed email consent (chart → IFSP tab). Texting families isn't allowed in EI.</p>
+                  )}
                   {link ? (
                     <div style={{ marginTop: 10, fontSize: 13, color: INK }}>
-                      Send this link to the parent (text or email). It works for 7 days and asks for the child's date of birth:
+                      Email this link to the parent (email consent is on file; don't send it by text message: NYS doesn't allow texting families). It works for 7 days and asks for the child's date of birth:
                       <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
                         <input readOnly value={link} aria-label="Signing link" onFocus={e => e.target.select()} style={{ ...eiInput, flex: 1 }} />
                         <button type="button" onClick={() => navigator.clipboard?.writeText(link)} style={buttonStyle('secondary')}>Copy</button>
@@ -570,7 +607,7 @@ export function SessionNotePage() {
                 </div>
               ) : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>{note?.parent_link_open ? 'A signing link was sent to the parent.' : 'Not signed yet.'}</p>}
             </div>
-          )}
+          ))}
           <p style={{ fontSize: 13.5, fontWeight: 600, color: INK, margin: '0 0 6px' }}>Interventionist</p>
           {note?.provider_signed_at ? (
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -587,6 +624,15 @@ export function SessionNotePage() {
               {saveError && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg, margin: '8px 0 0' }}>{saveError}</p>}
             </div>
           ) : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>Not signed yet.</p>}
+          {note?.provider_signed_at && (
+            <div style={{ paddingTop: 12, marginTop: 12, borderTop: `1px solid ${HAIRLINE}`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 13 }}>
+              <span style={{ fontWeight: 600, color: INK }}>Family's copy</span>
+              {note.family_copy_on
+                ? <span style={{ color: MUTED }}>Given {fmtDate(String(note.family_copy_on).slice(0, 10))}</span>
+                : (data.can_write || canManage(user)) ? <button type="button" onClick={familyCopy} style={buttonStyle('secondary', { padding: '4px 10px' })}>Copy given to family today</button>
+                  : <span style={{ color: TONES.warning.fg }}>Not given yet</span>}
+            </div>
+          )}
           {(note?.supervisor_name || (!note?.provider_signed_at && session.supervisor)) && (
             <div style={{ paddingTop: 12, marginTop: 12, borderTop: `1px solid ${HAIRLINE}` }}>
               <p style={{ fontSize: 13.5, fontWeight: 600, color: INK, margin: '0 0 6px' }}>Supervisor</p>

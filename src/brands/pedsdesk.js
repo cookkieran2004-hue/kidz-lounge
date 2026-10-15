@@ -24,13 +24,14 @@ export default {
   nav: 'grouped',
   // Patient and schedule lists for an NYC Early Intervention agency (Kieran,
   // Oct 2026; src/patientOptions.js). Case manager pills come from the
-  // patients' case managers. RX only matters for insurance.
+  // patients' case managers. RX: insurance, and PT / OT (orders).
   patientOptions: {
     programs: ['EI', 'CPSE', 'CSE', 'Insurance', 'Private pay'],
     statuses: ['Referral received', 'Evaluation scheduled', 'Awaiting IFSP', 'Awaiting authorization', 'On Program', 'On hold', 'Off Program'],
     insurancePrograms: ['Insurance', 'Private pay'],
     rooms: ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Gym', 'Group room'],
     rxOnlyFor: ['Insurance'],
+    rxServices: ['PT', 'OT'], // EI PT and OT need a physician's order (NYC EI)
   },
   theme: {
     primary: '#1D4ED8',

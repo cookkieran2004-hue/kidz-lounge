@@ -1,20 +1,17 @@
 import { api } from './api';
-import { loadPdfMake } from './manualPdf';
 import { CLINIC } from './brand';
-import { sessionNoteContent, serviceLogContent, fmtDate } from './sessionNotePdf';
-import { progressReportContent } from './progressReportPdf';
-import { evalReportContent } from './evalReportPdf';
+import { fmtDate } from './sessionNotePdf';
+import { buildEiPdf, sessionNotesV1Sections, groupNoteV2Section, serviceLogSections, progressNoteSection, evalReportSection } from './eiFormsPdf';
 
 // The chart's record pack (the "ei" feature, PedsDesk; Reception, Admins and
 // Developers): one PDF of a child's EI record, for an audit, a records
 // request or a transfer. A contents page, then the IFSPs (as entered), every
 // signed session note, the monthly service logs, progress reports and
-// evaluation reports, each from the same builders as their own PDFs.
+// evaluation reports, each laid out like NYC's official form (src/eiFormsPdf.js):
+// individual notes two to a page (Version 1), group notes one to a page.
 // Uploaded documents (the IFSP PDFs, Power Forms copies...) are listed, not
 // merged in: they're files of any kind, opened from Documents.
 
-const pageBreak = (orientation = 'portrait') => ({ text: '', pageBreak: 'before', pageOrientation: orientation });
-const heading = (t) => ({ text: t, bold: true, fontSize: 14, margin: [0, 0, 0, 8] });
 
 function ifspContent(ifsps) {
   if (!ifsps.length) return [{ text: 'No IFSPs entered.', fontSize: 10 }];
@@ -58,33 +55,39 @@ export async function buildRecordPack(patient) {
     ['Evaluation reports', evals.length],
     ['Documents on file (listed)', record.documents.length],
   ];
-  const content = [
-    { text: CLINIC.name, fontSize: 11, color: '#52525B' },
-    { text: 'Early Intervention record', bold: true, fontSize: 20, margin: [0, 6, 0, 4] },
-    { text: name, fontSize: 15 },
-    { text: `Date of birth: ${fmtDate(ifsp.patient?.date_of_birth ? String(ifsp.patient.date_of_birth).slice(0, 10) : '')}`, fontSize: 10.5, margin: [0, 4, 0, 0] },
-    { text: `Made ${new Date().toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`, fontSize: 10, color: '#52525B', margin: [0, 2, 0, 16] },
-    { table: { widths: ['*', 60], body: contents.map(([l, n]) => [{ text: l, fontSize: 11 }, { text: String(n), fontSize: 11, alignment: 'right' }]) }, layout: 'lightHorizontalLines' },
-    { text: 'Confidential: contains protected health information.', fontSize: 9, color: '#52525B', margin: [0, 16, 0, 0] },
-    pageBreak(), heading('IFSPs'), ...ifspContent(ifsp.ifsps),
-  ];
-  for (const n of record.notes) content.push(pageBreak(), ...sessionNoteContent({ session: { header: n.note.header || {}, outcomes: [] }, note: n.note, addenda: n.addenda }));
-  for (const log of [...logs.values()].sort((a, b) => a.month.localeCompare(b.month) || a.provider.localeCompare(b.provider))) {
-    content.push(pageBreak('landscape'), ...serviceLogContent(log));
-  }
-  for (const r of reports) content.push(pageBreak(), ...progressReportContent(r));
-  for (const e of evals) content.push(pageBreak(), ...evalReportContent(e));
-  content.push(pageBreak(), heading('Documents on file'));
-  content.push(record.documents.length
-    ? { table: { widths: ['*', 110, 80], headerRows: 1, body: [
-      ['File', 'Type', 'Uploaded'].map(t => ({ text: t, bold: true, fontSize: 9 })),
-      ...record.documents.map(d => [d.filename, d.document_type || '', fmtDate(String(d.uploaded_at).slice(0, 10))].map(t => ({ text: t, fontSize: 9.5 }))),
-    ] }, layout: 'lightHorizontalLines' }
-    : { text: 'None.', fontSize: 10 });
-
-  const pdfMake = await loadPdfMake();
-  return pdfMake.createPdf({
-    content, pageMargins: [36, 36, 36, 40], defaultStyle: { fontSize: 10 },
-    footer: (page, pages) => ({ text: `${name} · EI record · page ${page} of ${pages}`, fontSize: 8, color: '#71717A', alignment: 'center', margin: [0, 12, 0, 0] }),
-  }).getBlob();
+  const sections = [{
+    footer: `${CLINIC.name} · EI record of ${name}`,
+    content: [
+      { text: CLINIC.name, fontSize: 11, color: '#52525B' },
+      { text: 'Early Intervention record', bold: true, fontSize: 20, margin: [0, 6, 0, 4] },
+      { text: name, fontSize: 15 },
+      { text: `Date of birth: ${fmtDate(ifsp.patient?.date_of_birth ? String(ifsp.patient.date_of_birth).slice(0, 10) : '')}`, fontSize: 10.5, margin: [0, 4, 0, 0] },
+      { text: `Made ${new Date().toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`, fontSize: 10, color: '#52525B', margin: [0, 2, 0, 16] },
+      { table: { widths: ['*', 60], body: contents.map(([l, n]) => [{ text: l, fontSize: 11 }, { text: String(n), fontSize: 11, alignment: 'right' }]) }, layout: 'lightHorizontalLines' },
+      { text: 'Confidential: contains protected health information.', fontSize: 9, color: '#52525B', margin: [0, 16, 0, 0] },
+      { text: 'IFSPs', bold: true, fontSize: 14, margin: [0, 24, 0, 8], pageBreak: 'before' },
+      ...ifspContent(ifsp.ifsps),
+    ],
+  }];
+  const asData = (n) => ({ session: { header: n.note.header || {}, outcomes: [] }, note: n.note, addenda: n.addenda });
+  const individual = record.notes.filter(n => !n.note.group_type).map(asData);
+  const groups = record.notes.filter(n => n.note.group_type).map(asData);
+  sections.push(...sessionNotesV1Sections(individual));
+  sections.push(...groups.map(groupNoteV2Section));
+  for (const log of [...logs.values()].sort((a, b) => a.month.localeCompare(b.month) || a.provider.localeCompare(b.provider))) sections.push(...serviceLogSections(log));
+  sections.push(...reports.map(progressNoteSection));
+  sections.push(...evals.map(evalReportSection));
+  sections.push({
+    footer: `${CLINIC.name} · EI record of ${name}`,
+    content: [
+      { text: 'Documents on file', bold: true, fontSize: 14, margin: [0, 0, 0, 8] },
+      record.documents.length
+        ? { table: { widths: ['*', 110, 80], headerRows: 1, body: [
+          ['File', 'Type', 'Uploaded'].map(t => ({ text: t, bold: true, fontSize: 9 })),
+          ...record.documents.map(d => [d.filename, d.document_type || '', fmtDate(String(d.uploaded_at).slice(0, 10))].map(t => ({ text: t, fontSize: 9.5 }))),
+        ] }, layout: 'lightHorizontalLines' }
+        : { text: 'None.', fontSize: 10 },
+    ],
+  });
+  return buildEiPdf(sections, { title: `EI record: ${name}` });
 }

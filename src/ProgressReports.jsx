@@ -11,7 +11,8 @@ import { SignaturePad } from './PowerFormFields';
 import { DateField } from './pages/SchedulePage';
 import { formatPhone } from './phone';
 import { openBlob, fmtDate, SERVICE_LABEL } from './sessionNotePdf';
-import { buildProgressReportPdf, RATING_LABEL, COMM_LABEL, DELIVERY_LABEL, TYPE_LABEL, QUESTIONS } from './progressReportPdf';
+import { buildEiPdf, progressNoteSection } from './eiFormsPdf';
+import { RATING_LABEL, COMM_LABEL, DELIVERY_LABEL, TYPE_LABEL, QUESTIONS } from './progressReportPdf';
 
 // EI progress reports (the "ei" feature, PedsDesk only, Oct 2026; API
 // routes/progressReports.js, rules in lib/progressReports.js). The NYC
@@ -225,7 +226,7 @@ export function ProgressReportPage() {
     if (dirty && !(await save())) return;
     step('provider-sign', { signature: sig, license }, () => setSig(null));
   };
-  const pdf = async () => { try { openBlob(await buildProgressReportPdf(data)); } catch (err) { setMsg(err.message); } };
+  const pdf = async () => { try { openBlob(await buildEiPdf([progressNoteSection(data)], { title: 'Provider progress note' })); } catch (err) { setMsg(err.message); } };
   const missing = dirty ? null : data.missing;
   const st = STATUS[data.status] || STATUS.draft;
   const text = (value, onChange, rows = 3, placeholder) => (
@@ -282,6 +283,14 @@ export function ProgressReportPage() {
           </Section>
         )}
         {report.sent_on && <p style={{ fontSize: 13.5, color: TONES.success.fg, margin: '14px 0 0', fontWeight: 600 }}>Sent to the service coordinator on {fmtDate(report.sent_on)}.</p>}
+        {/* NYC: "The family should receive a copy of all completed progress notes." */}
+        {report.provider_signed_at && (data.can_write || data.can_office) && (
+          <p style={{ fontSize: 13, margin: '10px 0 0', display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span style={{ fontWeight: 600, color: INK }}>Family's copy</span>
+            {report.family_copy_on ? <span style={{ color: MUTED }}>Given {fmtDate(String(report.family_copy_on).slice(0, 10))}</span>
+              : <button type="button" disabled={busy} onClick={() => step('family-copy', {})} style={buttonStyle('secondary', { padding: '4px 10px' })}>Copy given to family today</button>}
+          </p>
+        )}
 
         <Section title="Services" isMobile={isMobile}>
           <div style={eiGrid}>

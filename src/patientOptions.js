@@ -21,6 +21,9 @@ export const CASE_MANAGER_PILLS = o.caseManagerPills || null;
 
 const programsOf = (value) => (Array.isArray(value) ? value : String(value || '').split(',')).map(s => String(s).trim()).filter(Boolean);
 // Whether the prescription (RX) fields apply to a patient with these
-// programs: always, unless the clinic limits them (PedsDesk: insurance only;
-// EI runs on the IFSP).
-export const rxApplies = (programs) => !o.rxOnlyFor || programsOf(programs).some(p => o.rxOnlyFor.includes(p));
+// programs and services: always, unless the clinic limits them. PedsDesk:
+// insurance, and any child getting PT or OT (NYC EI requires a physician's
+// or NP's order for those: 10 NYCRR 69-4.11(a)(10); NYC citation #5).
+export const rxApplies = (programs, services) => !o.rxOnlyFor
+  || programsOf(programs).some(p => o.rxOnlyFor.includes(p))
+  || programsOf(services).some(s => (o.rxServices || []).includes(s));

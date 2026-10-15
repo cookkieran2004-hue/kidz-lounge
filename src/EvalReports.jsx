@@ -9,7 +9,8 @@ import { INK, MUTED, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle, choic
 import { eiInput, eiLabel } from './eiHubUi';
 import { SignaturePad } from './PowerFormFields';
 import { openBlob, fmtDate, fmtTime } from './sessionNotePdf';
-import { buildEvalReportPdf, EVAL_TYPE_LABEL, ELIGIBILITY_LABEL, DOMAIN_ORDER } from './evalReportPdf';
+import { EVAL_TYPE_LABEL, ELIGIBILITY_LABEL, TELEHEALTH_REASON_LABEL, DOMAIN_ORDER } from './evalReportPdf';
+import { buildEiPdf, evalReportSection } from './eiFormsPdf';
 
 // EI evaluation reports (the "ei" feature, PedsDesk only, Oct 2026; API
 // routes/evalReports.js, rules in lib/evalReports.js). One report per
@@ -98,6 +99,8 @@ const draftOf = (report, header) => ({
   details: {
     eval_type: '', eval_type_other: '', location: '', language: 'English', present: '', referral_reason: '', history: '', process: '', child_response: '',
     typical: null, typical_note: '', clinical_opinion: '', eligibility: '', eligibility_detail: '', icd10: '', recommendations: '', summary: '',
+    health_assessment: '', records_reviewed: '', parent_interview: '', family_assessment: '', delivery: 'in_person', telehealth_reason: '',
+    conditions: '', cultural_linguistic: '', transportation: '',
     evaluators: [{ name: header.evaluator || '', title: header.credentials || '', qualifications: '' }],
     ...Object.fromEntries(Object.entries(report?.details || {}).map(([k, v]) => [k, v ?? (k === 'typical' ? null : '')])),
   },
@@ -153,7 +156,7 @@ export function EvalReportPage() {
     if (dirty && !(await save())) return;
     step('provider-sign', { signature: sig, license }, () => setSig(null));
   };
-  const pdf = async () => { try { openBlob(await buildEvalReportPdf(data)); } catch (err) { setMsg(err.message); } };
+  const pdf = async () => { try { openBlob(await buildEiPdf([evalReportSection(data)], { title: 'Evaluation report' })); } catch (err) { setMsg(err.message); } };
   const missing = dirty ? null : data.missing;
   const st = STATUS[data.status] || STATUS.none;
   const area = (value, onChange, rows = 3, placeholder) => (
@@ -206,20 +209,46 @@ export function EvalReportPage() {
             </div>
           ))}
           {editable && <button type="button" onClick={() => setD({ evaluators: [...d.evaluators, { name: '', title: '', qualifications: '' }] })} style={buttonStyle('text', { padding: 0, fontSize: 13 })}>+ Add an evaluator</button>}
+          <span style={{ ...eiLabel, marginTop: 12 }}>How the evaluation was done</span>
+          {choices(d.delivery, [['in_person', 'In person'], ['telehealth', 'Telehealth'], ['hybrid', 'Hybrid']], val => setD({ delivery: val }))}
+          {(d.delivery === 'telehealth' || d.delivery === 'hybrid') && (
+            <div style={{ marginTop: 8 }}>
+              <label htmlFor="ev-th-reason" style={eiLabel}>Why telehealth (NYS allows only these; a family's willingness alone isn't enough)</label>
+              <select id="ev-th-reason" value={d.telehealth_reason || ''} disabled={!editable} onChange={e => setD({ telehealth_reason: e.target.value })} style={eiInput}>
+                <option value="">Choose</option>
+                {Object.entries(TELEHEALTH_REASON_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+            </div>
+          )}
           <span style={{ ...eiLabel, marginTop: 12 }}>Reason for referral</span>
           {area(d.referral_reason, v => setD({ referral_reason: v }), 2)}
           <span style={{ ...eiLabel, marginTop: 10 }}>Relevant history (birth, medical, developmental)</span>
           {area(d.history, v => setD({ history: v }), 3)}
         </Section>
 
+        <Section title="Health and family">
+          <span style={eiLabel}>II. The child's health assessment (recent physical exam, vision and hearing; for a diagnosed condition, the medical documentation)</span>
+          {area(d.health_assessment, val => setD({ health_assessment: val }), 3)}
+          <span style={{ ...eiLabel, marginTop: 10 }}>Records reviewed (medical, educational, other)</span>
+          {area(d.records_reviewed, val => setD({ records_reviewed: val }), 2)}
+          <span style={{ ...eiLabel, marginTop: 10 }}>III. Parent interview: the family's concerns, priorities and resources, and their view of the child's abilities</span>
+          {area(d.parent_interview, val => setD({ parent_interview: val }), 4)}
+          <span style={{ ...eiLabel, marginTop: 10 }}>Family-directed assessment (optional, if the family chose one)</span>
+          {area(d.family_assessment, val => setD({ family_assessment: val }), 2)}
+        </Section>
+
         <Section title="Assessment">
-          <span style={eiLabel}>How the evaluation was done (observation, parent report, tools, routines)</span>
+          <span style={eiLabel}>IV. The assessment process (observation, parent report, instruments, routines, how the team worked together)</span>
           {area(d.process, v => setD({ process: v }), 4)}
+          <span style={{ ...eiLabel, marginTop: 10 }}>Conditions: style (arena, individual), setting and any effect on performance, the child's state (tired, alert...)</span>
+          {area(d.conditions, v => setD({ conditions: v }), 2)}
+          <span style={{ ...eiLabel, marginTop: 10 }}>How the evaluation was responsive to the family's culture and language (languages the child hears, interpreter, bilingual evaluation)</span>
+          {area(d.cultural_linguistic, v => setD({ cultural_linguistic: v }), 2)}
           <span style={{ ...eiLabel, marginTop: 10 }}>The child's responses to the evaluation</span>
           {area(d.child_response, v => setD({ child_response: v }), 3)}
-          <span style={{ ...eiLabel, marginTop: 10 }}>Did the family feel these responses were typical of the child?</span>
+          <span style={{ ...eiLabel, marginTop: 10 }}>Did the family feel these responses were optimal and representative of the child's functioning during daily routines?</span>
           {choices(d.typical, [[true, 'Yes'], [false, 'No']], v => setD({ typical: v }))}
-          {d.typical === false && <div style={{ marginTop: 6 }}>{area(d.typical_note, v => setD({ typical_note: v }), 2, 'How they were not typical')}</div>}
+          {d.typical === false && <div style={{ marginTop: 6 }}>{area(d.typical_note, v => setD({ typical_note: v }), 2, 'How they were not optimal or representative')}</div>}
           <span style={{ ...eiLabel, marginTop: 12 }}>Instruments and scores</span>
           {draft.instruments.map((x, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.3fr 1fr 1fr 1.3fr', gap: 6, marginBottom: 6 }}>
@@ -254,8 +283,11 @@ export function EvalReportPage() {
             {input('ev-icd', 'ICD-10', d.icd10, v => setD({ icd10: v.toUpperCase() }), 'e.g. F80.1')}
             <div><span style={eiLabel}>Basis for the finding</span>{area(d.eligibility_detail, v => setD({ eligibility_detail: v }), 2, 'e.g. 2.0 SD below the mean in communication')}</div>
           </div>
-          <span style={{ ...eiLabel, marginTop: 12 }}>Recommendations</span>
+          <span style={{ ...eiLabel, marginTop: 12 }}>X. The child's and family's transportation needs</span>
+          {area(d.transportation, v => setD({ transportation: v }), 2, 'e.g. Family has no car; services at home are preferred')}
+          <span style={{ ...eiLabel, marginTop: 12 }}>Recommendations: the types of services (not frequency, length or a provider: those are set at the IFSP meeting)</span>
           {area(d.recommendations, v => setD({ recommendations: v }), 3)}
+          {(data.warnings || []).map(w => <p key={w} style={{ fontSize: 12.5, color: TONES.warning.fg, margin: '4px 0 0' }}>{w}</p>)}
           <span style={{ ...eiLabel, marginTop: 10 }}>Summary</span>
           {area(d.summary, v => setD({ summary: v }), 4)}
           {editable && (
@@ -298,6 +330,13 @@ export function EvalReportPage() {
               ) : data.can_cosign ? (
                 <SupervisorSign busy={busy} onSign={(signature, lic) => step('supervisor-sign', { signature, license: lic })} />
               ) : <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>{locked ? `Waiting for ${report.supervisor_name} to co-sign.` : `${header.supervisor} co-signs after the evaluator signs.`}</p>}
+            </div>
+          )}
+          {locked && (
+            <div style={{ paddingTop: 12, marginTop: 12, borderTop: `1px solid ${HAIRLINE}`, display: 'flex', gap: 10, alignItems: 'center', fontSize: 13 }}>
+              <span style={{ fontWeight: 600, color: INK }}>Family's copy</span>
+              {report.family_copy_on ? <span style={{ color: MUTED }}>Given {fmtDate(String(report.family_copy_on).slice(0, 10))}</span>
+                : <button type="button" onClick={() => api.evalReportFamilyCopy(key).then(load).catch(err => setMsg(err.message))} style={buttonStyle('secondary', { padding: '4px 10px' })}>Copy given to family today</button>}
             </div>
           )}
           {msg && <p role="alert" style={{ fontSize: 13, color: TONES.danger.fg, margin: '10px 0 0' }}>{msg}</p>}

@@ -729,7 +729,7 @@ function PatientDetailsPanel({ patientName }) {
 
   const rxFields = [patient.RX_Date, patient.RX_Expiration, patient.Report_Date];
   // RX only where it applies (PedsDesk: insurance; src/patientOptions.js).
-  const showRx = rxApplies(patient.Program) || !!patient.RX_Date;
+  const showRx = rxApplies(patient.Program, patient.Services) || !!patient.RX_Date;
   const hasRxInfo = rxFields.some(Boolean);
 
   return (

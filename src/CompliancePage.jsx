@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from './api';
 import { useIsMobile } from './useIsMobile';
 import { Card, PageHeader, Tag, UnderlineTabs } from './dashboardUi';
-import { INK, MUTED, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES } from './uiTokens';
+import { INK, MUTED, HAIRLINE, PAGE_BG, FONT, NUMERIC, TONES, buttonStyle } from './uiTokens';
 import { fmtDate } from './sessionNotePdf';
 
 // The office's EI compliance dashboard (the "ei" feature, PedsDesk only, Oct
@@ -15,6 +15,9 @@ const SECTIONS = [
   { key: 'notes', label: 'Session notes' },
   { key: 'reports', label: 'Progress reports' },
   { key: 'evals', label: 'Evaluation reports' },
+  { key: 'starts', label: 'Service starts' },
+  { key: 'absences', label: 'Provider absences' },
+  { key: 'orders', label: 'Orders (PT/OT)' },
   { key: 'makeups', label: 'Make-ups' },
   { key: 'transitions', label: 'Turning 3' },
   { key: 'ifsps', label: 'IFSPs ending' },
@@ -22,11 +25,23 @@ const SECTIONS = [
   { key: 'credentials', label: 'Credentials' },
 ];
 
-function Rows({ items, isMobile }) {
+function Rows({ items, isMobile, onNotified }) {
   const navigate = useNavigate();
   if (!items.length) return <p style={{ margin: 0, fontSize: 13.5, color: MUTED }}>Nothing waiting.</p>;
   return items.map((x, i) => {
     const to = x.href || (x.patient_name ? `/patients/${encodeURIComponent(x.patient_name)}` : null);
+    // A provider's absence: once the family and SC are told, record it here.
+    if (x.notice) {
+      return (
+        <div key={`${x.notice.provider}-${x.notice.absence_date}-${x.patient_id}`}
+          style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 2.4fr) 100px 150px', gap: isMobile ? 4 : 12, alignItems: 'center', padding: '9px 0', borderTop: i ? `1px solid ${HAIRLINE}` : 'none', fontSize: 13.5, color: INK, ...NUMERIC }}>
+          <span style={{ fontWeight: 600 }}>{x.patient_name}</span>
+          <span>{x.text}</span>
+          <span><Tag tone={x.severity === 'danger' ? 'danger' : 'warning'}>{fmtDate(x.date)}</Tag></span>
+          <button type="button" onClick={() => api.addAbsenceNotice(x.notice).then(onNotified).catch(err => window.alert(err.message))} style={buttonStyle('secondary', { padding: '4px 10px' })}>Told family &amp; SC</button>
+        </div>
+      );
+    }
     return (
       <button key={`${x.href || ''}-${x.patient_name || ''}-${x.text}-${i}`} type="button" disabled={!to} onClick={() => to && navigate(to)}
         style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.8fr) 100px', gap: isMobile ? 4 : 12, alignItems: 'center',
@@ -57,13 +72,14 @@ export default function CompliancePage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState('notes');
+  const [reload, setReload] = useState(0);
   useEffect(() => {
     let alive = true;
     api.getCompliance()
       .then(d => { if (alive) { setData(d); setError(null); } })
       .catch(err => { if (alive) setError(err.message); });
     return () => { alive = false; };
-  }, []);
+  }, [reload]);
   const sections = data?.sections || {};
   const late = (k) => (sections[k] || []).filter(x => x.severity === 'danger').length;
   const items = sections[tab];
@@ -77,7 +93,7 @@ export default function CompliancePage() {
           {error && <p role="alert" style={{ margin: 0, fontSize: 13.5, color: TONES.danger.fg }}>{error}</p>}
           {!data && !error && <p style={{ margin: 0, fontSize: 13.5, color: MUTED }}>Loading...</p>}
           {data && items === null && <p style={{ margin: 0, fontSize: 13.5, color: TONES.danger.fg }}>This part couldn't be worked out. Try again later.</p>}
-          {data && items && <Rows items={items} isMobile={isMobile} />}
+          {data && items && <Rows items={items} isMobile={isMobile} onNotified={() => setReload(n => n + 1)} />}
         </Card>
       </div>
     </div>

@@ -293,7 +293,7 @@ function PatientBanner({ patient, appointments }) {
     { label: 'Age', value: age || '--' },
     { label: 'Next Appointment', value: nextAppt ? `${formatDate(nextAppt.appointment_date)} at ${formatTime(nextAppt.appointment_time)}` : 'None scheduled' },
     // RX only where it applies (PedsDesk: insurance; src/patientOptions.js).
-    ...(rxApplies(patient.Program) || patient.RX_Expiration ? [{ label: 'RX Expiration', value: formatDateMMDDYYYY(patient.RX_Expiration) || '--' }] : []),
+    ...(rxApplies(patient.Program, patient.Services) || patient.RX_Expiration ? [{ label: 'RX Expiration', value: formatDateMMDDYYYY(patient.RX_Expiration) || '--' }] : []),
     { label: 'IFSP End Date', value: formatDateMMDDYYYY(patient.IFSP_End_Date) || '--' },
     { label: 'Report Date', value: formatDateMMDDYYYY(patient.Report_Date) || '--' },
     { label: 'Picture Consent', value: patient.Picture_Consent === true ? 'Yes' : patient.Picture_Consent === false ? 'No' : '--' },
@@ -476,8 +476,8 @@ function OverviewTab({ patient, isMobile, onPatientChanged }) {
           {!patient.IFSP_Type && !patient.IFSP_Start_Date && <EmptyNote>None on file</EmptyNote>}
         </div>
         <div style={cardStyle()}>
-          {(rxApplies(patient.Program) || patient.RX_Date) && <InfoRow label="RX Date" value={formatDateMMDDYYYY(patient.RX_Date)} />}
-          {(rxApplies(patient.Program) || patient.RX_Date) && <InfoRow label="RX Expiration" value={formatDateMMDDYYYY(patient.RX_Expiration)} />}
+          {(rxApplies(patient.Program, patient.Services) || patient.RX_Date) && <InfoRow label="RX Date" value={formatDateMMDDYYYY(patient.RX_Date)} />}
+          {(rxApplies(patient.Program, patient.Services) || patient.RX_Date) && <InfoRow label="RX Expiration" value={formatDateMMDDYYYY(patient.RX_Expiration)} />}
           <InfoRow label="Case Manager" value={patient.Case_Manager} />
           {!patient.RX_Date && !patient.Case_Manager && <EmptyNote>None on file</EmptyNote>}
         </div>

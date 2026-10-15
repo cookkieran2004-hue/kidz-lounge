@@ -821,7 +821,8 @@ export function PatientModal({ existing, onClose, onSaved }) {
   // insurance), and with the "ei" feature the IFSP is kept on the chart's
   // IFSP tab (dated records), so here it's shown, not edited.
   const programNames = programsAvailable ? plan.map(p => p.program) : form.Program;
-  const showRx = rxApplies(programNames) || !!form.RX_Date;
+  const serviceNames = [...new Set([...(form.Services || []), ...(programsAvailable ? plan.flatMap(p => p.mandates.map(m => m.service)) : [])])];
+  const showRx = rxApplies(programNames, serviceNames) || !!form.RX_Date;
   const ifspFromTab = featureOn('ei');
   let sectionNo = 3;
   const rxNo = showRx ? ++sectionNo : null;

@@ -297,6 +297,85 @@ function ProgressReportsBox({ patient, headerStyle, boxStyle, reload }) {
   );
 }
 
+// Parent consents NYC EI asks agencies to hold (API routes/eiConsents.js):
+// telehealth, signed per service type before any remote session, and email
+// (before sharing anything by email; texting families isn't allowed). The
+// office records them; a withdrawn one keeps its dates.
+function ConsentsBox({ patient, headerStyle, boxStyle }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [reload, setReload] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ kind: 'telehealth', service: 'ST', signed_on: '' });
+  const [withdrawing, setWithdrawing] = useState(null);
+  const [withdrawOn, setWithdrawOn] = useState('');
+  useEffect(() => {
+    let alive = true;
+    api.getEiConsents(patient.id)
+      .then(d => { if (alive) { setData(d); setError(null); } })
+      .catch(err => { if (alive) setError(err.message); });
+    return () => { alive = false; };
+  }, [patient.id, reload]);
+  const save = async () => {
+    try { await api.addEiConsent(patient.id, form); setAdding(false); setForm({ kind: 'telehealth', service: 'ST', signed_on: '' }); setReload(n => n + 1); } catch (err) { setError(err.message); }
+  };
+  const withdraw = async (id) => {
+    try { await api.withdrawEiConsent(patient.id, id, withdrawOn); setWithdrawing(null); setReload(n => n + 1); } catch (err) { setError(err.message); }
+  };
+  const rows = data?.consents || [];
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+        <p style={headerStyle}>Consents</p>
+        {data?.can_edit && !adding && <button type="button" onClick={() => setAdding(true)} style={linkButton}>+ Record a consent</button>}
+      </div>
+      <div style={boxStyle}>
+        {error && <p role="alert" style={{ margin: '0 0 8px', fontSize: 13, color: RED }}>{error}</p>}
+        {!data && !error && <p style={{ margin: 0, fontSize: 13, color: MUTED }}>Loading...</p>}
+        {adding && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
+            <div>
+              <span style={eiLabel}>Consent</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[['telehealth', 'Telehealth'], ['email', 'Email']].map(([k, l]) => <button key={k} type="button" aria-pressed={form.kind === k} onClick={() => setForm(f => ({ ...f, kind: k }))} style={choiceStyle(form.kind === k)}>{l}</button>)}
+              </div>
+            </div>
+            {form.kind === 'telehealth' && (
+              <div>
+                <label htmlFor="consent-service" style={eiLabel}>Service</label>
+                <select id="consent-service" value={form.service} onChange={e => setForm(f => ({ ...f, service: e.target.value }))} style={{ ...eiInput, width: 90 }}>
+                  {SERVICES.map(x => <option key={x} value={x}>{x}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <span style={eiLabel}>Signed on</span>
+              <DateField style={{ ...eiInput, width: 170 }} ariaLabel="Date signed" value={form.signed_on} onChange={val => setForm(f => ({ ...f, signed_on: val || '' }))} />
+            </div>
+            <button type="button" disabled={!form.signed_on} onClick={save} style={buttonStyle('primary')}>Save</button>
+            <button type="button" onClick={() => setAdding(false)} style={buttonStyle('secondary')}>Cancel</button>
+          </div>
+        )}
+        {data && !rows.length && !adding && <p style={{ margin: 0, fontSize: 13, color: MUTED }}>None recorded. Telehealth sessions need the parent's telehealth consent for that service; a signing link by email needs email consent.</p>}
+        {rows.map(c => (
+          <div key={c.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '6px 0', borderTop: `1px solid ${LINE}`, fontSize: 13, color: INK }}>
+            <strong style={{ minWidth: 150 }}>{c.kind === 'telehealth' ? `Telehealth · ${c.service}` : 'Email'}</strong>
+            <span>Signed {fmt(c.signed_on)}</span>
+            {c.withdrawn_on ? <span style={{ color: AMBER }}>Withdrawn {fmt(c.withdrawn_on)}</span> : <span style={{ color: GREEN }}>In effect</span>}
+            {data.can_edit && !c.withdrawn_on && (withdrawing === c.id ? (
+              <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <DateField style={{ ...eiInput, width: 170 }} ariaLabel="Date withdrawn" value={withdrawOn} onChange={val => setWithdrawOn(val || '')} />
+                <button type="button" disabled={!withdrawOn} onClick={() => withdraw(c.id)} style={buttonStyle('secondary')}>Record</button>
+                <button type="button" onClick={() => setWithdrawing(null)} style={linkButton}>Cancel</button>
+              </span>
+            ) : <button type="button" onClick={() => { setWithdrawing(c.id); setWithdrawOn(''); }} style={{ ...linkButton, marginLeft: 'auto' }}>Withdrawn…</button>)}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // The office: the child's whole EI record as one PDF (src/recordPack.js).
 function RecordPackButton({ patient }) {
   const [busy, setBusy] = useState(false);
@@ -404,6 +483,7 @@ export default function IfspTab({ patient, headerStyle, boxStyle, onPatientChang
       </div>
 
       <ProgressReportsBox patient={patient} headerStyle={headerStyle} boxStyle={boxStyle} reload={reload} />
+      <ConsentsBox patient={patient} headerStyle={headerStyle} boxStyle={boxStyle} />
 
       {ifsps.length > 1 && (
         <>
