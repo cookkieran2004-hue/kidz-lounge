@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { CENTER, SETTINGS, isOffsite, offsiteLocation, offsiteSetting, settingOfArea, roomOfArea, needsRoom, isOffGrid, isRepeating, saveSettingChange, areaAfterStatus } from '../appointmentSetting';
+import { CENTER, SETTINGS, isOffsite, offsiteLocation, offsiteSetting, settingOfArea, roomOfArea, needsRoom, isOffGrid, isRepeating, saveSettingChange, areaAfterStatus, VIRTUAL, holdsRoom } from '../appointmentSetting';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
@@ -293,7 +293,7 @@ export function computeConflicts(appointments, oooRecords, contractedGaps = [], 
 
       const types = [];
       if (a.provider && a.provider === b.provider) types.push('provider');
-      if (roomOfArea(a.treatment_area) && a.treatment_area === b.treatment_area) types.push('room');
+      if (holdsRoom(a.treatment_area) && a.treatment_area === b.treatment_area) types.push('room');
       // The HOLD placeholder isn't a real child: it can be booked with
       // several providers at once. Provider and room clashes still count.
       if (a.patient_name && a.patient_name === b.patient_name && !isHoldPatient(a.patient_name)) types.push('patient');
@@ -1196,7 +1196,7 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
           <div style={{ marginBottom: 8 }}><OffsiteSettingButtons value={setting} onChange={setSetting} size="small" /></div>
           {setting === 'Center' ? (
             <div style={{ maxHeight: 230, overflowY: 'auto' }}>
-              {TREATMENT_AREA_OPTIONS.map(room => (
+              {[...TREATMENT_AREA_OPTIONS, VIRTUAL].map(room => (
                 <div key={room} role="button" tabIndex={0} onClick={() => pick(room)} onKeyDown={e => { if (e.key === 'Enter') pick(room); }} style={itemStyle(current === room)} {...hover(current === room)}>
                   {room}
                 </div>
@@ -2736,7 +2736,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           if (patientConfirmed && patientSearch && apt.patient_name === patientSearch && !isHoldPatient(patientSearch)) {
             found.push({ type: 'patient', apt });
           }
-          if (roomOfArea(treatmentArea) && apt.treatment_area === treatmentArea) {
+          if (holdsRoom(treatmentArea) && apt.treatment_area === treatmentArea) {
             found.push({ type: 'room', apt });
           }
         });
@@ -3360,7 +3360,8 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 <select id="kl-center-room" style={inputStyle()} value={centerRoom} onChange={e => setCenterRoom(e.target.value)}>
                   <option value="">Not set yet</option>
                   {TREATMENT_AREA_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                  {centerRoom && !TREATMENT_AREA_OPTIONS.includes(centerRoom) && <option value={centerRoom}>{centerRoom}</option>}
+                  <option value={VIRTUAL}>{VIRTUAL}</option>
+                  {centerRoom && centerRoom !== VIRTUAL && !TREATMENT_AREA_OPTIONS.includes(centerRoom) && <option value={centerRoom}>{centerRoom}</option>}
                 </select>
               </div>
             )}
@@ -3403,7 +3404,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             >
               {statusChoices.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            {['Canceled', 'No Show'].includes(status) && roomOfArea(treatmentArea) && (
+            {['Canceled', 'No Show'].includes(status) && holdsRoom(treatmentArea) && (
               <p style={{ fontSize: 11.5, color: BRAND.muted, marginTop: -8, marginBottom: 12 }}>
                 The room will be freed up. The setting stays Center.
               </p>
