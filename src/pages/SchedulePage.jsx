@@ -151,11 +151,10 @@ export const TREATMENT_AREA_OPTIONS = ROOM_OPTIONS;
 // as offsite, with no setting.
 export const OFFSITE = 'Offsite';
 const OFFSITE_SETTINGS = ['Center', 'School', 'Home'];
-// The room a save keeps: canceling frees an in-office room, but an offsite
-// session keeps its location, so billing's Setting column (C / S / H) still
-// knows where it was (Kieran, Oct 2026).
+// The room a save keeps: all canceled and active sessions keep their location,
+// so billing's Setting column (C / S / H) still knows where it was.
 function areaAfterStatus(status, area) {
-  return status === 'Canceled' && !isOffsite(area) ? null : (area || null);
+  return area || null;
 }
 // Why a canceled offsite session didn't happen (optional). Billing shows
 // Holiday as H and Emergency Closure as Z, like an office closure; Other = A.
