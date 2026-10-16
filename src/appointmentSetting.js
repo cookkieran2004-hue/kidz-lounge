@@ -37,14 +37,19 @@ export function settingOfArea(area) {
 }
 // The in-office room, or '' (none set, or not at the center).
 export const roomOfArea = (area) => (area && !isOffsite(area) && area !== CENTER ? area : '');
+// Virtual (Oct 16 2026): picked like a room under Center, but not a real
+// one -- no Room view column, any number at once, and canceling keeps it.
+export const VIRTUAL = 'Virtual';
+// A real in-office room someone could be double-booked into.
+export const holdsRoom = (area) => !!roomOfArea(area) && area !== VIRTUAL;
 // A session needs a room picked: none at all, or at the center with no room yet.
 export const needsRoom = (area) => !area || area === CENTER;
 // The area a status change keeps (Oct 16 2026): Canceled or No Show at the
-// center keeps "Center" but frees the room; School / Home stay as they are,
+// center keeps "Center" but frees the room; School / Home / Virtual stay,
 // so billing's Setting column (C / S / H) still knows where it was. Mirrors
 // kidz-lounge-api routes/appointments.js areaAfterStatus.
 export function areaAfterStatus(status, area) {
-  if (['Canceled', 'No Show'].includes(status) && area && !isOffsite(area)) return CENTER;
+  if (['Canceled', 'No Show'].includes(status) && area && !isOffsite(area) && area !== VIRTUAL) return CENTER;
   return area || null;
 }
 // Off the 8 AM - 6 PM grid (Oct 15 2026: any time is allowed; these show in
