@@ -154,7 +154,7 @@ const OFFSITE_SETTINGS = ['Center', 'School', 'Home'];
 // The room a save keeps: all canceled and active sessions keep their location,
 // so billing's Setting column (C / S / H) still knows where it was.
 function areaAfterStatus(status, area) {
-  return area || null;
+  return status === 'Canceled' && !isOffsite(area) ? null : (area || null);
 }
 // Why a canceled offsite session didn't happen (optional). Billing shows
 // Holiday as H and Emergency Closure as Z, like an office closure; Other = A.
