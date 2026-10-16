@@ -80,18 +80,17 @@ const fmtTime = (t) => { const [h, m] = t.split(':').map(Number); return `${((h 
 function Mark({ entry }) {
   if (!entry.mark) {
     const f = entry.flags || [];
-    return <span title={`Booked ${fmtTime(entry.time)} · ${entry.status}${entry.outside_hours ? ' · Outside hours' : ''}${f.length ? `\n${f.join('\n')}` : ''}`} style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: f.length ? TONES.danger.fg : SUBTLE, ...(f.length ? { outline: `2px solid ${TONES.danger.fg}`, outlineOffset: 1 } : {}) }} />;
+    return <span title={`Booked ${fmtTime(entry.time)} · ${entry.status}${f.length ? `\n${f.join('\n')}` : ''}`} style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 3, background: f.length ? TONES.danger.fg : SUBTLE, ...(f.length ? { outline: `2px solid ${TONES.danger.fg}`, outlineOffset: 1 } : {}) }} />;
   }
   const s = MARK_STYLE[entry.mark] || MARK_STYLE.X;
   // A problem the mandates check found (make-up past its 14 days or on a
   // regular session's day, more than the mandate): a red ring, explained on hover.
   const flags = entry.flags || [];
   return (
-    <span title={`${s.title} · ${fmtTime(entry.time)} · ${entry.status}${entry.outside_hours ? ' · Outside hours' : ''}${flags.length ? `\n${flags.join('\n')}` : ''}`}
+    <span title={`${s.title} · ${fmtTime(entry.time)} · ${entry.status}${flags.length ? `\n${flags.join('\n')}` : ''}`}
       style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, padding: entry.mark.length > 1 ? '0 3px' : 0, boxSizing: 'border-box', borderRadius: 9, background: s.bg, color: s.fg, fontSize: 10, fontWeight: 700, lineHeight: 1, ...(flags.length ? { outline: `2px solid ${TONES.danger.fg}`, outlineOffset: 1 } : {}) }}>
       {entry.mark}
       {/* Outside hours session (Oct 2026): counted the same, marked with a corner dot. */}
-      {entry.outside_hours && <span aria-label="Outside hours" style={{ position: 'absolute', top: -2, right: -2, width: 7, height: 7, borderRadius: 4, background: INK, border: '1.5px solid white' }} />}
     </span>
   );
 }
@@ -460,7 +459,6 @@ export default function BillingPage({ section = 'payroll' }) {
                 <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: k, time: '00:00', status: '' }} /> {s.title}</span>
               ))}
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: null, time: '00:00', status: '' }} /> Booked, day not over</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: 'X', time: '00:00', status: '', outside_hours: true }} /> Outside hours</span>
               <span>Setting: C center, S school, H home</span>
               {mandatesOn && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Mark entry={{ mark: 'M', time: '00:00', status: '', flags: ['Example'] }} /> Needs checking (hover it)</span>}
             </div>

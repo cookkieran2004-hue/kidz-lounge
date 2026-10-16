@@ -189,6 +189,8 @@ export const api = {
   // ---- Recurring Series (new rule-based recurring model) ----
   createRecurringSeries: (record) => request('/recurring-series', { method: 'POST', body: JSON.stringify(record) }),
   endRecurringSeries: (id, endDate) => request(`/recurring-series/${id}/end`, { method: 'PUT', body: JSON.stringify({ end_date: endDate }) }),
+  // A new setting from one occurrence on (routes/appointments.js /split): { from_date, treatment_area, occurrence_date }.
+  splitRecurringSeries: (id, body) => request(`/recurring-series/${id}/split`, { method: 'POST', body: JSON.stringify(body) }),
   purgeFutureRecurringExceptions: (id, fromDate) => request(`/recurring-series/${id}/purge-future-exceptions`, { method: 'PUT', body: JSON.stringify({ from_date: fromDate }) }),
   createRecurringException: (seriesId, record) => request(`/recurring-series/${seriesId}/exceptions`, { method: 'POST', body: JSON.stringify(record) }),
   markAppointmentDeleted: (id) => request(`/appointments/${id}/mark-deleted`, { method: 'PUT' }),

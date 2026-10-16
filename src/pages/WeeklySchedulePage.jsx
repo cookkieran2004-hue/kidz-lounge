@@ -15,6 +15,7 @@ import {
   thStyle, tdTimeStyle, tdCellStyle,
 } from './SchedulePage';
 import { canManage } from '../roles';
+import { isOffGrid, needsRoom, saveSettingChange } from '../appointmentSetting';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 import { canceledLane, isCanceledAppt, NO_ROOM_NEEDED } from '../scheduleLanes';
 import { useAppointmentDrag } from '../useAppointmentDrag';
@@ -271,8 +272,8 @@ export default function WeeklySchedulePage() {
     const g = {};
     daysToShow.forEach(d => { g[d.dateStr] = {}; });
     appointments.forEach(apt => {
-      // Outside hours visits go under the grid (they'd land in the last row).
-      if (apt.outside_hours) return;
+      // Sessions off the 8-6 grid go under it (they'd land in the last row).
+      if (isOffGrid(apt)) return;
       const dayBucket = g[apt.appointment_date];
       if (!dayBucket) return;
       // The row it starts in: the latest half-hour row at or before its time.
@@ -356,9 +357,9 @@ export default function WeeklySchedulePage() {
     }
   };
 
-  const handleRoomChange = async (apt, newRoom) => {
+  const handleRoomChange = async (apt, newArea, allFuture) => {
     setRoomDropdown(null);
-    await applyQuickEdit(apt, { treatment_area: newRoom });
+    try { await saveSettingChange(apt, newArea, allFuture); } catch (err) { window.alert(err.message); }
     load();
   };
 
@@ -710,9 +711,9 @@ export default function WeeklySchedulePage() {
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
                                 dragProps={drag.cardProps(apt)}
                                 dragSource={drag.draggingId === apt.id}
-                                badgeLabel={roomBadgeLabel(apt.treatment_area)}
-                                badgeColor={apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
-                                setRoom={!apt.treatment_area && !NO_ROOM_NEEDED.includes(apt.appointment_status)}
+                                badgeLabel={needsRoom(apt.treatment_area) ? undefined : roomBadgeLabel(apt.treatment_area)}
+                                badgeColor={!needsRoom(apt.treatment_area) ? roomColor(apt.treatment_area) : undefined}
+                                setRoom={needsRoom(apt.treatment_area) && !NO_ROOM_NEEDED.includes(apt.appointment_status)}
                                 badgeIcon={null}
                                 onRoomClick={(e) => {
                                   const rect = e.currentTarget.getBoundingClientRect();
@@ -740,16 +741,17 @@ export default function WeeklySchedulePage() {
               style={{ left: `calc(64px + (100% - 64px) * ${i} / ${daysToShow.length})`, width: `calc((100% - 64px) / ${daysToShow.length})` }}
             />
           ))}
-          {/* Outside hours visits (Oct 2026): under each day, then any on the weekend. */}
-          {appointments.some(a => a.outside_hours) && (
+          {/* Off the grid (Oct 2026; Oct 15: by time, no tickbox): under each
+              weekday, then every session on the weekend. */}
+          {(appointments.some(a => isOffGrid(a) && daysToShow.some(d => d.dateStr === a.appointment_date)) || appointments.some(a => weekendDays.some(d => d.dateStr === a.appointment_date))) && (
             <div style={{ borderTop: '1px solid #eef0f3', background: '#fafbfc' }}>
-              {daysToShow.some(d => appointments.some(a => a.outside_hours && a.appointment_date === d.dateStr)) && (
+              {daysToShow.some(d => appointments.some(a => isOffGrid(a) && a.appointment_date === d.dateStr)) && (
                 <div style={{ display: 'grid', gridTemplateColumns: `64px repeat(${daysToShow.length}, minmax(0, 1fr))`, alignItems: 'start' }}>
-                  <div style={{ padding: '10px 6px', fontSize: 10.5, fontWeight: 700, color: '#6b7280', lineHeight: 1.25 }}>Outside hours</div>
+                  <div style={{ padding: '10px 6px', fontSize: 10.5, fontWeight: 700, color: '#6b7280', lineHeight: 1.25 }}>Before 8 / after 6</div>
                   {daysToShow.map(d => (
                     <div key={d.dateStr} style={{ padding: 4, minWidth: 0 }}>
                       <OutsideHoursStrip compact title={null}
-                        appointments={appointments.filter(a => a.outside_hours && a.appointment_date === d.dateStr)}
+                        appointments={appointments.filter(a => isOffGrid(a) && a.appointment_date === d.dateStr)}
                         onOpen={(apt) => { setEditingAppointment(apt); setShowModal(true); }} />
                     </div>
                   ))}
@@ -758,8 +760,8 @@ export default function WeeklySchedulePage() {
               {weekendDays.map(d => (
                 <div key={d.dateStr} style={{ padding: '0 8px 8px' }}>
                   <OutsideHoursStrip
-                    title={`${d.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} · Outside hours`}
-                    appointments={appointments.filter(a => a.outside_hours && a.appointment_date === d.dateStr)}
+                    title={d.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    appointments={appointments.filter(a => a.appointment_date === d.dateStr)}
                     onOpen={(apt) => { setEditingAppointment(apt); setShowModal(true); }} />
                 </div>
               ))}
@@ -776,7 +778,7 @@ export default function WeeklySchedulePage() {
             apt={roomDropdown.apt}
             top={roomDropdown.top}
             left={roomDropdown.left}
-            onPick={(area) => handleRoomChange(roomDropdown.apt, area)}
+            onPick={(area, allFuture) => handleRoomChange(roomDropdown.apt, area, allFuture)}
             onClose={() => setRoomDropdown(null)}
           />
         </>,

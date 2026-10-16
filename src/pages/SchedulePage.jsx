@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { CENTER, SETTINGS, isOffsite, offsiteLocation, offsiteSetting, settingOfArea, roomOfArea, needsRoom, isOffGrid, isRepeating, saveSettingChange } from '../appointmentSetting';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
@@ -150,18 +151,6 @@ export const TREATMENT_AREA_OPTIONS = ROOM_OPTIONS;
 // as offsite, with no setting.
 export const OFFSITE = 'Offsite';
 const OFFSITE_SETTINGS = ['Center', 'School', 'Home'];
-const OFFSITE_RE = /^Offsite(?: \((Center|School|Home)\))?(?::\s*(.*))?$/;
-export function isOffsite(area) {
-  return typeof area === 'string' && OFFSITE_RE.test(area);
-}
-export function offsiteLocation(area) {
-  if (!isOffsite(area)) return '';
-  return (area.match(OFFSITE_RE)[2] || '').trim();
-}
-function offsiteSetting(area) {
-  if (!isOffsite(area)) return '';
-  return area.match(OFFSITE_RE)[1] || '';
-}
 // The room a save keeps: canceling frees an in-office room, but an offsite
 // session keeps its location, so billing's Setting column (C / S / H) still
 // knows where it was (Kieran, Oct 2026).
@@ -186,6 +175,7 @@ export function makeOffsiteArea(location, setting = '') {
 // Short label for badges on the grid: "School · location", "Home", or "Offsite".
 export function roomBadgeLabel(area) {
   if (!area) return area;
+  if (area === CENTER) return 'Center · no room';
   if (!isOffsite(area)) return area;
   const parts = [offsiteSetting(area), offsiteLocation(area)].filter(Boolean);
   return parts.length ? parts.join(' \u00b7 ') : OFFSITE;
@@ -193,30 +183,17 @@ export function roomBadgeLabel(area) {
 // Longer label for lists (patient chart, caseload): "Offsite · School · location".
 export function roomDisplayText(area) {
   if (!area) return area;
+  if (area === CENTER) return 'Center · room not set';
   if (!isOffsite(area)) return area;
   return [OFFSITE, offsiteSetting(area), offsiteLocation(area)].filter(Boolean).join(' \u00b7 ');
 }
 
-// The setting last used with each offsite location (any patient), so typing
-// or picking a location fills its setting in. Loaded when an offsite picker
-// opens; returns a lookup function.
-const locationKey = (loc) => String(loc || '').trim().replace(/\s+/g, ' ').toLowerCase();
-function useOffsiteSettingLookup(active = true) {
-  const [map, setMap] = useState({});
-  useEffect(() => {
-    if (!active) return undefined;
-    let alive = true;
-    api.getOffsiteSettings().then(m => { if (alive) setMap(m || {}); }).catch(() => {});
-    return () => { alive = false; };
-  }, [active]);
-  return useCallback((loc) => map[locationKey(loc)] || '', [map]);
-}
-
-// Center / School / Home buttons for an offsite session (required).
+// Center / School / Home buttons: where a session is (Oct 15 2026: every
+// appointment, first; Center then asks for a room, School its name).
 export function OffsiteSettingButtons({ value, onChange, size = 'normal' }) {
   return (
-    <div role="radiogroup" aria-label="Offsite setting" style={{ display: 'flex', gap: 6 }}>
-      {OFFSITE_SETTINGS.map(opt => {
+    <div role="radiogroup" aria-label="Setting" style={{ display: 'flex', gap: 6 }}>
+      {SETTINGS.map(opt => {
         const on = value === opt;
         return (
           <button key={opt} type="button" role="radio" aria-checked={on} onClick={() => onChange(opt)}
@@ -322,7 +299,7 @@ export function computeConflicts(appointments, oooRecords, contractedGaps = [], 
 
       const types = [];
       if (a.provider && a.provider === b.provider) types.push('provider');
-      if (a.treatment_area && !isOffsite(a.treatment_area) && a.treatment_area === b.treatment_area) types.push('room');
+      if (roomOfArea(a.treatment_area) && a.treatment_area === b.treatment_area) types.push('room');
       // The HOLD placeholder isn't a real child: it can be booked with
       // several providers at once. Provider and room clashes still count.
       if (a.patient_name && a.patient_name === b.patient_name && !isHoldPatient(a.patient_name)) types.push('patient');
@@ -344,17 +321,13 @@ export function computeConflicts(appointments, oooRecords, contractedGaps = [], 
       if (!overlaps) return;
       list.push({ kind: 'ooo', a: apt, ooo, types: ['ooo'] });
     });
-    // An outside hours session is an offsite visit the provider makes on
-    // their own time, so an office closure doesn't stop it (Kieran, Oct
-    // 2026; billing counts it on a closed day too).
-    const closed = apt.outside_hours ? null : closedByDate[apt.appointment_date];
+    // Outside hours was removed (Kieran, Oct 15 2026): a session off the
+    // grid follows the same rules as any other.
+    const closed = closedByDate[apt.appointment_date];
     if (closed) {
       list.push({ kind: 'closed', a: apt, closed, types: ['closed'] });
       return;
     }
-    // Outside hours sessions are meant to fall outside contracted hours, so
-    // they're never flagged for it (Kieran, Oct 2026).
-    if (apt.outside_hours) return;
     contractedGaps.forEach(gap => {
       if (gap.provider !== apt.provider) return;
       if (gap.date !== apt.appointment_date) return;
@@ -1173,21 +1146,21 @@ function CommentsThread({ table, recordId, comments, currentUser, onUpdated, isV
 // only below the sticky header (25), so it never covers the column names. It measures its own box so the ribbon always runs
 // corner to corner -- shallow across the wide daily grid, steep down a
 // single Weekly View column. Position it with `style` (top/left/width...).
-// Quick room menu opened from an appointment card (daily and weekly grids)
-// or the Unassigned list. Rooms save with one click. "Offsite..." switches
-// the menu to a location box -- optional, with this patient's past offsite
-// locations suggested -- and Save/Enter stores it. Rendered by the caller
-// inside its own portal + backdrop, positioned at { top, left }.
+// Quick setting menu opened from an appointment card (daily and weekly
+// grids) or the Unassigned list (Kieran, Oct 15 2026): Center / School /
+// Home first, then a room (or "Not set yet"), the school's name, or an
+// optional home location. On a repeating session it then asks "This and all
+// future" (first) or "Just this one". Calls onPick(area, allFuture).
+// Rendered by the caller inside its own portal + backdrop, at { top, left }.
 export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
   const current = apt.treatment_area || '';
-  const [offsiteMode, setOffsiteMode] = useState(false);
+  const [setting, setSetting] = useState(settingOfArea(current) || 'Center');
   const [location, setLocation] = useState(offsiteLocation(current));
-  const [setting, setSetting] = useState(offsiteSetting(current));
-  const suggestions = useOffsiteLocationSuggestions(apt.patient_name, offsiteMode);
-  const settingFor = useOffsiteSettingLookup(offsiteMode);
-  // A location used before brings its setting with it (still changeable).
-  const pickLocation = (loc) => { setLocation(loc); const known = settingFor(loc); if (known) setSetting(known); };
+  const [pending, setPending] = useState(undefined); // an area waiting for "this / all future"
+  const suggestions = useOffsiteLocationSuggestions(apt.patient_name, setting !== 'Center');
   const listId = `kl-offsite-suggestions-${apt.id || apt.series_id || 'new'}`;
+  const repeating = isRepeating(apt);
+  const pick = (area) => (repeating ? setPending(area) : onPick(area, false));
   const itemStyle = (active) => ({
     padding: '7px 10px', fontSize: 13, borderRadius: 6, cursor: 'pointer',
     background: active ? '#f3f4f6' : 'transparent', color: '#374151',
@@ -1196,80 +1169,82 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
     onMouseEnter: e => { e.currentTarget.style.background = '#f9fafb'; },
     onMouseLeave: e => { e.currentTarget.style.background = active ? '#f3f4f6' : 'transparent'; },
   });
-  const saveOffsite = () => { if (setting) onPick(makeOffsiteArea(location, setting)); };
+  const smallLabel = { display: 'block', fontSize: 11.5, fontWeight: 700, color: '#374151', marginBottom: 4 };
+  const btn = (primary) => ({ flex: 1, padding: '6px 10px', borderRadius: 6, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: primary ? 'none' : '1px solid #e2e4e9', background: primary ? 'var(--brand-primary)' : 'white', color: primary ? 'white' : '#374151' });
+  const saveTyped = () => pick(makeOffsiteArea(location, setting));
 
   return (
     <div
       style={{
-        position: 'fixed', top, left, zIndex: 9999,
+        // Kept on screen: the last grid column's badge is near the right edge.
+        position: 'fixed', top, left: Math.max(8, Math.min(left, window.innerWidth - 258)), zIndex: 9999,
         background: 'white', border: '1px solid #e2e4e9', borderRadius: 8, boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-        minWidth: offsiteMode ? 240 : 150, maxHeight: offsiteMode ? 'none' : 260, overflowY: offsiteMode ? 'visible' : 'auto', padding: 4,
-        overscrollBehavior: 'contain',
+        width: 250, padding: 8, overscrollBehavior: 'contain', boxSizing: 'border-box',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
       }}
       data-kl-dropdown=""
       onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
     >
-      {!offsiteMode ? (
-        <>
-          {TREATMENT_AREA_OPTIONS.map(room => (
-            <div key={room} role="button" tabIndex={0} onClick={() => onPick(room)} onKeyDown={e => { if (e.key === 'Enter') onPick(room); }} style={itemStyle(current === room)} {...hover(current === room)}>
-              {room}
-            </div>
-          ))}
-          <div style={{ height: 1, background: '#f1f2f4', margin: '4px 2px' }} />
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setOffsiteMode(true)}
-            onKeyDown={e => { if (e.key === 'Enter') setOffsiteMode(true); }}
-            style={{ ...itemStyle(isOffsite(current)), display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
-            {...hover(isOffsite(current))}
-          >
-            <span>Offsite&hellip;</span>
-            {isOffsite(current) && offsiteLocation(current) && (
-              <span style={{ fontSize: 11.5, color: '#9ca3af', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{offsiteLocation(current)}</span>
-            )}
-          </div>
-        </>
-      ) : (
-        <div style={{ padding: 6 }}>
-          <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Setting</span>
-          <div style={{ marginBottom: 10 }}><OffsiteSettingButtons value={setting} onChange={setSetting} size="small" /></div>
-          <label htmlFor={`${listId}-input`} style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#374151', marginBottom: 4 }}>
-            Offsite location <span style={{ fontWeight: 500, color: '#9ca3af' }}>(optional)</span>
-          </label>
-          <input
-            id={`${listId}-input`}
-            list={listId}
-            autoFocus
-            value={location}
-            onChange={e => pickLocation(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveOffsite(); } }}
-            placeholder="e.g. Sunnyside Elementary"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
-          />
-          <datalist id={listId}>
-            {suggestions.map(loc => <option key={loc} value={loc} />)}
-          </datalist>
-          {suggestions.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-              {suggestions.slice(0, 4).map(loc => (
-                <button key={loc} type="button" onClick={() => pickLocation(loc)} title="Used before for this patient"
-                  style={{ fontSize: 11, padding: '2px 8px', borderRadius: 'var(--brand-pill-radius)', border: '1px solid #cfe0e7', background: '#F0F7FA', color: '#2F6479', cursor: 'pointer', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {loc}
-                </button>
-              ))}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <button type="button" onClick={saveOffsite} disabled={!setting} title={setting ? undefined : 'Choose Center, School or Home first'} style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: 'none', background: 'var(--brand-primary)', color: 'white', fontSize: 12.5, fontWeight: 600, cursor: setting ? 'pointer' : 'not-allowed', opacity: setting ? 1 : 0.5 }}>
-              Save
-            </button>
-            <button type="button" onClick={() => setOffsiteMode(false)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e4e9', background: 'white', color: '#374151', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-              Back
-            </button>
+      {pending !== undefined ? (
+        <div>
+          <p style={{ margin: '2px 2px 8px', fontSize: 12.5, color: '#374151' }}>
+            <strong>{roomDisplayText(pending) || 'No setting'}</strong> for this repeating session:
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <button type="button" autoFocus onClick={() => onPick(pending, true)} style={btn(true)}>This and all future</button>
+            <button type="button" onClick={() => onPick(pending, false)} style={btn(false)}>Just this one</button>
+            <button type="button" onClick={() => setPending(undefined)} style={{ ...btn(false), border: 'none', color: '#6b7280' }}>Back</button>
           </div>
         </div>
+      ) : (
+        <>
+          <span style={smallLabel}>Setting</span>
+          <div style={{ marginBottom: 8 }}><OffsiteSettingButtons value={setting} onChange={setSetting} size="small" /></div>
+          {setting === 'Center' ? (
+            <div style={{ maxHeight: 230, overflowY: 'auto' }}>
+              {TREATMENT_AREA_OPTIONS.map(room => (
+                <div key={room} role="button" tabIndex={0} onClick={() => pick(room)} onKeyDown={e => { if (e.key === 'Enter') pick(room); }} style={itemStyle(current === room)} {...hover(current === room)}>
+                  {room}
+                </div>
+              ))}
+              <div role="button" tabIndex={0} onClick={() => pick(CENTER)} onKeyDown={e => { if (e.key === 'Enter') pick(CENTER); }} style={{ ...itemStyle(current === CENTER), color: '#6b7280' }} {...hover(current === CENTER)}>
+                Room not set yet
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label htmlFor={`${listId}-input`} style={smallLabel}>
+                {setting === 'School' ? 'School name' : 'Home location'} {setting === 'Home' && <span style={{ fontWeight: 500, color: '#9ca3af' }}>(optional)</span>}
+              </label>
+              <input
+                id={`${listId}-input`}
+                list={listId}
+                autoFocus
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveTyped(); } }}
+                placeholder={setting === 'School' ? 'e.g. Sunnyside Elementary' : ''}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
+              />
+              <datalist id={listId}>
+                {suggestions.map(loc => <option key={loc} value={loc} />)}
+              </datalist>
+              {suggestions.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                  {suggestions.slice(0, 4).map(loc => (
+                    <button key={loc} type="button" onClick={() => setLocation(loc)} title="Used before for this patient"
+                      style={{ fontSize: 11, padding: '2px 8px', borderRadius: 'var(--brand-pill-radius)', border: '1px solid #cfe0e7', background: '#F0F7FA', color: '#2F6479', cursor: 'pointer', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {loc}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button type="button" onClick={saveTyped} style={btn(true)}>Save</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1277,13 +1252,13 @@ export function RoomPickerMenu({ apt, top, left, onPick, onClose }) {
 
 // The location box shown in the appointment form when Treatment Area is
 // Offsite -- optional, with the patient's past offsite locations suggested.
-function OffsiteLocationField({ patientName, value, onChange, inputStyle, labelStyle }) {
+function OffsiteLocationField({ patientName, value, onChange, inputStyle, labelStyle, label = 'Offsite location', optional = true, placeholder = 'e.g. Sunnyside Elementary' }) {
   const suggestions = useOffsiteLocationSuggestions(patientName);
   const unused = suggestions.filter(loc => loc.toLowerCase() !== value.trim().toLowerCase());
   return (
     <div style={{ marginTop: -6, marginBottom: 14 }}>
       <label htmlFor="kl-offsite-location" style={labelStyle}>
-        Offsite location <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#9ca3af' }}>(optional)</span>
+        {label} {optional && <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#9ca3af' }}>(optional)</span>}
       </label>
       <input
         id="kl-offsite-location"
@@ -1291,7 +1266,7 @@ function OffsiteLocationField({ patientName, value, onChange, inputStyle, labelS
         style={inputStyle}
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder="e.g. Sunnyside Elementary"
+        placeholder={placeholder}
       />
       <datalist id="kl-offsite-location-suggestions">
         {suggestions.map(loc => <option key={loc} value={loc} />)}
@@ -1315,10 +1290,11 @@ export function closedDayLabel(reason) {
   return !reason || reason === 'Office closed' ? 'Office closed' : `Office closed \u00b7 ${reason}`;
 }
 
-// Outside hours sessions for the day (Oct 2026): extra offsite visits on a
-// random schedule, any time, so they aren't placed on the 8-6 grid. One line
-// each, in time order; clicking opens the appointment as usual.
-export function OutsideHoursStrip({ appointments, onOpen, title = 'Outside hours', compact = false }) {
+// Sessions off the 8 AM - 6 PM grid (isOffGrid; and the weekend in the
+// Weekly view), one line each in time order; clicking opens the appointment
+// as usual. (Oct 2026 for Outside hours visits; Oct 15 2026: any session
+// booked outside the grid, the tickbox is gone.)
+export function OutsideHoursStrip({ appointments, onOpen, title = 'Before 8 AM / after 6 PM', compact = false }) {
   if (!appointments.length) return null;
   const sorted = [...appointments].sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
   const range = (a) => {
@@ -1338,7 +1314,7 @@ export function OutsideHoursStrip({ appointments, onOpen, title = 'Outside hours
             <span style={{ fontWeight: 600, color: '#111827', minWidth: compact ? 0 : 150, fontVariantNumeric: 'tabular-nums' }}>{range(a)}</span>
             {!compact && <span style={{ color: '#4b5563', minWidth: 120 }}>{a.provider}</span>}
             <span style={{ fontWeight: 600, color: '#111827' }}>{a.patient_name}</span>
-            <span style={{ fontSize: compact ? 10 : 11, color: '#2F6479', background: '#F0F7FA', border: '1px solid #cfe0e7', borderRadius: 'var(--brand-pill-radius)', padding: '0 6px' }}>{roomBadgeLabel(a.treatment_area) || 'Offsite'}</span>
+            <span style={{ fontSize: compact ? 10 : 11, color: '#2F6479', background: '#F0F7FA', border: '1px solid #cfe0e7', borderRadius: 'var(--brand-pill-radius)', padding: '0 6px' }}>{roomBadgeLabel(a.treatment_area) || 'No setting'}</span>
             <span style={{ fontSize: compact ? 10 : 11, fontWeight: 600, color, background: `color-mix(in srgb, ${color} 16%, white)`, borderRadius: 10, padding: '1px 7px' }}>{a.appointment_status}</span>
           </button>
         );
@@ -1654,9 +1630,9 @@ function ScheduleApp() {
     }
   };
 
-  const handleRoomChange = async (apt, newRoom) => {
+  const handleRoomChange = async (apt, newArea, allFuture) => {
     setRoomDropdown(null);
-    await applyQuickEdit(apt, { treatment_area: newRoom });
+    try { await saveSettingChange(apt, newArea, allFuture); } catch (err) { window.alert(err.message); }
     loadDayRef.current?.();
   };
 
@@ -1899,9 +1875,9 @@ function ScheduleApp() {
     });
 
     appointments.forEach(apt => {
-      // Outside hours sessions live in their own strip under the grid; on the
-      // grid a 7:30 PM visit would land in the last slot (5:30 PM).
-      if (apt.outside_hours) return;
+      // Sessions off the 8-6 grid live in the strip under it; on the grid a
+      // 7:30 PM visit would land in the last slot (5:30 PM).
+      if (isOffGrid(apt)) return;
       const providerName = apt.provider || 'Unassigned';
       if (!map[providerName]) return;
       const aptMinutes = timeToMinutes(apt.appointment_time.slice(0, 5));
@@ -1949,7 +1925,7 @@ function ScheduleApp() {
     setPinnedUnassignedKeys(prev => {
       let next = prev;
       appointments.forEach(apt => {
-        if (apt.treatment_area || apt.appointment_status === 'Canceled' || isHoldPatient(apt.patient_name)) return;
+        if (!needsRoom(apt.treatment_area) || apt.appointment_status === 'Canceled' || isHoldPatient(apt.patient_name)) return;
         const key = unassignedPinKey(apt);
         if (!next.has(key)) { if (next === prev) next = new Set(prev); next.add(key); }
       });
@@ -1959,7 +1935,7 @@ function ScheduleApp() {
 
   const unassignedAppointments = useMemo(() => {
     return appointments
-      .filter(apt => apt.appointment_status !== 'Canceled' && apt.appointment_status !== '*HOLD*' && !isHoldPatient(apt.patient_name) && (!apt.treatment_area || pinnedUnassignedKeys.has(unassignedPinKey(apt))))
+      .filter(apt => apt.appointment_status !== 'Canceled' && apt.appointment_status !== '*HOLD*' && !isHoldPatient(apt.patient_name) && (needsRoom(apt.treatment_area) || pinnedUnassignedKeys.has(unassignedPinKey(apt))))
       .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
   }, [appointments, pinnedUnassignedKeys]);
 
@@ -2366,9 +2342,9 @@ function ScheduleApp() {
                                 onClick={() => { setEditingAppointment(apt); setShowModal(true); }}
                                 dragProps={drag.cardProps(apt)}
                                 dragSource={drag.draggingId === apt.id}
-                                badgeLabel={viewMode === 'provider' ? roomBadgeLabel(apt.treatment_area) : apt.provider}
-                                badgeColor={viewMode === 'provider' && apt.treatment_area ? roomColor(apt.treatment_area) : undefined}
-                                setRoom={viewMode === 'provider' && !apt.treatment_area && !NO_ROOM_NEEDED.includes(apt.appointment_status)}
+                                badgeLabel={viewMode === 'provider' ? (needsRoom(apt.treatment_area) ? undefined : roomBadgeLabel(apt.treatment_area)) : apt.provider}
+                                badgeColor={viewMode === 'provider' && !needsRoom(apt.treatment_area) ? roomColor(apt.treatment_area) : undefined}
+                                setRoom={viewMode === 'provider' && needsRoom(apt.treatment_area) && !NO_ROOM_NEEDED.includes(apt.appointment_status)}
                                 badgeIcon={viewMode === 'provider'
                                   ? <HouseIcon size={10} color="#9ca3af" strokeWidth={2} />
                                   : <UserIcon size={10} color="#9ca3af" strokeWidth={2} />}
@@ -2403,7 +2379,7 @@ function ScheduleApp() {
 
       {!loading && !error && (
         <OutsideHoursStrip
-          appointments={appointments.filter(a => a.outside_hours && (viewMode !== 'provider' || gridProviders.some(p => p.Name === a.provider)))}
+          appointments={appointments.filter(a => isOffGrid(a) && (viewMode !== 'provider' || gridProviders.some(p => p.Name === a.provider)))}
           onOpen={(apt) => { setEditingAppointment(apt); setShowModal(true); }}
         />
       )}
@@ -2434,13 +2410,13 @@ function ScheduleApp() {
                 </span>
                 <button
                   type="button"
-                  title={apt.treatment_area ? 'Change room' : 'Set room'}
+                  title={needsRoom(apt.treatment_area) ? 'Set room' : 'Change room'}
                   onClick={(e) => {
                     e.stopPropagation(); // don't open the full appointment editor
                     const rect = e.currentTarget.getBoundingClientRect();
                     setRoomDropdown({ apt, top: rect.bottom + 4, left: rect.left });
                   }}
-                  style={apt.treatment_area ? {
+                  style={!needsRoom(apt.treatment_area) ? {
                     display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', borderRadius: 'var(--brand-pill-radius)', padding: '3px 10px',
                     border: `1px solid color-mix(in srgb, ${roomColor(apt.treatment_area)} 40%, white)`,
                     background: `color-mix(in srgb, ${roomColor(apt.treatment_area)} 12%, white)`, color: roomColor(apt.treatment_area),
@@ -2450,7 +2426,7 @@ function ScheduleApp() {
                   }}
                 >
                   <HouseIcon size={11} color="currentColor" strokeWidth={2} />
-                  {apt.treatment_area ? roomBadgeLabel(apt.treatment_area) : 'Set room'}
+                  {needsRoom(apt.treatment_area) ? 'Set room' : roomBadgeLabel(apt.treatment_area)}
                 </button>
                 <span style={{
                   fontSize: 10, fontWeight: 600, borderRadius: 10, padding: '2px 8px',
@@ -2471,7 +2447,7 @@ function ScheduleApp() {
             apt={roomDropdown.apt}
             top={roomDropdown.top}
             left={roomDropdown.left}
-            onPick={(area) => handleRoomChange(roomDropdown.apt, area)}
+            onPick={(area, allFuture) => handleRoomChange(roomDropdown.apt, area, allFuture)}
             onClose={() => setRoomDropdown(null)}
           />
         </>,
@@ -2645,25 +2621,27 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const [appointmentDate, setAppointmentDate] = useState(existing ? existing.appointment_date : dateToInputValue(defaultDate));
   const [appointmentTime, setAppointmentTime] = useState(existing ? existing.appointment_time.slice(0, 5) : (prefill?.time || '09:00'));
   const [duration, setDuration] = useState(existing ? existing.duration : 30);
-  // The dropdown holds a room, 'Offsite', or '' -- the typed offsite
-  // location is kept separately, and the two combine into the stored value
-  // ("Offsite" or "Offsite: <location>") that every save path below uses.
+  // Setting first (Kieran, Oct 15 2026): Center (+ a room, or not set yet),
+  // School (+ its name) or Home (+ an optional location), combined into the
+  // stored treatment_area. Until any of it is touched the stored value is
+  // kept exactly as it was, so older values ("Offsite: place") survive edits
+  // to anything else.
   const initialArea = existing ? (existing.treatment_area || '') : (prefill?.treatmentArea || '');
-  const [roomChoice, setRoomChoice] = useState(isOffsite(initialArea) ? OFFSITE : initialArea);
-  const [offsiteLocationText, setOffsiteLocationText] = useState(offsiteLocation(initialArea));
-  const [offsiteSettingChoice, setOffsiteSettingChoice] = useState(offsiteSetting(initialArea));
-  const offsiteSettingFor = useOffsiteSettingLookup(roomChoice === OFFSITE);
-  // A location used before brings its setting with it (still changeable).
-  const changeOffsiteLocation = (loc) => {
-    setOffsiteLocationText(loc);
-    const known = offsiteSettingFor(loc);
-    if (known) setOffsiteSettingChoice(known);
-  };
-  const treatmentArea = roomChoice === OFFSITE ? makeOffsiteArea(offsiteLocationText, offsiteSettingChoice) : roomChoice;
+  const [settingChoice, setSettingChoiceRaw] = useState(settingOfArea(initialArea));
+  const [centerRoom, setCenterRoomRaw] = useState(roomOfArea(initialArea));
+  const [offsiteLocationText, setOffsiteLocationRaw] = useState(offsiteLocation(initialArea));
+  const [areaTouched, setAreaTouched] = useState(false);
+  const setSettingChoice = (v) => { setAreaTouched(true); setSettingChoiceRaw(v); };
+  const setCenterRoom = (v) => { setAreaTouched(true); setCenterRoomRaw(v); };
+  const changeOffsiteLocation = (v) => { setAreaTouched(true); setOffsiteLocationRaw(v); };
+  const treatmentArea = !areaTouched ? initialArea
+    : settingChoice === 'Center' ? (centerRoom || CENTER)
+    : settingChoice ? makeOffsiteArea(offsiteLocationText, settingChoice) : '';
+  const areaChanged = areaTouched && treatmentArea !== initialArea;
   const [status, setStatus] = useState(existing ? (existing.appointment_status || STATUS_OPTIONS[0]) : STATUS_OPTIONS[0]);
   // Only for a canceled offsite session; anything else saves no reason.
   const [cancelReason, setCancelReason] = useState(existing?.cancel_reason || '');
-  const reasonToSave = status === 'Canceled' && roomChoice === OFFSITE ? (cancelReason || null) : null;
+  const reasonToSave = status === 'Canceled' && isOffsite(treatmentArea) ? (cancelReason || null) : null;
   // The "mandates" feature (src/brand.js, Oct 2026): why a child missed an
   // EI session. NYS's EI make-up policy allows a make-up for illness and
   // other reasons, not for a family vacation (kidz-lounge-api
@@ -2684,25 +2662,6 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const askAbsence = mandatesOn && missedStatus && billsAsEI && reasonToSave !== 'holiday' && reasonToSave !== 'emergency';
   // Sent only where the feature is on, so other clinics never clear one.
   const absenceField = mandatesOn ? { absence_reason: askAbsence ? (absenceReason || null) : null } : {};
-  // Outside hours (Oct 2026): an extra offsite visit outside contracted and
-  // office hours -- any time, any day, shown under the grid. Offsite only.
-  const [outsideHoursFlag, setOutsideHoursFlag] = useState(!!existing?.outside_hours || !!prefill?.outsideHours);
-  const outsideHours = roomChoice === OFFSITE && outsideHoursFlag;
-  // The provider's contracted hours that day, to warn when an Outside hours
-  // visit falls inside them.
-  const [contracted, setContracted] = useState(null);
-  useEffect(() => {
-    if (!outsideHours || !provider || !appointmentDate) { setContracted(null); return undefined; }
-    let alive = true;
-    api.getContractedHours(provider, appointmentDate).then(h => { if (alive) setContracted(h); }).catch(() => { if (alive) setContracted(null); });
-    return () => { alive = false; };
-  }, [outsideHours, provider, appointmentDate]);
-  const insideContracted = (() => {
-    if (!outsideHours || !contracted || !appointmentTime) return false;
-    const start = timeToMinutes(appointmentTime);
-    const end = start + (Number(duration) || 30);
-    return start < timeToMinutes(contracted.end_time) && timeToMinutes(contracted.start_time) < end;
-  })();
   // prefill.makeupFor: booking a make-up for this canceled / no-show
   // appointment -- one time only (no repeat), linked to it on save.
   const makeupFor = !existing ? prefill?.makeupFor || null : null;
@@ -2725,6 +2684,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   // existing itself is a prop and can't be mutated, so this is what
   // subsequent actions in the same session check instead of existing.id.
   const [materializedRecord, setMaterializedRecord] = useState(null);
+  // The edit being confirmed only changed the setting (Oct 15 2026).
+  const [pendingAreaOnly, setPendingAreaOnly] = useState(false);
+  const [pendingArea, setPendingArea] = useState('');
   const effectiveIsVirtual = !!existing?.is_virtual && !materializedRecord;
   const effectiveId = materializedRecord ? materializedRecord.id : existing?.id;
 
@@ -2741,7 +2703,6 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
       appointment_status: status,
       cancel_reason: reasonToSave,
       ...absenceField,
-      outside_hours: outsideHours,
     });
     setMaterializedRecord(created);
     return created;
@@ -2781,7 +2742,7 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           if (patientConfirmed && patientSearch && apt.patient_name === patientSearch && !isHoldPatient(patientSearch)) {
             found.push({ type: 'patient', apt });
           }
-          if (treatmentArea && !isOffsite(treatmentArea) && apt.treatment_area === treatmentArea) {
+          if (roomOfArea(treatmentArea) && apt.treatment_area === treatmentArea) {
             found.push({ type: 'room', apt });
           }
         });
@@ -2796,7 +2757,6 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
 
   const handleStatusSelect = (newStatus) => {
     setStatus(newStatus);
-    if (newStatus === 'Canceled' && roomChoice !== OFFSITE) setRoomChoice('');
   };
 
   useEffect(() => {
@@ -2847,17 +2807,8 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
       setError('Patient (selected from the list), date, time, and provider are required.');
       return;
     }
-    // Normal sessions stay within the 8 AM - 6 PM day; only Outside hours
-    // ones can be any time.
-    if (!outsideHours && (appointmentTime < '08:00' || appointmentTime > '18:00')) {
-      setError('Times are 8 AM – 6 PM. For an extra visit outside those hours, choose Offsite and tick Outside hours.');
-      return;
-    }
-    // Billing needs to know where an offsite session is (C / S / H).
-    if (roomChoice === OFFSITE && status !== 'Canceled' && !offsiteSettingChoice) {
-      setError('Choose whether this offsite session is at a center, school or home.');
-      return;
-    }
+    // Any time on any day (Oct 15 2026): off the 8-6 grid it shows in the
+    // strip under the schedule.
     setSaving(true);
     setError(null);
 
@@ -2872,26 +2823,28 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         appointment_status: status,
       cancel_reason: reasonToSave,
       ...absenceField,
-      outside_hours: outsideHours,
       };
 
       // An occurrence linked to the NEW rule-based series -- either still
       // virtual, or a real row that's already an exception -- gets the
       // same "just this one, or this and all future" choice as the old
-      // model, UNLESS the only things that changed are room and/or status.
-      // Those are always session-specific details (a one-off room swap, a
-      // cancellation) that should never silently propagate to the whole
-      // future series -- so those go straight to "just this occurrence."
+      // model, UNLESS only the status changed (a cancellation is always
+      // session-specific), which goes straight to "just this occurrence."
+      // A new setting (Center / School / Home, Oct 15 2026) asks, with
+      // "This and all future" first (pendingAreaOnly).
       const linkedSeriesId = existing.is_virtual ? existing.series_id : existing.exception_of_series_id;
+      const sameOtherFields =
+        patientSearch === existing.patient_name &&
+        provider === existing.provider &&
+        appointmentDate === existing.appointment_date &&
+        appointmentTime === existing.appointment_time.slice(0, 5) &&
+        Number(duration) === Number(existing.duration);
+      setPendingAreaOnly(sameOtherFields && areaChanged);
+      setPendingArea(treatmentArea);
       if (linkedSeriesId) {
-        const onlyRoomOrStatusChanged =
-          patientSearch === existing.patient_name &&
-          provider === existing.provider &&
-          appointmentDate === existing.appointment_date &&
-          appointmentTime === existing.appointment_time.slice(0, 5) &&
-          Number(duration) === Number(existing.duration);
+        const onlyStatusChanged = sameOtherFields && !areaChanged;
 
-        if (onlyRoomOrStatusChanged) {
+        if (onlyStatusChanged) {
           try {
             if (existing.is_virtual) {
               // Not a real row yet -- this is the first time this specific
@@ -2908,7 +2861,6 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 appointment_status: status,
       cancel_reason: reasonToSave,
       ...absenceField,
-      outside_hours: outsideHours,
               });
             } else {
               // Already a real exception row from a previous edit --
@@ -2978,7 +2930,6 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           duration: Number(duration),
           treatment_area: areaAfterStatus(status, treatmentArea),
           appointment_status: 'Scheduled',
-          outside_hours: outsideHours,
           start_date: appointmentDate,
         });
       } catch (err) {
@@ -3016,7 +2967,6 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
         appointment_status: status,
       cancel_reason: reasonToSave,
       ...absenceField,
-      outside_hours: outsideHours,
         fin: groupFin,
         ...(makeupFor ? { makeup_for: makeupFor.id } : {}),
         ...(bookingEval ? { is_eval: true } : {}),
@@ -3067,7 +3017,6 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           duration: pendingEditRecord.duration,
           treatment_area: pendingEditRecord.treatment_area,
           appointment_status: pendingEditRecord.appointment_status,
-          outside_hours: !!pendingEditRecord.outside_hours,
         });
       } else {
         // Either not linked to a series at all, or already a real
@@ -3089,7 +3038,21 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
   const handleApplyEditThisAndFuture = async () => {
     setSaving(true);
     try {
-      if (pendingSeriesId) {
+      if (pendingSeriesId && pendingAreaOnly) {
+        // Only the setting changed (status may have too): split the series
+        // from this occurrence with the new setting, keeping its one-off
+        // rows (appointmentSetting.js saveSettingChange), then save this
+        // occurrence's own status on the new series if it differs.
+        const res = await saveSettingChange(existing, pendingArea, true);
+        const statusChanged = pendingEditRecord.appointment_status !== existing.appointment_status || (pendingEditRecord.cancel_reason || null) !== (existing.cancel_reason || null);
+        if (statusChanged) {
+          if (existing.is_virtual) {
+            await api.createRecurringException(res?.series?.id || pendingSeriesId, { occurrence_date: existing.appointment_date, ...pendingEditRecord });
+          } else {
+            await api.updateAppointment(existing.id, pendingEditRecord);
+          }
+        }
+      } else if (pendingSeriesId) {
         // Ends the old series the day before this occurrence, removes this
         // occurrence's own exception row if it already had one (its
         // changes become the new series' baseline pattern instead of a
@@ -3112,7 +3075,6 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
           duration: pendingEditRecord.duration,
           treatment_area: pendingEditRecord.treatment_area,
           appointment_status: pendingEditRecord.appointment_status,
-          outside_hours: !!pendingEditRecord.outside_hours,
           start_date: pendingEditRecord.appointment_date,
         });
       } else {
@@ -3380,18 +3342,14 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 </select>
               </div>
               <div>
-                <label style={labelStyle()}>Treatment Area</label>
-                <select style={inputStyle()} value={roomChoice} onChange={e => setRoomChoice(e.target.value)}>
-                  <option value="">-- none --</option>
-                  {TREATMENT_AREA_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                  <option value={OFFSITE}>Offsite</option>
-                </select>
+                <span style={{ ...labelStyle(), display: 'block' }}>Setting</span>
+                <OffsiteSettingButtons value={settingChoice} onChange={setSettingChoice} />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.8fr)', gap: '0 12px' }}>
               <DateField label="Date *" value={appointmentDate} onChange={setAppointmentDate} />
-              <TimeField label="Time *" value={appointmentTime} onChange={setAppointmentTime} anyTime={outsideHours} />
+              <TimeField label="Time *" value={appointmentTime} onChange={setAppointmentTime} anyTime />
               <div>
                 <label style={labelStyle()}>Minutes</label>
                 <select style={inputStyle()} value={duration} onChange={e => setDuration(e.target.value)}>
@@ -3399,30 +3357,29 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 </select>
               </div>
             </div>
-            {roomChoice === OFFSITE && (
-              <div style={{ marginTop: -6, marginBottom: 12 }}>
-                <span style={{ ...labelStyle(), display: 'block' }}>Setting *</span>
-                <OffsiteSettingButtons value={offsiteSettingChoice} onChange={setOffsiteSettingChoice} />
+            {!settingChoice && isOffsite(initialArea) && (
+              <p style={{ fontSize: 12, color: BRAND.muted, margin: '-6px 0 12px' }}>Saved as {roomDisplayText(initialArea)}. Pick Center, School or Home to update it.</p>
+            )}
+            {settingChoice === 'Center' && status !== 'Canceled' && (
+              <div style={{ maxWidth: 260 }}>
+                <label htmlFor="kl-center-room" style={labelStyle()}>Room</label>
+                <select id="kl-center-room" style={inputStyle()} value={centerRoom} onChange={e => setCenterRoom(e.target.value)}>
+                  <option value="">Not set yet</option>
+                  {TREATMENT_AREA_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                  {centerRoom && !TREATMENT_AREA_OPTIONS.includes(centerRoom) && <option value={centerRoom}>{centerRoom}</option>}
+                </select>
               </div>
             )}
-            {roomChoice === OFFSITE && (
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#374151', margin: '0 0 12px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={outsideHoursFlag} onChange={e => setOutsideHoursFlag(e.target.checked)} style={{ marginTop: 2 }} />
-                <span><strong>Outside hours</strong> <span style={{ color: BRAND.muted }}>(an extra visit outside contracted and office hours: any time, any day, shown under the schedule)</span></span>
-              </label>
-            )}
-            {insideContracted && (
-              <p style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 6, padding: '9px 12px', margin: '0 0 12px', fontSize: 12.5, color: '#92400E' }}>
-                This is inside {provider}'s contracted hours ({formatSlotLabel(contracted.start_time)} – {formatSlotLabel(contracted.end_time)}). Is it really outside hours? You can still save.
-              </p>
-            )}
-            {roomChoice === OFFSITE && (
+            {(settingChoice === 'School' || settingChoice === 'Home') && (
               <OffsiteLocationField
                 patientName={patientConfirmed ? patientSearch : ''}
                 value={offsiteLocationText}
                 onChange={changeOffsiteLocation}
                 inputStyle={inputStyle()}
                 labelStyle={labelStyle()}
+                label={settingChoice === 'School' ? 'School name' : 'Home location'}
+                optional={settingChoice === 'Home'}
+                placeholder={settingChoice === 'School' ? 'e.g. Sunnyside Elementary' : 'e.g. Grandmother’s apartment'}
               />
             )}
 
@@ -3452,12 +3409,12 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             >
               {statusChoices.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            {status === 'Canceled' && roomChoice !== OFFSITE && (
+            {status === 'Canceled' && !isOffsite(treatmentArea) && roomOfArea(treatmentArea) && (
               <p style={{ fontSize: 11.5, color: BRAND.muted, marginTop: -8, marginBottom: 12 }}>
                 Room assignment will be cleared since this appointment is canceled.
               </p>
             )}
-            {status === 'Canceled' && roomChoice === OFFSITE && (
+            {status === 'Canceled' && isOffsite(treatmentArea) && (
               <select
                 value={cancelReason}
                 onChange={e => setCancelReason(e.target.value)}
@@ -3583,12 +3540,20 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
                 : <>This looks like part of a repeating series — there {futureMatches.length === 1 ? 'is' : 'are'} {futureMatches.length} future {futureMatches.length === 1 ? 'occurrence' : 'occurrences'} on the same day of week and time. Apply this change to just this one, or to this and all future occurrences?</>}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <button onClick={handleApplyEditThisOnly} disabled={saving} style={modalBtnStyle(true)}>
+              {/* A new setting: "This & All Future" comes first (Kieran, Oct 15 2026). */}
+              {pendingAreaOnly && (
+                <button onClick={handleApplyEditThisAndFuture} disabled={saving} style={modalBtnStyle(true)} autoFocus>
+                  {saving ? 'Saving...' : pendingSeriesId ? 'This & All Future' : `This & ${futureMatches.length} Future`}
+                </button>
+              )}
+              <button onClick={handleApplyEditThisOnly} disabled={saving} style={modalBtnStyle(!pendingAreaOnly)}>
                 {saving ? 'Saving...' : 'Just This One'}
               </button>
-              <button onClick={handleApplyEditThisAndFuture} disabled={saving} style={modalBtnStyle(true)}>
-                {saving ? 'Saving...' : pendingSeriesId ? 'This & All Future' : `This & ${futureMatches.length} Future`}
-              </button>
+              {!pendingAreaOnly && (
+                <button onClick={handleApplyEditThisAndFuture} disabled={saving} style={modalBtnStyle(true)}>
+                  {saving ? 'Saving...' : pendingSeriesId ? 'This & All Future' : `This & ${futureMatches.length} Future`}
+                </button>
+              )}
               <button onClick={() => { setConfirmingRecurringEdit(false); setPendingEditRecord(null); setPendingSeriesId(null); }} disabled={saving} style={modalBtnStyle()}>Cancel</button>
             </div>
           </div>
