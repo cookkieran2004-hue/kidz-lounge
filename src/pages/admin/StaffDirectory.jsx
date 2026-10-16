@@ -8,7 +8,8 @@ import {
   BRAND, BRAND_SERIF, INK, BODY, HAIRLINE, DANGER, FONT,
   cardStyle, btn, inputStyle, pill, displayName, scheduleNameFor,
 } from './adminUi';
-import { roleLabel } from '../../roles';
+import { roleLabel, showsStaffAccount } from '../../roles';
+import { useAuth } from '../../AuthContext';
 
 function StaffCard({ s, pendingCount, onOpen }) {
   const [hover, setHover] = useState(false);
@@ -53,6 +54,7 @@ function StaffCard({ s, pendingCount, onOpen }) {
 
 export default function StaffDirectory() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isMobile = useIsMobile(768);
   const [staff, setStaff] = useState(null);
   const [providers, setProviders] = useState([]);
@@ -81,12 +83,13 @@ export default function StaffDirectory() {
     if (!staff) return [];
     const q = query.trim().toLowerCase();
     return staff
+      .filter(s => showsStaffAccount(s, user))
       .filter(s => showArchived || !s.archived)
       .filter(s => !q || [displayName(s), s.first_name, s.last_name, s.position, s.username].some(v => (v || '').toLowerCase().includes(q)))
       .sort((a, b) => Number(!!a.archived) - Number(!!b.archived)
         || (a.last_name || a.username).localeCompare(b.last_name || b.username)
         || (a.first_name || '').localeCompare(b.first_name || ''));
-  }, [staff, query, showArchived]);
+  }, [staff, query, showArchived, user]);
 
   // Every provider should belong to a staff account. These don't yet.
   const providersWithoutAccount = useMemo(() => {
@@ -102,8 +105,9 @@ export default function StaffDirectory() {
     return staff.filter(s => !s.archived && s.provider_name && names.has(s.provider_name) && scheduleNameFor(s) && scheduleNameFor(s) !== s.provider_name);
   }, [staff, providers]);
 
-  const activeCount = staff ? staff.filter(s => !s.archived).length : 0;
-  const archivedCount = staff ? staff.length - activeCount : 0;
+  const listed = staff ? staff.filter(s => showsStaffAccount(s, user)) : [];
+  const activeCount = listed.filter(s => !s.archived).length;
+  const archivedCount = listed.length - activeCount;
 
   const openProfile = (s, section) => navigate(`/admin/staff/${encodeURIComponent(s.username)}${section ? `?section=${section}` : ''}`);
 

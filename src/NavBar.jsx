@@ -47,7 +47,11 @@ function navGroups(user) {
       { to: '/eval-reports', label: 'Evaluation reports', keywords: 'evals evaluations' },
     ] }] : []),
     { label: 'Office', items: [
-      { to: '/billing', label: 'Billing', keywords: 'billing sheet mandates make-ups ei-hub claims payroll overview' },
+      ...(featureOn('mandates') ? [
+        { to: '/billing', label: 'Payroll', keywords: 'billing sheets overview payroll export units totals reviewed' },
+        { to: '/mandates', label: 'Mandates', keywords: 'mandates make-ups makeups missed sessions needs attention owed' },
+        ...(manage ? [{ to: '/ei-hub', label: 'EI-Hub claims', keywords: 'ei-hub claims 837 billing import children authorizations setup' }] : []),
+      ] : [{ to: '/billing', label: 'Billing', keywords: 'billing sheet ei-hub claims' }]),
       ...(featureOn('ei') && manage ? [{ to: '/compliance', label: 'Compliance', keywords: 'late overdue audit authorizations credentials turning 3' }] : []),
       ...(manage ? [{ to: '/credentials', label: 'Credentials', keywords: 'licenses expiring staff' }] : []),
       ...(canAdminister(user) ? [{ to: '/power-forms', label: 'Power Forms', keywords: 'forms templates packets parents' }] : []),

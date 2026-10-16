@@ -421,17 +421,6 @@ export default function MyTimePage() {
     api.getProviders().then(p => { if (alive) setProviders(p || []); }).catch(() => {});
     return () => { alive = false; };
   }, [providerName]);
-  // Providers: this month's Outside hours sessions (extra offsite visits
-  // outside contracted hours; Oct 2026), so they can check their records.
-  const [outsideHours, setOutsideHours] = useState(null);
-  useEffect(() => {
-    if (!providerName) return undefined;
-    let alive = true;
-    const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    api.getOutsideHoursSummary(month).then(r => { if (alive) setOutsideHours(r); }).catch(() => {});
-    return () => { alive = false; };
-  }, [providerName]);
 
   useEffect(() => {
     let alive = true;
@@ -589,7 +578,7 @@ export default function MyTimePage() {
           <>
             {/* What they can take depends on their employment type: salaried
                 PTO + UPTO, hourly UPTO, neither none (Oct 2026 policy). */}
-            <StatStrip columns={isNarrow ? 2 : (isProvider && employment === 'salaried' ? 4 : 3)} isMobile={isMobile}>
+            <StatStrip columns={isNarrow ? 2 : (employment === 'salaried' ? 3 : 2)} isMobile={isMobile}>
               {employment === 'salaried' && <BalanceStat first type="PTO" hours={data.balances.PTO ?? 0} pendingHours={derived.pendingByType.PTO || 0} policy={data.policy} isMobile={isMobile} />}
               {employment !== 'neither' && <BalanceStat first={employment === 'hourly'} type="UPTO" hours={0} pendingHours={derived.pendingByType.UPTO || 0} policy={data.policy} isMobile={isMobile} />}
               {employment === 'neither' && (
@@ -597,11 +586,6 @@ export default function MyTimePage() {
                   sub="Lunch, meetings and other time off still work." />
               )}
               <NextTimeOffStat next={derived.next} onNew={openNewRequest} isMobile={isMobile} />
-              {isProvider && (
-                <Stat isMobile={isMobile} label="Outside hours this month"
-                  value={outsideHours ? `${outsideHours.sessions} session${outsideHours.sessions === 1 ? '' : 's'}` : '—'}
-                  sub={outsideHours ? `${outsideHours.hours} h of extra visits` : null} />
-              )}
             </StatStrip>
 
             {/* Week + side column */}

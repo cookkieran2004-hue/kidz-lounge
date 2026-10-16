@@ -189,6 +189,8 @@ export const api = {
   // ---- Recurring Series (new rule-based recurring model) ----
   createRecurringSeries: (record) => request('/recurring-series', { method: 'POST', body: JSON.stringify(record) }),
   endRecurringSeries: (id, endDate) => request(`/recurring-series/${id}/end`, { method: 'PUT', body: JSON.stringify({ end_date: endDate }) }),
+  // A new setting from one occurrence on (routes/appointments.js /split): { from_date, treatment_area, occurrence_date }.
+  splitRecurringSeries: (id, body) => request(`/recurring-series/${id}/split`, { method: 'POST', body: JSON.stringify(body) }),
   purgeFutureRecurringExceptions: (id, fromDate) => request(`/recurring-series/${id}/purge-future-exceptions`, { method: 'PUT', body: JSON.stringify({ from_date: fromDate }) }),
   createRecurringException: (seriesId, record) => request(`/recurring-series/${seriesId}/exceptions`, { method: 'POST', body: JSON.stringify(record) }),
   markAppointmentDeleted: (id) => request(`/appointments/${id}/mark-deleted`, { method: 'PUT' }),
@@ -355,6 +357,13 @@ export const api = {
   addEiConsent: (patientId, record) => request(`/patients/${patientId}/ei-consents`, { method: 'POST', body: JSON.stringify(record) }),
   withdrawEiConsent: (patientId, id, withdrawnOn) => request(`/patients/${patientId}/ei-consents/${id}`, { method: 'PUT', body: JSON.stringify({ withdrawn_on: withdrawnOn }) }),
   deleteEiConsent: (patientId, id) => request(`/patients/${patientId}/ei-consents/${id}`, { method: 'DELETE' }),
+  // The chart's Services tab: EI mandates and authorizations (routes/eiServices.js).
+  getEiServices: (patientId) => request(`/patients/${patientId}/ei-services`),
+  addEiMandate: (patientId, body) => request(`/patients/${patientId}/ei-services/mandates`, { method: 'POST', body: JSON.stringify(body) }),
+  correctEiMandate: (patientId, rowId, body) => request(`/patients/${patientId}/ei-services/mandates/${rowId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  addEiAuthorization: (patientId, body) => request(`/patients/${patientId}/ei-services/authorizations`, { method: 'POST', body: JSON.stringify(body) }),
+  correctEiAuthorization: (patientId, number, body) => request(`/patients/${patientId}/ei-services/authorizations/${encodeURIComponent(number)}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteEiAuthorization: (patientId, number) => request(`/patients/${patientId}/ei-services/authorizations/${encodeURIComponent(number)}`, { method: 'DELETE' }),
   addAbsenceNotice: (record) => request('/compliance/absence-notices', { method: 'POST', body: JSON.stringify(record) }),
   supervisorSignSessionNote: (record) => request('/session-notes/note/supervisor-sign', { method: 'POST', body: JSON.stringify(record) }),
   getSessionNotesToCosign: () => request('/session-notes/cosign?mine=1'),

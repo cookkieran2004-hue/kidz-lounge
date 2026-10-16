@@ -54,7 +54,10 @@ function AppShell() {
           <Routes>
             <Route path="/" element={<RequireAuth><SchedulePage /></RequireAuth>} />
             <Route path="/weekly" element={<RequireAuth><WeeklySchedulePage /></RequireAuth>} />
-            <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+            <Route path="/billing" element={<RequireAuth><BillingPage key="payroll" section="payroll" /></RequireAuth>} />
+            {/* The "mandates" feature splits Billing into three pages (BillingPage.jsx SECTIONS). */}
+            {featureOn('mandates') && <Route path="/mandates" element={<RequireAuth><BillingPage key="mandates" section="mandates" /></RequireAuth>} />}
+            {featureOn('mandates') && <Route path="/ei-hub" element={<RequireManage><BillingPage key="eihub" section="eihub" /></RequireManage>} />}
             {featureOn('ei') && <Route path="/session-notes" element={<RequireAuth><SessionNotesPage /></RequireAuth>} />}
             {featureOn('ei') && <Route path="/session-notes/note" element={<RequireAuth><SessionNotePage /></RequireAuth>} />}
             {featureOn('ei') && <Route path="/progress-reports" element={<RequireAuth><ProgressReportsPage /></RequireAuth>} />}

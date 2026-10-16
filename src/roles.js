@@ -27,6 +27,12 @@ export const canManage = (user) => ['reception', 'admin', 'developer'].includes(
 export const caseManagerChoices = (directory, keep) =>
   directory.filter(s => s.can_case_manage !== false || s.username === keep);
 // The HIPAA audit log tab in Admin (mirrors the API's canViewAuditLog).
+// Tasks can't be given to a Developer by anyone else (Kieran, Oct 2026):
+// people message them in chat. Mirrors the API's routes/tasks.js.
+export const canBeAssignedTasks = (person, user) => person?.role !== 'developer' || person?.username === user?.username;
+// Developer accounts are hidden from Admins and Reception in the Admin area
+// and staff lists (Kieran, Oct 2026); Developers still see them.
+export const showsStaffAccount = (person, user) => person?.role !== 'developer' || user?.role === 'developer';
 export const canViewAuditLog = (user) => user?.role === 'developer';
 // The EI-Hub Entry tab on the Billing page: Admins and Developers (Kieran,
 // Oct 2026), not Reception. Mirrors the API's canUseEiHub.
