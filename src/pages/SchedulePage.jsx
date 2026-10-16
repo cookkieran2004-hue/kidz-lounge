@@ -154,9 +154,14 @@ const OFFSITE_SETTINGS = ['Center', 'School', 'Home'];
 // The room a save keeps: all canceled and active sessions keep their location,
 // so billing's Setting column (C / S / H) still knows where it was.
 function areaAfterStatus(status, area) {
-  // If the appointment is canceled AND it's in the center:
-  // It clears the room (returns null), but keeps it in the center.
-  return status === 'Canceled' && !isOffsite(area) ? null : (area || null);
+  // If it's canceled and in-office/center, keep the 'Center' designation 
+  // but clear the specific room assignment.
+  if (status === 'Canceled' && !isOffsite(area)) {
+    return 'Center'; 
+  }
+  
+  // Otherwise, keep the original area (like School or Home) or null
+  return area || null;
 }
 // Why a canceled offsite session didn't happen (optional). Billing shows
 // Holiday as H and Emergency Closure as Z, like an office closure; Other = A.
