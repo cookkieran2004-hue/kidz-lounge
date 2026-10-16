@@ -15,7 +15,7 @@ import {
   thStyle, tdTimeStyle, tdCellStyle,
 } from './SchedulePage';
 import { canManage } from '../roles';
-import { isOffGrid, needsRoom, saveSettingChange } from '../appointmentSetting';
+import { isOffGrid, needsRoom, saveSettingChange, areaAfterStatus } from '../appointmentSetting';
 import { useStickyHeight, STACK_TOP } from '../stickyLayout';
 import { canceledLane, isCanceledAppt, NO_ROOM_NEEDED } from '../scheduleLanes';
 import { useAppointmentDrag } from '../useAppointmentDrag';
@@ -365,7 +365,7 @@ export default function WeeklySchedulePage() {
 
   const handleStatusChange = async (apt, newStatus) => {
     setStatusDropdown(null);
-    await applyQuickEdit(apt, { appointment_status: newStatus, treatment_area: newStatus === 'Canceled' ? null : apt.treatment_area });
+    await applyQuickEdit(apt, { appointment_status: newStatus, treatment_area: areaAfterStatus(newStatus, apt.treatment_area) });
     load();
   };
 

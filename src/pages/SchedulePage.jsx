@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { CENTER, SETTINGS, isOffsite, offsiteLocation, offsiteSetting, settingOfArea, roomOfArea, needsRoom, isOffGrid, isRepeating, saveSettingChange } from '../appointmentSetting';
+import { CENTER, SETTINGS, isOffsite, offsiteLocation, offsiteSetting, settingOfArea, roomOfArea, needsRoom, isOffGrid, isRepeating, saveSettingChange, areaAfterStatus } from '../appointmentSetting';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import { useIsMobile } from '../useIsMobile';
@@ -151,12 +151,6 @@ export const TREATMENT_AREA_OPTIONS = ROOM_OPTIONS;
 // as offsite, with no setting.
 export const OFFSITE = 'Offsite';
 const OFFSITE_SETTINGS = ['Center', 'School', 'Home'];
-// The room a save keeps: canceling frees an in-office room, but an offsite
-// session keeps its location, so billing's Setting column (C / S / H) still
-// knows where it was (Kieran, Oct 2026).
-function areaAfterStatus(status, area) {
-  return status === 'Canceled' && !isOffsite(area) ? null : (area || null);
-}
 // Why a canceled offsite session didn't happen (optional). Billing shows
 // Holiday as H and Emergency Closure as Z, like an office closure; Other = A.
 // Mirrors kidz-lounge-api lib/cancelReason.js.
@@ -1925,7 +1919,7 @@ function ScheduleApp() {
     setPinnedUnassignedKeys(prev => {
       let next = prev;
       appointments.forEach(apt => {
-        if (!needsRoom(apt.treatment_area) || apt.appointment_status === 'Canceled' || isHoldPatient(apt.patient_name)) return;
+        if (!needsRoom(apt.treatment_area) || NO_ROOM_NEEDED.includes(apt.appointment_status) || isHoldPatient(apt.patient_name)) return;
         const key = unassignedPinKey(apt);
         if (!next.has(key)) { if (next === prev) next = new Set(prev); next.add(key); }
       });
@@ -1935,7 +1929,7 @@ function ScheduleApp() {
 
   const unassignedAppointments = useMemo(() => {
     return appointments
-      .filter(apt => apt.appointment_status !== 'Canceled' && apt.appointment_status !== '*HOLD*' && !isHoldPatient(apt.patient_name) && (needsRoom(apt.treatment_area) || pinnedUnassignedKeys.has(unassignedPinKey(apt))))
+      .filter(apt => !NO_ROOM_NEEDED.includes(apt.appointment_status) && !isHoldPatient(apt.patient_name) && (needsRoom(apt.treatment_area) || pinnedUnassignedKeys.has(unassignedPinKey(apt))))
       .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
   }, [appointments, pinnedUnassignedKeys]);
 
@@ -3409,9 +3403,9 @@ export function AppointmentModal({ providers, existing, defaultDate, prefill, on
             >
               {statusChoices.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            {status === 'Canceled' && !isOffsite(treatmentArea) && roomOfArea(treatmentArea) && (
+            {['Canceled', 'No Show'].includes(status) && roomOfArea(treatmentArea) && (
               <p style={{ fontSize: 11.5, color: BRAND.muted, marginTop: -8, marginBottom: 12 }}>
-                Room assignment will be cleared since this appointment is canceled.
+                The room will be freed up. The setting stays Center.
               </p>
             )}
             {status === 'Canceled' && isOffsite(treatmentArea) && (
